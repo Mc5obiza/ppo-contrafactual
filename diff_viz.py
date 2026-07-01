@@ -169,7 +169,7 @@ def generate_and_plot_diff(
     classifier,
     target_c: float,
     M: int = 5,
-    strength: float = 0.3,
+    strength: float = 0.55,
     save_path: str | None = None,
 ) -> tuple[torch.Tensor, list[torch.Tensor], dict]:
     """

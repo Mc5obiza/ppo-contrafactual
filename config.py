@@ -53,6 +53,11 @@ LAM_FID    = 0.5
 LAM_PRES_R = 0.5
 LAM_BUD    = 0.1
 LAM_STOP   = 5.0
+LAM_HIT    = 6.0
+LAM_CLOSE2 = 2.5
+
+# Number of generator refinements applied per PPO environment step.
+ENV_REFINEMENT_PASSES = 2
 
 # ─────────────────────────────────────────────
 # GAE

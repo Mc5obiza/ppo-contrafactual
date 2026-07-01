@@ -200,7 +200,9 @@ class PretrainedLatentDiffusionGenerator(nn.Module):
         x: torch.Tensor,
         c_scalar: float,
         M: int = 5,
-        strength: float = 0.3,
+        strength: float = 0.55,
+        cls_guidance_scale: float = 1.0,
+        pres_guidance_scale: float = 1.0,
     ) -> tuple[torch.Tensor, list[torch.Tensor]]:
         """
         Produce a counterfactual image x_cf targeting class c_scalar.
@@ -211,6 +213,8 @@ class PretrainedLatentDiffusionGenerator(nn.Module):
         c_scalar : float  — target class value (e.g. 1.0 for pneumonia)
         M : int  — number of trajectory checkpoints to save
         strength : float  — what fraction of the full T timesteps to use
+        cls_guidance_scale : float  — extra multiplier for classifier guidance
+        pres_guidance_scale : float  — extra multiplier for preservation guidance
 
         Returns
         -------
@@ -263,8 +267,8 @@ class PretrainedLatentDiffusionGenerator(nn.Module):
                 z_t = step_out.prev_sample
                 z_t = (
                     z_t
-                    - config.ALPHA_CLS  * grad_cls.to(self.dtype)
-                    - config.ALPHA_PRES * grad_pres.to(self.dtype)
+                    - (config.ALPHA_CLS  * cls_guidance_scale) * grad_cls.to(self.dtype)
+                    - (config.ALPHA_PRES * pres_guidance_scale) * grad_pres.to(self.dtype)
                 )
 
             if i in checkpoint_idx:
