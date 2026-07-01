@@ -26,6 +26,7 @@ from src.evaluate import (
     plot_trajectory,
     save_checkpoints,
 )
+from src.diff_viz import generate_and_plot_diff
 
 
 def main():
@@ -96,12 +97,19 @@ def main():
     transitions = trainer.collect_rollout()
     plot_reward_trace(transitions)
 
-    M_CHECKPOINTS = 5
-    x_cf, trajectory = generator.generate_counterfactual(
-        env.x_t, env.c, M=M_CHECKPOINTS
+    # Snapshot the query image before env resets internally
+    x_query = env.x_orig.clone()
+
+    x_cf, trajectory, diff_stats = generate_and_plot_diff(
+        x_orig=x_query,
+        generator=generator,
+        classifier=classifier,
+        target_c=config.TARGET_C,
+        M=5,
+        save_path="checkpoints/diff_viz.png",
     )
-    plot_trajectory(env.x_orig, trajectory, target_c=env.c)
-    evaluate_counterfactual(env.x_orig, x_cf, classifier, target_c=config.TARGET_C)
+    plot_trajectory(x_query, trajectory, target_c=env.c)
+    evaluate_counterfactual(x_query, x_cf, classifier, target_c=config.TARGET_C)
 
     # ── 7. Save ───────────────────────────────────────────────────────────────
     print("\n" + "=" * 70)
