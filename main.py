@@ -11,22 +11,15 @@ End-to-end pipeline:
   7. Save checkpoints
 """
 
-import torch
-
 import config
 from ingestion import build_dataset
 from src.models import build_classifier, build_segmentation_net, build_object_detector
 from src.generator import build_generator
-from src.finetuning import run_lora_finetuning
-from src.environment import MedicalCounterfactualEnv
-from src.ppo import PPOActorCritic, PPOTrainer
-from src.evaluate import (
-    evaluate_counterfactual,
-    plot_reward_trace,
-    plot_trajectory,
-    save_checkpoints,
-)
-from src.diff_viz import generate_and_plot_diff
+from factory.finetuning import run_lora_finetuning
+from factory.environment import MedicalCounterfactualEnv
+from factory.ppo import PPOActorCritic, PPOTrainer
+from src.metrics import run_full_evaluation
+from factory.evaluate import plot_reward_trace, save_checkpoints
 
 
 def main():
@@ -89,7 +82,7 @@ def main():
         log_every=max(1, config.N_EPISODES // 10),
     )
 
-    # ── 6. Evaluation + visualisation ─────────────────────────────────────────
+    # ── 6. Evaluation ─────────────────────────────────────────────────────────
     print("\n" + "=" * 70)
     print("STEP 6 — Evaluation")
     print("=" * 70)
@@ -97,19 +90,21 @@ def main():
     transitions = trainer.collect_rollout()
     plot_reward_trace(transitions)
 
-    # Snapshot the query image before env resets internally
-    x_query = env.x_orig.clone()
-
-    x_cf, trajectory, diff_stats = generate_and_plot_diff(
-        x_orig=x_query,
-        generator=generator,
+    eval_results = run_full_evaluation(
+        dataset=dataset,
         classifier=classifier,
-        target_c=config.TARGET_C,
-        M=5,
-        save_path="checkpoints/diff_viz.png",
+        generator=generator,
+        seg_net=seg_net,
+        lung_channel_idx=lung_channel_idx,
+        obj_det=obj_det,
+        n_eval=min(200, len(dataset)),
+        ckpt_dir=config.CKPT_DIR,
+        device=config.DEVICE,
     )
-    plot_trajectory(x_query, trajectory, target_c=env.c)
-    evaluate_counterfactual(x_query, x_cf, classifier, target_c=config.TARGET_C)
+    print(
+        f"Evaluation metrics: {eval_results['CV']['mean']:.4f} CV, "
+        f"{eval_results['FID']['negative_group']:.4f} FID (negative group)"
+    )
 
     # ── 7. Save ───────────────────────────────────────────────────────────────
     print("\n" + "=" * 70)
