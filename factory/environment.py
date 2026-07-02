@@ -141,7 +141,7 @@ class MedicalCounterfactualEnv:
         tau_t: float,
     ) -> tuple[float, bool, dict]:
         with torch.no_grad():
-            direction_scale = 1.75 if float(self.c) == 1.0 else 1.0
+            direction_scale = 2.25 if float(self.c) == 1.0 else 1.0
             R_prog = (self.d_t - d_next).item()
             R_val  = -d_next.item()
             R_close2 = -(d_next.item() ** 2)

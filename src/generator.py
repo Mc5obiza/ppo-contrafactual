@@ -272,7 +272,7 @@ class PretrainedLatentDiffusionGenerator(nn.Module):
                 with torch.no_grad():
                     z_t = (
                         z_t
-                        - (config.ALPHA_CLS  * cls_guidance_scale) * grad_cls.to(self.dtype)
+                        - (config.ALPHA_CLS  * 1.15 * cls_guidance_scale) * grad_cls.to(self.dtype)
                         - (config.ALPHA_PRES * pres_guidance_scale) * grad_pres.to(self.dtype)
                     )
 
