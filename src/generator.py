@@ -97,7 +97,9 @@ class PretrainedLatentDiffusionGenerator(nn.Module):
         self.obj_det         = obj_det
 
         self._to_rgb  = lambda x: x.repeat(1, 3, 1, 1) if x.shape[1] == 1 else x
-        self._to_gray = lambda x: x.mean(dim=1, keepdim=True)
+        self._to_gray = lambda x: (
+            0.299 * x[:, 0:1] + 0.587 * x[:, 1:2] + 0.114 * x[:, 2:3]
+        )
 
     # ──────────────────────────────────────────────────────────────────────────
     # Encode / decode
@@ -248,28 +250,31 @@ class PretrainedLatentDiffusionGenerator(nn.Module):
                 step_out = self.scheduler.step(eps_hat, t, z_t)
                 z0_hat   = step_out.pred_original_sample
 
-            z0_hat_g = z0_hat.detach().requires_grad_(True)
-            with torch.enable_grad():
-                x_hat_g  = self.decoder(z0_hat_g.flatten(start_dim=1))
-                f_out    = self.classifier(self._to_rgb(x_hat_g))
-                L_cls    = F.binary_cross_entropy(f_out, c_tensor)
-                S_x      = self._get_seg_mask(x)
-                l1_map   = torch.abs(x_hat_g - x)
-                seg_t    = (S_x * l1_map).sum() / (S_x.sum() + 1e-8)
-                O_x      = self.obj_det(self._to_rgb(x))
-                O_hat    = self.obj_det(self._to_rgb(x_hat_g))
-                obj_t    = F.mse_loss(O_hat, O_x.detach())
-                L_pres_g = seg_t + config.ETA_OBJ * obj_t
-                grad_cls,  = torch.autograd.grad(L_cls,    z0_hat_g, retain_graph=True)
-                grad_pres, = torch.autograd.grad(L_pres_g, z0_hat_g)
-
             with torch.no_grad():
                 z_t = step_out.prev_sample
-                z_t = (
-                    z_t
-                    - (config.ALPHA_CLS  * cls_guidance_scale) * grad_cls.to(self.dtype)
-                    - (config.ALPHA_PRES * pres_guidance_scale) * grad_pres.to(self.dtype)
-                )
+
+            if i >= len(timesteps) // 2:
+                z0_hat_g = z0_hat.detach().requires_grad_(True)
+                with torch.enable_grad():
+                    x_hat_g  = self.decoder(z0_hat_g.flatten(start_dim=1))
+                    f_out    = self.classifier(self._to_rgb(x_hat_g))
+                    L_cls    = F.binary_cross_entropy(f_out, c_tensor)
+                    S_x      = self._get_seg_mask(x)
+                    l1_map   = torch.abs(x_hat_g - x)
+                    seg_t    = (S_x * l1_map).sum() / (S_x.sum() + 1e-8)
+                    O_x      = self.obj_det(self._to_rgb(x))
+                    O_hat    = self.obj_det(self._to_rgb(x_hat_g))
+                    obj_t    = F.mse_loss(O_hat, O_x.detach())
+                    L_pres_g = seg_t + config.ETA_OBJ * obj_t
+                    grad_cls,  = torch.autograd.grad(L_cls,    z0_hat_g, retain_graph=True)
+                    grad_pres, = torch.autograd.grad(L_pres_g, z0_hat_g)
+
+                with torch.no_grad():
+                    z_t = (
+                        z_t
+                        - (config.ALPHA_CLS  * cls_guidance_scale) * grad_cls.to(self.dtype)
+                        - (config.ALPHA_PRES * pres_guidance_scale) * grad_pres.to(self.dtype)
+                    )
 
             if i in checkpoint_idx:
                 with torch.no_grad():

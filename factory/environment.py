@@ -141,6 +141,7 @@ class MedicalCounterfactualEnv:
         tau_t: float,
     ) -> tuple[float, bool, dict]:
         with torch.no_grad():
+            direction_scale = 1.75 if float(self.c) == 1.0 else 1.0
             R_prog = (self.d_t - d_next).item()
             R_val  = -d_next.item()
             R_close2 = -(d_next.item() ** 2)
@@ -164,14 +165,14 @@ class MedicalCounterfactualEnv:
             R_stop   = float(is_valid) if tau_t > 0.5 else 0.0
 
         total = (
-            config.LAM_PROG   * R_prog
-            + config.LAM_VAL  * R_val
-            + config.LAM_CLOSE2 * R_close2
+            config.LAM_PROG   * (direction_scale * R_prog)
+            + config.LAM_VAL  * (direction_scale * R_val)
+            + config.LAM_CLOSE2 * (direction_scale * R_close2)
             + config.LAM_FID  * R_fid
             + config.LAM_PRES_R * R_pres
             + config.LAM_BUD  * R_bud
-            + config.LAM_HIT  * R_hit
-            + config.LAM_STOP * R_stop
+            + config.LAM_HIT  * (direction_scale * R_hit)
+            + config.LAM_STOP * (direction_scale * R_stop)
         )
         return total, is_valid, dict(
             R_prog=R_prog, R_val=R_val, R_close2=R_close2, R_fid=R_fid,
@@ -197,18 +198,33 @@ class MedicalCounterfactualEnv:
 
     def step(self, action: torch.Tensor) -> tuple[torch.Tensor, float, bool, dict]:
         self.current_step += 1
-        strength_t = 0.45 + 0.40 * torch.sigmoid(action[0])
-        cls_scale_t = 1.5 + 2.5 * torch.sigmoid(action[1])
-        pres_scale_t = 0.4 + 0.6 * torch.sigmoid(action[2])
+        strength_t = 0.2 + 0.5 * torch.sigmoid(action[0])
+        cls_scale_t = 0.5 + 2.5 * torch.sigmoid(action[1])
+        pres_scale_t = 0.3 + 1.2 * torch.sigmoid(action[2])
         tau_t = torch.sigmoid(action[3])
-        n_passes = config.ENV_REFINEMENT_PASSES + int(torch.sigmoid(action[4]).item() > 0.5)
+        extra_pass_1 = int(torch.sigmoid(action[4]).item() > 0.5)
+        extra_pass_2 = int(torch.sigmoid(action[5]).item() > 0.5)
+        strength_boost = 0.85 + 0.30 * torch.sigmoid(action[6])
+        guidance_bias = 0.70 + 0.60 * torch.sigmoid(action[7])
+        n_passes = config.ENV_REFINEMENT_PASSES + extra_pass_1 + extra_pass_2
 
         with torch.no_grad():
             x_next = self.x_t
             for pass_idx in range(n_passes):
-                pass_strength = min(0.9, float(strength_t.item()) * (1.0 + 0.15 * pass_idx))
-                pass_cls_scale = float(cls_scale_t.item()) * (1.0 + 0.35 * pass_idx)
-                pass_pres_scale = float(pres_scale_t.item()) * (1.0 - 0.15 * pass_idx)
+                pass_strength = min(
+                    0.9,
+                    float(strength_t.item()) * float(strength_boost.item()) * (1.0 + 0.15 * pass_idx),
+                )
+                pass_cls_scale = (
+                    float(cls_scale_t.item())
+                    * float(guidance_bias.item())
+                    * (1.0 + 0.35 * pass_idx)
+                )
+                pass_pres_scale = (
+                    float(pres_scale_t.item())
+                    / float(guidance_bias.item())
+                    * (1.0 - 0.15 * pass_idx)
+                )
                 x_next, _ = self.generator.generate_counterfactual(
                     x_next,
                     self.c,
@@ -232,6 +248,8 @@ class MedicalCounterfactualEnv:
             "strength": float(strength_t.item()),
             "cls_scale": float(cls_scale_t.item()),
             "pres_scale": float(pres_scale_t.item()),
+            "strength_boost": float(strength_boost.item()),
+            "guidance_bias": float(guidance_bias.item()),
             "n_passes": n_passes,
             "valid": is_valid,
         })

@@ -31,9 +31,9 @@ SEG_INPUT_SIZE  = 512
 # ─────────────────────────────────────────────
 # Diffusion / generation
 # ─────────────────────────────────────────────
-T_DIFF     = 25
-ALPHA_CLS  = 2.0
-ALPHA_PRES = 0.1
+T_DIFF     = 50
+ALPHA_CLS  = 4.0
+ALPHA_PRES = 0.05
 LAM_CLS    = 1.0
 LAM_PRES_D = 0.5
 LAM_CYC    = 0.3
@@ -42,17 +42,17 @@ LAM_CYC    = 0.3
 # PPO environment
 # ─────────────────────────────────────────────
 BUDGET_T            = 25
-EPSILON_STOP        = 0.05
+EPSILON_STOP        = 0.08
 ETA_OBJ             = 0.5
 FAR_THRESHOLD       = 0.5
 ENV_SCAN_BATCH_SIZE = 64
 
-LAM_PROG   = 1.0
+LAM_PROG   = 1.5
 LAM_VAL    = 2.0
 LAM_FID    = 0.5
 LAM_PRES_R = 0.5
 LAM_BUD    = 0.1
-LAM_STOP   = 5.0
+LAM_STOP   = 8.0
 LAM_HIT    = 6.0
 LAM_CLOSE2 = 2.5
 
@@ -81,7 +81,7 @@ LR           = 3e-4
 # Experiment
 # ─────────────────────────────────────────────
 TARGET_C   = 1.0
-N_EPISODES = 50
+N_EPISODES = 200
 ACTION_DIM = 8
 
 # ─────────────────────────────────────────────
