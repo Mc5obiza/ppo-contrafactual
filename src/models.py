@@ -5,8 +5,10 @@ Pretrained model loaders:
   - ResNet-18 classifier (f)
   - TorchXRayVision PSPNet lung segmenter (S)
   - YOLOv8n backbone feature extractor (O)
+  - Diffusion counterfactual generator (LoRA-adapted SD1.5)
+  - CXR evaluation dataset
 
-All models are loaded in eval mode with frozen weights.
+All frozen models are loaded in eval mode with frozen weights.
 """
 
 import torch
@@ -155,3 +157,125 @@ def build_object_detector(
     obj_det = YOLOv8FeatureExtractor(weights=weights, device=device)
     print(f"[models] loaded YOLOv8 backbone from {weights}")
     return obj_det
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Diffusion generator (PretrainedLatentDiffusionGenerator, LoRA-adapted)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_generator(
+    lora_ckpt_path: str = None,
+    model_id: str = config.DIFFUSION_MODEL_ID,
+    device: str = config.DEVICE,
+):
+    """
+    Load the trained counterfactual diffusion generator: SD1.5 VAE+UNet
+    with a LoRA-adapted UNet (rank 8, targeting to_q/to_k/to_v/to_out.0)
+    and the cond_proj conditioning MLP.
+
+    NOTE: this imports PretrainedLatentDiffusionGenerator from
+    ppo_counterfactual.py rather than rebuilding it here, so the eval-time
+    architecture always matches whatever you actually trained with. If the
+    checkpoint-loading method on that class is named differently than
+    `load_lora_weights`, update the call below to match.
+
+    Parameters
+    ----------
+    lora_ckpt_path : path to the trained LoRA weights checkpoint.
+                      Defaults to f"{config.CKPT_DIR}/lora_weights.pt" if
+                      not given — adjust to your actual saved filename.
+    model_id : HuggingFace model id for the base SD1.5 checkpoint
+               (VAE + UNet only, no CLIP/tokenizer — matches your generator).
+    device : device to load the generator onto.
+
+    Returns
+    -------
+    Generator instance in eval mode. LoRA params remain trainable tensors
+    but are not updated at inference since no optimizer step is taken
+    during evaluation.
+    """
+    from ppo_counterfactual import PretrainedLatentDiffusionGenerator
+
+    if lora_ckpt_path is None:
+        lora_ckpt_path = f"{config.CKPT_DIR}/lora_weights.pt"
+
+    generator = PretrainedLatentDiffusionGenerator(model_id=model_id, device=device)
+
+    # ADJUST if your actual method name/signature differs — this is a
+    # best guess based on the LoRA fine-tuning setup you described.
+    generator.load_lora_weights(lora_ckpt_path)
+
+    generator.eval()
+    print(f"[models] loaded generator ({model_id}) | LoRA ckpt: {lora_ckpt_path}")
+    return generator
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CXR evaluation dataset
+# ─────────────────────────────────────────────────────────────────────────────
+
+class CXRDataset(torch.utils.data.Dataset):
+    """
+    Binary-label chest X-ray dataset for evaluation.
+
+    ASSUMPTION: expects the common Kaggle CXR folder layout —
+    one subfolder per class under `root`, e.g.:
+
+        root/
+          NORMAL/       *.png / *.jpg
+          PNEUMONIA/    *.png / *.jpg
+
+    If reflex7/cxr-data-set actually ships as RSNA-style CSV + DICOM
+    (patientId, Target columns + .dcm files) instead, this class needs to
+    be rewritten to parse that format — say so and it'll be adjusted.
+
+    Returns (image_tensor, label) pairs:
+      image_tensor : (1, H, W) grayscale, float in [0, 1]
+      label        : 0 (normal) or 1 (pneumonia/abnormal)
+    """
+
+    def __init__(
+        self,
+        root: str = config.CXR_DATA_DIR,
+        image_size: int = 256,
+        positive_class_name: str = "PNEUMONIA",
+    ):
+        import os
+        from PIL import Image
+        import torchvision.transforms as T
+
+        self._Image = Image
+        self.transform = T.Compose([
+            T.Grayscale(num_output_channels=1),
+            T.Resize((image_size, image_size)),
+            T.ToTensor(),  # -> [0, 1]
+        ])
+
+        self.samples = []  # list of (filepath, label)
+        for class_name in sorted(os.listdir(root)):
+            class_dir = os.path.join(root, class_name)
+            if not os.path.isdir(class_dir):
+                continue
+            label = 1 if class_name.upper() == positive_class_name.upper() else 0
+            for fname in os.listdir(class_dir):
+                if fname.lower().endswith((".png", ".jpg", ".jpeg")):
+                    self.samples.append((os.path.join(class_dir, fname), label))
+
+        print(f"[models] CXRDataset: {len(self.samples)} images from {root}")
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        path, label = self.samples[idx]
+        img = self._Image.open(path).convert("L")
+        img_tensor = self.transform(img)
+        return img_tensor, label
+
+
+def build_eval_dataset(
+    root: str = config.CXR_DATA_DIR,
+    image_size: int = 256,
+) -> CXRDataset:
+    """Convenience wrapper that prints a status line."""
+    return CXRDataset(root=root, image_size=image_size)

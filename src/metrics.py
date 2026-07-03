@@ -8,11 +8,11 @@ Implemented metrics
 -------------------
 1. Counterfactual Validity (CV) score          — Eq. 11
 2. Fréchet Inception Distance (FID) score      — Eq. 10  (normalised per paper)
-3. Foreign-Object Preservation (FOP) score     — Eq. 12
+3. Foreign-Object Preservation (FOP) score     — Eq. 12 proxy via feature norm
 4. Cardio-Thoracic Ratio (CTR)                 — cardiomegaly clinical metric
-5. Score for normal CostoPhrenic recess (SCP)  — pleural effusion clinical metric
+5. Score for normal CostoPhrenic recess (SCP)  — pleural effusion proxy metric
 
-All functions follow the exact notation of the paper.
+CV and FID follow the paper closely; FOP and SCP use practical proxies.
 """
 
 from __future__ import annotations
@@ -76,12 +76,22 @@ class _InceptionFeatureExtractor(nn.Module):
         self.model = model.to(device).eval()
         self.device = device
         self.resize = T.Resize((299, 299), antialias=True)
+        # FIX (Bug 1): Inception-v3 was trained on ImageNet-normalised inputs.
+        # Feeding raw [0,1] pixel values (with no mean/std normalisation)
+        # pushes every activation off-distribution and inflates FID for
+        # every comparison, including real-vs-real. Normalise exactly like
+        # the torchvision pretrained-weights preprocessing expects.
+        self.normalize = T.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225],
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """x : (B, 1, H, W) or (B, 3, H, W) → (B, 2048)"""
+        """x : (B, 1, H, W) or (B, 3, H, W), values in [0, 1] → (B, 2048)"""
         if x.shape[1] == 1:
             x = x.repeat(1, 3, 1, 1)
         x = self.resize(x)
+        x = self.normalize(x)
         with torch.no_grad():
             feat = self.model(x.to(self.device))
         return feat.cpu()
@@ -109,6 +119,7 @@ def frechet_inception_distance(
     device: str = config.DEVICE,
     batch_size: int = 16,
     reference_fid: Optional[float] = None,
+    eps: float = 1e-6,
 ) -> float:
     """
     FID(X, Xc) as defined in Eq. 10.
@@ -121,18 +132,44 @@ def frechet_inception_distance(
     X_real : list of (1,1,H,W) tensors — real images
     X_cf   : list of (1,1,H,W) tensors — counterfactual images
     reference_fid : FID of the reference/best method for normalisation
+    eps    : regularisation added to the covariance diagonals before
+             sqrtm. FIX (Bug 2): with N samples < 2048 feature dims,
+             the covariance matrices are rank-deficient/singular, which
+             makes scipy.linalg.sqrtm numerically unstable (near-zero
+             eigenvalues produce spurious imaginary/large real components).
+             This is the same fix used by the standard pytorch-fid
+             implementation.
 
     Returns
     -------
     float — raw FID (or normalised FID if reference_fid is given)
+
+    Note
+    ----
+    FID estimates are only stable with large sample sizes (rule of thumb:
+    N >> feature dim, i.e. several thousand images for 2048-d Inception
+    features). With N ~ 100-200 (typical after filtering into Xn/Xp groups)
+    expect high variance in this number even after the fixes above —
+    increase n_eval wherever your compute budget allows.
     """
     extractor = _InceptionFeatureExtractor(device)
     mu1, sigma1 = _compute_activation_stats(X_real, extractor, batch_size)
     mu2, sigma2 = _compute_activation_stats(X_cf,   extractor, batch_size)
 
+    # FIX (Bug 2): regularise before sqrtm to avoid singular-matrix blowups
+    sigma1 = sigma1 + np.eye(sigma1.shape[0]) * eps
+    sigma2 = sigma2 + np.eye(sigma2.shape[0]) * eps
+
     diff = mu1 - mu2
     covmean, _ = linalg.sqrtm(sigma1 @ sigma2, disp=False)
     if np.iscomplexobj(covmean):
+        # residual imaginary component should be ~0 after regularisation;
+        # if it isn't, something's still off numerically — warn loudly
+        max_imag = np.max(np.abs(covmean.imag))
+        if max_imag > 1e-3:
+            print(f"[metrics] WARNING: sqrtm returned large imaginary "
+                  f"component ({max_imag:.4f}) — FID may be unreliable. "
+                  f"Consider increasing n_eval or eps.")
         covmean = covmean.real
 
     fid = float(diff @ diff + np.trace(sigma1 + sigma2 - 2.0 * covmean))
@@ -169,7 +206,7 @@ def foreign_object_preservation(
 
     Returns
     -------
-    float — FOP score ∈ [0, 1]
+    float — proxy FOP score ∈ [0, 1]
     """
     assert len(X_real) == len(X_cf)
 
@@ -180,7 +217,7 @@ def foreign_object_preservation(
 
         with torch.no_grad():
             # obj_det returns feature vectors; use their L2-norm as a proxy
-            # for FO presence (higher norm = richer feature = FO likely present)
+            # for FO presence. This is not the paper's dedicated detector.
             feat_x  = obj_det(x3).norm(dim=-1).item()
             feat_xc = obj_det(xc3).norm(dim=-1).item()
 
@@ -294,7 +331,8 @@ def compute_scp(
 
     with torch.no_grad():
         feat = obj_det(x3.to(device))                  # (1, D)
-        # proxy: low feature-norm in lower lobe = healthy (no fluid = high SCP)
+        # Proxy used here instead of the paper's dedicated CP-recess detector.
+        # Low feature-norm in the lower lobe is treated as healthier tissue.
         norm_val = feat.norm(dim=-1).item()
         scp = float(torch.sigmoid(torch.tensor(-norm_val / 50.0)).item())
 
@@ -338,7 +376,9 @@ def run_full_evaluation(
 
     Parameters
     ----------
-    n_eval : number of images to sample from each group (capped by group size)
+    n_eval : number of images to sample from each group (capped by group size).
+             NOTE: FID is unstable at small N (see frechet_inception_distance
+             docstring). Prefer n_eval >= 1000 if your generation budget allows.
 
     Returns
     -------
@@ -384,6 +424,11 @@ def run_full_evaluation(
     xn_list = xn_list[:n_eval]
     xp_list = xp_list[:n_eval]
     print(f"[metrics] Xn={len(xn_list)}  Xp={len(xp_list)}")
+
+    if len(xn_list) < 200 or len(xp_list) < 200:
+        print(f"[metrics] WARNING: group size < 200 — FID estimate will have "
+              f"high variance and likely be biased upward. Consider lowering "
+              f"the f(x)<0.2 / f(x)>0.8 thresholds or increasing n_eval.")
 
     # ── generate counterfactuals ───────────────────────────────────────────────
     print("[metrics] generating Xc (n→p) and Xc (p→n) ...")
