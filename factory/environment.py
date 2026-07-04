@@ -206,6 +206,12 @@ class MedicalCounterfactualEnv:
         extra_pass_2 = int(torch.sigmoid(action[5]).item() > 0.5)
         strength_boost = 0.85 + 0.30 * torch.sigmoid(action[6])
         guidance_bias = 0.70 + 0.60 * torch.sigmoid(action[7])
+        # New 9th action dim: where guidance starts ramping up, as a
+        # fraction of the trajectory. Mapped to [0.1, 0.5] — never lets
+        # guidance start in the first 10% (too early risks the same kind
+        # of noisy collapse the ramp was meant to fix) or later than the
+        # midpoint (leaves too few steps for guidance to have any effect).
+        ramp_start_frac_t = 0.1 + 0.4 * torch.sigmoid(action[8])
         n_passes = config.ENV_REFINEMENT_PASSES + extra_pass_1 + extra_pass_2
 
         with torch.no_grad():
@@ -232,6 +238,7 @@ class MedicalCounterfactualEnv:
                     strength=pass_strength,
                     cls_guidance_scale=pass_cls_scale,
                     pres_guidance_scale=pass_pres_scale,
+                    guidance_ramp_start_frac=float(ramp_start_frac_t.item()),
                 )
 
             x3_next   = x_next.repeat(1, 3, 1, 1) if x_next.shape[1] == 1 else x_next
@@ -250,6 +257,7 @@ class MedicalCounterfactualEnv:
             "pres_scale": float(pres_scale_t.item()),
             "strength_boost": float(strength_boost.item()),
             "guidance_bias": float(guidance_bias.item()),
+            "ramp_start_frac": float(ramp_start_frac_t.item()),
             "n_passes": n_passes,
             "valid": is_valid,
         })

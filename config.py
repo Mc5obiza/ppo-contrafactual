@@ -82,7 +82,9 @@ LR           = 3e-4
 # ─────────────────────────────────────────────
 TARGET_C   = 1.0
 N_EPISODES = 200
-ACTION_DIM = 8
+# Bumped 8 -> 9: new action dim controls guidance_ramp_start_frac in
+# generate_counterfactual (see environment.py step() and generator.py).
+ACTION_DIM = 9
 
 # ─────────────────────────────────────────────
 # LoRA fine-tuning

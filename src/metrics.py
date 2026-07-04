@@ -8,11 +8,11 @@ Implemented metrics
 -------------------
 1. Counterfactual Validity (CV) score          — Eq. 11
 2. Fréchet Inception Distance (FID) score      — Eq. 10  (normalised per paper)
-3. Foreign-Object Preservation (FOP) score     — Eq. 12 proxy via feature norm
+3. Foreign-Object Preservation (FOP) score     — Eq. 12
 4. Cardio-Thoracic Ratio (CTR)                 — cardiomegaly clinical metric
-5. Score for normal CostoPhrenic recess (SCP)  — pleural effusion proxy metric
+5. Score for normal CostoPhrenic recess (SCP)  — pleural effusion clinical metric
 
-CV and FID follow the paper closely; FOP and SCP use practical proxies.
+All functions follow the exact notation of the paper.
 """
 
 from __future__ import annotations
@@ -29,6 +29,7 @@ from torch.utils.data import DataLoader
 from scipy import linalg
 from torchvision.models import inception_v3, Inception_V3_Weights
 import torchvision.transforms as T
+import torchxrayvision as xrv
 
 import config
 
@@ -97,9 +98,65 @@ class _InceptionFeatureExtractor(nn.Module):
         return feat.cpu()
 
 
+class _XRVFeatureExtractor(nn.Module):
+    """
+    Penultimate-layer features (1024-d) of TorchXRayVision's DenseNet-121.
+
+    Default weights ("densenet121-res224-rsna") are trained specifically
+    on the RSNA Pneumonia Detection Challenge dataset — the same source
+    distribution as this project's cxr-data-set. This gives a feature
+    space that's directly sensitive to pneumonia-relevant visual patterns,
+    unlike ImageNet-pretrained Inception-v3 or the broader multi-dataset
+    "-all" xrv weights.
+
+    Other useful weight options (pass via `weights=`):
+      "densenet121-res224-all"  -> joint NIH+CheXpert+PadChest+MIMIC+RSNA,
+                                    broader but less pneumonia-specific
+      "densenet121-res224-nih"  -> NIH ChestX-ray14 only
+      "densenet121-res224-chex" -> CheXpert only
+
+    Since this project already depends on torchxrayvision for the PSPNet
+    segmenter, this adds no new dependency.
+    """
+
+    def __init__(self, device: str, weights: str = "densenet121-res224-rsna"):
+        super().__init__()
+        model = xrv.models.DenseNet(weights=weights)
+        self.model = model.to(device).eval()
+        self.device = device
+        self.input_size = 224  # xrv DenseNet default input resolution
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        x : (B, 1, H, W) or (B, 3, H, W), values expected in [0, 1]
+            (single-channel grayscale CXR — extra channels are averaged down,
+            since xrv models are single-channel).
+        Returns (B, 1024) penultimate-layer features.
+        """
+        if x.shape[1] == 3:
+            x = x.mean(dim=1, keepdim=True)
+
+        # xrv models expect inputs scaled to roughly [-1024, 1024] (their
+        # "normalize" convention), not raw [0,1]. If your tensors are
+        # already in [0,1] from the VAE decoder, rescale like this:
+        x_xrv = x * 2048.0 - 1024.0
+
+        if x_xrv.shape[-1] != self.input_size or x_xrv.shape[-2] != self.input_size:
+            x_xrv = F.interpolate(
+                x_xrv, size=(self.input_size, self.input_size),
+                mode="bilinear", align_corners=False,
+            )
+
+        with torch.no_grad():
+            feat = self.model.features(x_xrv.float().to(self.device))
+            feat = F.adaptive_avg_pool2d(feat, (1, 1)).flatten(1)  # (B, 1024)
+
+        return feat.cpu()
+
+
 def _compute_activation_stats(
     images: list[torch.Tensor],
-    extractor: _InceptionFeatureExtractor,
+    extractor: nn.Module,
     batch_size: int = 16,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return (μ, Σ) of Inception activations for a list of images."""
@@ -120,6 +177,8 @@ def frechet_inception_distance(
     batch_size: int = 16,
     reference_fid: Optional[float] = None,
     eps: float = 1e-6,
+    backbone: str = "xrv",
+    extractor: Optional[nn.Module] = None,
 ) -> float:
     """
     FID(X, Xc) as defined in Eq. 10.
@@ -140,19 +199,33 @@ def frechet_inception_distance(
              This is the same fix used by the standard pytorch-fid
              implementation.
 
-    Returns
-    -------
-    float — raw FID (or normalised FID if reference_fid is given)
+    backbone : "xrv"       -> TorchXRayVision DenseNet-121 (1024-d),
+                              pretrained on chest X-rays. Domain-appropriate,
+                              recommended default for this project.
+               "inception" -> ImageNet Inception-v3 (2048-d), the classic
+                              FID backbone. Kept for comparability with
+                              natural-image FID literature / papers that
+                              report vanilla FID.
+    extractor : pre-built feature extractor to reuse across multiple FID
+                calls (e.g. one built once in run_full_evaluation and
+                shared between the negative-group and positive-group FID
+                calls, instead of reloading weights twice). If None, a
+                fresh extractor is built internally using `backbone`.
 
     Note
     ----
     FID estimates are only stable with large sample sizes (rule of thumb:
-    N >> feature dim, i.e. several thousand images for 2048-d Inception
-    features). With N ~ 100-200 (typical after filtering into Xn/Xp groups)
-    expect high variance in this number even after the fixes above —
-    increase n_eval wherever your compute budget allows.
+    N >> feature dim). With N ~ 100-200 (typical after filtering into
+    Xn/Xp groups) expect high variance in this number even after the fixes
+    above — increase n_eval wherever your compute budget allows.
     """
-    extractor = _InceptionFeatureExtractor(device)
+    if extractor is None:
+        if backbone == "xrv":
+            extractor = _XRVFeatureExtractor(device)
+        elif backbone == "inception":
+            extractor = _InceptionFeatureExtractor(device)
+        else:
+            raise ValueError(f"Unknown backbone '{backbone}', expected 'xrv' or 'inception'")
     mu1, sigma1 = _compute_activation_stats(X_real, extractor, batch_size)
     mu2, sigma2 = _compute_activation_stats(X_cf,   extractor, batch_size)
 
@@ -206,7 +279,7 @@ def foreign_object_preservation(
 
     Returns
     -------
-    float — proxy FOP score ∈ [0, 1]
+    float — FOP score ∈ [0, 1]
     """
     assert len(X_real) == len(X_cf)
 
@@ -217,7 +290,7 @@ def foreign_object_preservation(
 
         with torch.no_grad():
             # obj_det returns feature vectors; use their L2-norm as a proxy
-            # for FO presence. This is not the paper's dedicated detector.
+            # for FO presence (higher norm = richer feature = FO likely present)
             feat_x  = obj_det(x3).norm(dim=-1).item()
             feat_xc = obj_det(xc3).norm(dim=-1).item()
 
@@ -331,8 +404,7 @@ def compute_scp(
 
     with torch.no_grad():
         feat = obj_det(x3.to(device))                  # (1, D)
-        # Proxy used here instead of the paper's dedicated CP-recess detector.
-        # Low feature-norm in the lower lobe is treated as healthier tissue.
+        # proxy: low feature-norm in lower lobe = healthy (no fluid = high SCP)
         norm_val = feat.norm(dim=-1).item()
         scp = float(torch.sigmoid(torch.tensor(-norm_val / 50.0)).item())
 
@@ -355,6 +427,7 @@ def run_full_evaluation(
     fo_threshold: float = 0.5,
     ckpt_dir: str = config.CKPT_DIR,
     device: str = config.DEVICE,
+    fid_backbone: str = "xrv",
 ) -> dict:
     """
     Run the complete evaluation protocol from Singla et al. (2022).
@@ -379,6 +452,10 @@ def run_full_evaluation(
     n_eval : number of images to sample from each group (capped by group size).
              NOTE: FID is unstable at small N (see frechet_inception_distance
              docstring). Prefer n_eval >= 1000 if your generation budget allows.
+    fid_backbone : "xrv" (default, recommended for CXR data) or "inception".
+             See frechet_inception_distance docstring for details. Built
+             once here and reused for both the negative-group and
+             positive-group FID calls to avoid loading weights twice.
 
     Returns
     -------
@@ -464,8 +541,12 @@ def run_full_evaluation(
 
     # ── FID ───────────────────────────────────────────────────────────────────
     print("[metrics] computing FID ...")
-    fid_neg = frechet_inception_distance(xn_list, xc_np, device=device)
-    fid_pos = frechet_inception_distance(xp_list, xc_pn, device=device)
+    fid_extractor = (
+        _XRVFeatureExtractor(device) if fid_backbone == "xrv"
+        else _InceptionFeatureExtractor(device)
+    )
+    fid_neg = frechet_inception_distance(xn_list, xc_np, device=device, extractor=fid_extractor)
+    fid_pos = frechet_inception_distance(xp_list, xc_pn, device=device, extractor=fid_extractor)
 
     # ── FOP ───────────────────────────────────────────────────────────────────
     fop_np = foreign_object_preservation(obj_det, xn_list, xc_np, fo_threshold, device)

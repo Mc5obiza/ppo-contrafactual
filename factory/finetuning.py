@@ -7,10 +7,7 @@ Trains the generator on the RSNA dataset using a standard diffusion
 denoising objective (L_diff = MSE between predicted and actual noise),
 with AMP (fp16 autocast) and gradient clipping for stability.
 
-Includes class-balanced sampling: RSNA pneumonia data is skewed roughly
-3:1 negative:positive, which starves the negative->positive (n_to_p)
-generation direction of training signal. A WeightedRandomSampler
-equalizes exposure to both classes per epoch.
+
 """
 
 import numpy as np
@@ -40,6 +37,14 @@ def _extract_labels(dataset) -> np.ndarray:
             arr = np.asarray(getattr(dataset, attr)).reshape(-1)
             print(f"[finetuning] using dataset.{attr} for label extraction")
             return arr.astype(int)
+
+    # RSNACXRDataset (and similar) store (id, label) tuples in .samples —
+    # label is always the last element, no image decode needed.
+    if hasattr(dataset, "samples"):
+        samples = dataset.samples
+        if len(samples) > 0 and isinstance(samples[0], (tuple, list)) and len(samples[0]) >= 2:
+            print("[finetuning] using dataset.samples for label extraction (no DICOM decode needed)")
+            return np.array([s[-1] for s in samples]).astype(int)
 
     if hasattr(dataset, "df"):
         df = dataset.df
