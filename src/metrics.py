@@ -13,6 +13,10 @@ Implemented metrics
 5. Score for normal CostoPhrenic recess (SCP)  — pleural effusion clinical metric
 
 All functions follow the exact notation of the paper.
+
+CHANGE FROM ORIGINAL: foreign_object_preservation() was returning a
+degenerate 1.0/1.0/1.0 always — see its docstring for the root cause
+and fix.
 """
 
 from __future__ import annotations
@@ -257,8 +261,70 @@ def frechet_inception_distance(
 # 3. Foreign-Object Preservation (FOP)  —  Eq. 12
 # ─────────────────────────────────────────────────────────────────────────────
 
+class _XRVSupportDeviceDetector(nn.Module):
+    """
+    Detects presence of support devices (pacemakers, ECG leads, chest
+    tubes, central lines, etc.) using TorchXRayVision's DenseNet-121.
+
+    "Support Devices" is one of CheXpert's 14 original pathology labels,
+    and models trained on (or including) CheXpert expose it directly as
+    an output head. This gives a real, properly-calibrated [0,1]
+    presence probability, trained specifically on chest X-rays for
+    exactly this purpose — unlike a COCO-pretrained object detector,
+    which has never seen a support device in training.
+
+    Requires zero additional fine-tuning or compute: torchxrayvision is
+    already a dependency of this project (used for the PSPNet segmenter),
+    so this just loads a second pretrained xrv model.
+
+    weights options that include "Support Devices" (check
+    model.pathologies if using a different weight set):
+      "densenet121-res224-all"  -> joint NIH+CheXpert+PadChest+MIMIC+RSNA
+                                    (recommended: broadest training data)
+      "densenet121-res224-chex" -> CheXpert only (where the label originates)
+    """
+
+    def __init__(self, device: str, weights: str = "densenet121-res224-all"):
+        super().__init__()
+        model = xrv.models.DenseNet(weights=weights)
+        self.model      = model.to(device).eval()
+        self.device     = device
+        self.input_size = 224
+
+        if "Support Devices" not in model.pathologies:
+            raise ValueError(
+                f"'Support Devices' not found in pathologies for "
+                f"weights='{weights}': {model.pathologies}. Try "
+                f"'densenet121-res224-all' or 'densenet121-res224-chex'."
+            )
+        self.sd_idx = model.pathologies.index("Support Devices")
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        x : (B, 1, H, W) or (B, 3, H, W), values in [0, 1]
+        Returns (B,) support-device presence probability in [0, 1].
+        """
+        if x.shape[1] == 3:
+            x = x.mean(dim=1, keepdim=True)
+
+        x_xrv = x * 2048.0 - 1024.0
+        if x_xrv.shape[-1] != self.input_size or x_xrv.shape[-2] != self.input_size:
+            x_xrv = F.interpolate(
+                x_xrv, size=(self.input_size, self.input_size),
+                mode="bilinear", align_corners=False,
+            )
+
+        with torch.no_grad():
+            # xrv models output already-calibrated [0,1] probabilities
+            # per pathology (sigmoid applied internally), not raw logits.
+            probs = self.model(x_xrv.float().to(self.device))
+            sd_prob = probs[:, self.sd_idx]
+
+        return sd_prob.cpu()
+
+
 def foreign_object_preservation(
-    obj_det,
+    fo_detector,
     X_real: list[torch.Tensor],
     X_cf:   list[torch.Tensor],
     fo_threshold: float = 0.5,
@@ -268,14 +334,30 @@ def foreign_object_preservation(
     FOP(X, Xc) = fraction of images where FO is detected in BOTH
                  the real image AND its counterfactual.
 
-    Only images where O(x) > fo_threshold are considered (paper Eq. 12).
+    Only images where a detection probability > fo_threshold is
+    considered (paper Eq. 12).
+
+    HISTORY:
+      v1 thresholded a raw YOLO backbone feature-vector L2 norm against
+      fo_threshold=0.5 — norms are routinely tens-to-hundreds, so this
+      was true for ~every image, giving a degenerate 1.0 always.
+      v2 fixed the threshold-space bug by using the full YOLO detection
+      head instead, but yolov8n.pt is COCO-pretrained (everyday objects),
+      not trained on medical support devices at all.
+      v3 (this version) replaces YOLO entirely with a TorchXRayVision
+      DenseNet-121 classifier that has a dedicated, CheXpert-trained
+      "Support Devices" output — a properly domain-matched detector,
+      requiring no fine-tuning since it's already pretrained for exactly
+      this label.
 
     Parameters
     ----------
-    obj_det       : YOLOv8FeatureExtractor (or any model returning a scalar FO score)
+    fo_detector   : _XRVSupportDeviceDetector (or any nn.Module returning
+                    a (B,) or scalar [0,1] support-device probability per
+                    image when called on a (1,C,H,W) tensor)
     X_real        : list of (1,1,H,W) tensors
     X_cf          : list of (1,1,H,W) tensors
-    fo_threshold  : detection confidence threshold (paper: 0.5)
+    fo_threshold  : detection probability threshold (paper: 0.5)
 
     Returns
     -------
@@ -285,17 +367,12 @@ def foreign_object_preservation(
 
     preserved, total = 0, 0
     for x, xc in zip(X_real, X_cf):
-        x3  = (x.repeat(1, 3, 1, 1)  if x.shape[1]  == 1 else x).to(device)
-        xc3 = (xc.repeat(1, 3, 1, 1) if xc.shape[1] == 1 else xc).to(device)
-
         with torch.no_grad():
-            # obj_det returns feature vectors; use their L2-norm as a proxy
-            # for FO presence (higher norm = richer feature = FO likely present)
-            feat_x  = obj_det(x3).norm(dim=-1).item()
-            feat_xc = obj_det(xc3).norm(dim=-1).item()
+            conf_real = fo_detector(x.to(device)).item()
+            conf_cf   = fo_detector(xc.to(device)).item()
 
-        fo_in_real = feat_x  > fo_threshold
-        fo_in_cf   = feat_xc > fo_threshold
+        fo_in_real = conf_real > fo_threshold
+        fo_in_cf   = conf_cf   > fo_threshold
 
         if fo_in_real:
             total     += 1
@@ -549,8 +626,10 @@ def run_full_evaluation(
     fid_pos = frechet_inception_distance(xp_list, xc_pn, device=device, extractor=fid_extractor)
 
     # ── FOP ───────────────────────────────────────────────────────────────────
-    fop_np = foreign_object_preservation(obj_det, xn_list, xc_np, fo_threshold, device)
-    fop_pn = foreign_object_preservation(obj_det, xp_list, xc_pn, fo_threshold, device)
+    print("[metrics] computing FOP (TorchXRayVision Support Devices detector) ...")
+    fo_detector = _XRVSupportDeviceDetector(device)
+    fop_np = foreign_object_preservation(fo_detector, xn_list, xc_np, fo_threshold, device)
+    fop_pn = foreign_object_preservation(fo_detector, xp_list, xc_pn, fo_threshold, device)
     fop    = (fop_np + fop_pn) / 2.0
 
     # ── CTR ───────────────────────────────────────────────────────────────────
