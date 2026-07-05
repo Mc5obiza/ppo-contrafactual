@@ -6,6 +6,7 @@ PPO components:
   - PPOActorCritic — shared-trunk policy + value + auxiliary heads
   - compute_gae  — Generalised Advantage Estimation with reward shaping
   - PPOTrainer   — rollout collection and policy update loop
+
 """
 
 from dataclasses import dataclass
@@ -45,19 +46,35 @@ class PPOActorCritic(nn.Module):
     ----------
     obs_dim : int
     action_dim : int
+    init_log_std : float
+        Initial value for the learnable log-std parameter, shared across
+        all action dimensions at init (each dim can diverge during training
+        since log_std has independent per-dim entries).
+        exp(-0.5) ~= 0.6, a moderate starting exploration noise — smaller
+        than the old fixed std=1.0, but not so small that early exploration
+        collapses before the policy has learned anything.
+    min_std : float
+        Floor on std to prevent it collapsing to (near-)zero and blowing up
+        log_prob / making PPO ratios numerically unstable.
     """
 
-    def __init__(self, obs_dim: int, action_dim: int):
+    def __init__(self, obs_dim: int, action_dim: int, init_log_std: float = -0.5, min_std: float = 1e-3):
         super().__init__()
         self.shared = nn.Sequential(
             nn.Linear(obs_dim, 512), nn.ReLU(),
             nn.Linear(512, 256),    nn.ReLU(),
         )
-        self.actor            = nn.Linear(256, action_dim)
-        self.critic           = nn.Linear(256, 1)
-        self.feasibility_head = nn.Linear(256, 1)
-        self.progress_head    = nn.Linear(256, 1)
-        self.stop_head        = nn.Linear(256, 1)
+        self.actor             = nn.Linear(256, action_dim)
+        self.log_std           = nn.Parameter(torch.full((action_dim,), init_log_std))
+        self.min_std            = min_std
+        self.critic             = nn.Linear(256, 1)
+        self.feasibility_head   = nn.Linear(256, 1)
+        self.progress_head      = nn.Linear(256, 1)
+        self.stop_head          = nn.Linear(256, 1)
+
+    def _std(self, like: torch.Tensor) -> torch.Tensor:
+        """Broadcast the learnable std to the batch shape of `like`."""
+        return self.log_std.exp().clamp(min=self.min_std).expand_as(like)
 
     def forward(
         self, obs: torch.Tensor
@@ -75,7 +92,8 @@ class PPOActorCritic(nn.Module):
         self, obs: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         logits, value, feas, prog, stop = self(obs)
-        dist     = torch.distributions.Normal(logits, torch.ones_like(logits))
+        std      = self._std(logits)
+        dist     = torch.distributions.Normal(logits, std)
         action   = dist.sample()
         log_prob = dist.log_prob(action).sum(-1)
         return action, log_prob, value, feas, prog, stop
@@ -200,7 +218,8 @@ class PPOTrainer:
         logs = {}
         for _ in range(n_epochs):
             logits, values, feas_pred, prog_pred, stop_pred = self.policy(obs_b)
-            dist     = torch.distributions.Normal(logits, torch.ones_like(logits))
+            std      = self.policy._std(logits)
+            dist     = torch.distributions.Normal(logits, std)
             logp_new = dist.log_prob(act_b).sum(-1)
             entropy  = dist.entropy().sum(-1).mean()
             ratio    = torch.exp(logp_new - logp_old_b.detach()).to(config.DEVICE)
@@ -227,6 +246,7 @@ class PPOTrainer:
             logs = dict(
                 L_total=L_total.item(), L_ppo=L_ppo.item(),
                 L_value=L_value.item(), entropy=entropy.item(),
+                std_mean=std.mean().item(),
             )
 
         return logs
@@ -255,5 +275,6 @@ class PPOTrainer:
                 print(
                     f"Update {update_count:4d} | episodes={total_episodes_run:4d} | "
                     f"avg_ep_len={avg_ep_len:5.2f} | avg_return={ep_return:8.3f} | "
-                    f"L_ppo={logs['L_ppo']:.4f} | L_value={logs['L_value']:.4f}"
+                    f"L_ppo={logs['L_ppo']:.4f} | L_value={logs['L_value']:.4f} | "
+                    f"std_mean={logs['std_mean']:.4f}"
                 )

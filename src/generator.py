@@ -9,6 +9,7 @@ Responsibilities
 - Decode latents back to pixel space (VAE decoder)
 - Run gradient-guided DDIM denoising to produce counterfactual images
 - Compute denoising training loss (L_diff) for LoRA fine-tuning
+
 """
 
 import numpy as np
@@ -97,7 +98,9 @@ class PretrainedLatentDiffusionGenerator(nn.Module):
         self.obj_det         = obj_det
 
         self._to_rgb  = lambda x: x.repeat(1, 3, 1, 1) if x.shape[1] == 1 else x
-        self._to_gray = lambda x: x.mean(dim=1, keepdim=True)
+        self._to_gray = lambda x: (
+            0.299 * x[:, 0:1] + 0.587 * x[:, 1:2] + 0.114 * x[:, 2:3]
+        )
 
     # ──────────────────────────────────────────────────────────────────────────
     # Encode / decode
@@ -203,6 +206,7 @@ class PretrainedLatentDiffusionGenerator(nn.Module):
         strength: float = 0.55,
         cls_guidance_scale: float = 1.0,
         pres_guidance_scale: float = 1.0,
+        guidance_ramp_start_frac: float = 0.25,
     ) -> tuple[torch.Tensor, list[torch.Tensor]]:
         """
         Produce a counterfactual image x_cf targeting class c_scalar.
@@ -215,6 +219,12 @@ class PretrainedLatentDiffusionGenerator(nn.Module):
         strength : float  — what fraction of the full T timesteps to use
         cls_guidance_scale : float  — extra multiplier for classifier guidance
         pres_guidance_scale : float  — extra multiplier for preservation guidance
+        guidance_ramp_start_frac : float
+            Fraction of the trajectory (0-1) at which guidance starts
+            ramping up from 0. Guidance reaches full strength at the end
+            of the trajectory. Replaces the old hard on/off switch at the
+            trajectory midpoint with a smooth linear ramp, to avoid the
+            discontinuity that could kick a step into a noisy collapse.
 
         Returns
         -------
@@ -239,8 +249,18 @@ class PretrainedLatentDiffusionGenerator(nn.Module):
                 z0_orig_4d, init_noise, full_timesteps[start_idx : start_idx + 1]
             )
 
-        trajectory    = []
+            # Precompute anchors on the ORIGINAL fixed image once. These never
+            # change across the guidance loop below, so recomputing them per
+            # step (as the original code did) was pure wasted compute.
+            S_x = self._get_seg_mask(x)
+            O_x = self.obj_det(self._to_rgb(x))
+
+        trajectory     = []
         checkpoint_idx = set(np.linspace(0, len(timesteps) - 1, M, dtype=int).tolist())
+
+        n_steps        = len(timesteps)
+        ramp_start_idx = int(n_steps * guidance_ramp_start_frac)
+        ramp_span      = max(1, n_steps - ramp_start_idx)  # avoid div-by-zero
 
         for i, t in enumerate(timesteps):
             with torch.no_grad():
@@ -248,28 +268,32 @@ class PretrainedLatentDiffusionGenerator(nn.Module):
                 step_out = self.scheduler.step(eps_hat, t, z_t)
                 z0_hat   = step_out.pred_original_sample
 
-            z0_hat_g = z0_hat.detach().requires_grad_(True)
-            with torch.enable_grad():
-                x_hat_g  = self.decoder(z0_hat_g.flatten(start_dim=1))
-                f_out    = self.classifier(self._to_rgb(x_hat_g))
-                L_cls    = F.binary_cross_entropy(f_out, c_tensor)
-                S_x      = self._get_seg_mask(x)
-                l1_map   = torch.abs(x_hat_g - x)
-                seg_t    = (S_x * l1_map).sum() / (S_x.sum() + 1e-8)
-                O_x      = self.obj_det(self._to_rgb(x))
-                O_hat    = self.obj_det(self._to_rgb(x_hat_g))
-                obj_t    = F.mse_loss(O_hat, O_x.detach())
-                L_pres_g = seg_t + config.ETA_OBJ * obj_t
-                grad_cls,  = torch.autograd.grad(L_cls,    z0_hat_g, retain_graph=True)
-                grad_pres, = torch.autograd.grad(L_pres_g, z0_hat_g)
-
             with torch.no_grad():
                 z_t = step_out.prev_sample
-                z_t = (
-                    z_t
-                    - (config.ALPHA_CLS  * cls_guidance_scale) * grad_cls.to(self.dtype)
-                    - (config.ALPHA_PRES * pres_guidance_scale) * grad_pres.to(self.dtype)
-                )
+
+            # Smooth 0 -> 1 ramp instead of a hard switch at the midpoint.
+            guidance_weight = max(0.0, min(1.0, (i - ramp_start_idx) / ramp_span))
+
+            if guidance_weight > 0.0:
+                z0_hat_g = z0_hat.detach().requires_grad_(True)
+                with torch.enable_grad():
+                    x_hat_g  = self.decoder(z0_hat_g.flatten(start_dim=1))
+                    f_out    = self.classifier(self._to_rgb(x_hat_g))
+                    L_cls    = F.binary_cross_entropy(f_out, c_tensor)
+                    l1_map   = torch.abs(x_hat_g - x)
+                    seg_t    = (S_x * l1_map).sum() / (S_x.sum() + 1e-8)
+                    O_hat    = self.obj_det(self._to_rgb(x_hat_g))
+                    obj_t    = F.mse_loss(O_hat, O_x.detach())
+                    L_pres_g = seg_t + config.ETA_OBJ * obj_t
+                    grad_cls,  = torch.autograd.grad(L_cls,    z0_hat_g, retain_graph=True)
+                    grad_pres, = torch.autograd.grad(L_pres_g, z0_hat_g)
+
+                with torch.no_grad():
+                    z_t = (
+                        z_t
+                        - guidance_weight * (config.ALPHA_CLS  * 1.15 * cls_guidance_scale) * grad_cls.to(self.dtype)
+                        - guidance_weight * (config.ALPHA_PRES * pres_guidance_scale) * grad_pres.to(self.dtype)
+                    )
 
             if i in checkpoint_idx:
                 with torch.no_grad():

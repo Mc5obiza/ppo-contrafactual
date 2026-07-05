@@ -2,19 +2,22 @@
 main.py
 =======
 End-to-end pipeline:
-  1. Ingest RSNA dataset
-  2. Load pretrained models (classifier, segmenter, object detector)
-  3. Build generator with LoRA
-  4. LoRA fine-tuning (denoising)
-  5. PPO training
-  6. Evaluation + visualisation
-  7. Save checkpoints
+    1. Ingest RSNA dataset
+    2. Load pretrained models (classifier, segmenter, object detector)
+    3. Build generator with LoRA
+    4. LoRA fine-tuning (denoising)
+    5. PPO training
+    6. Evaluation + visualisation
+    7. Save checkpoints
 """
+
+import os
 
 import config
 from ingestion import build_dataset
 from src.models import build_classifier, build_segmentation_net, build_object_detector
 from src.generator import build_generator
+from diff_viz import generate_and_plot_diff
 from factory.finetuning import run_lora_finetuning
 from factory.environment import MedicalCounterfactualEnv
 from factory.ppo import PPOActorCritic, PPOTrainer
@@ -104,6 +107,22 @@ def main():
     print(
         f"Evaluation metrics: {eval_results['CV']['mean']:.4f} CV, "
         f"{eval_results['FID']['negative_group']:.4f} FID (negative group)"
+    )
+
+    print("\n" + "=" * 70)
+    print("STEP 6B — Counterfactual plot")
+    print("=" * 70)
+    x_plot, _label = dataset[0]
+    x_plot = x_plot.unsqueeze(0).to(config.DEVICE)
+    os.makedirs(config.CKPT_DIR, exist_ok=True)
+    generate_and_plot_diff(
+        x_orig=x_plot,
+        generator=generator,
+        classifier=classifier,
+        target_c=config.TARGET_C,
+        M=5,
+        strength=0.55,
+        save_path=os.path.join(config.CKPT_DIR, "counterfactual_diff.png"),
     )
 
     # ── 7. Save ───────────────────────────────────────────────────────────────

@@ -13,6 +13,10 @@ Implemented metrics
 5. Score for normal CostoPhrenic recess (SCP)  — pleural effusion clinical metric
 
 All functions follow the exact notation of the paper.
+
+CHANGE FROM ORIGINAL: foreign_object_preservation() was returning a
+degenerate 1.0/1.0/1.0 always — see its docstring for the root cause
+and fix.
 """
 
 from __future__ import annotations
@@ -29,6 +33,7 @@ from torch.utils.data import DataLoader
 from scipy import linalg
 from torchvision.models import inception_v3, Inception_V3_Weights
 import torchvision.transforms as T
+import torchxrayvision as xrv
 
 import config
 
@@ -76,20 +81,86 @@ class _InceptionFeatureExtractor(nn.Module):
         self.model = model.to(device).eval()
         self.device = device
         self.resize = T.Resize((299, 299), antialias=True)
+        # FIX (Bug 1): Inception-v3 was trained on ImageNet-normalised inputs.
+        # Feeding raw [0,1] pixel values (with no mean/std normalisation)
+        # pushes every activation off-distribution and inflates FID for
+        # every comparison, including real-vs-real. Normalise exactly like
+        # the torchvision pretrained-weights preprocessing expects.
+        self.normalize = T.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225],
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """x : (B, 1, H, W) or (B, 3, H, W) → (B, 2048)"""
+        """x : (B, 1, H, W) or (B, 3, H, W), values in [0, 1] → (B, 2048)"""
         if x.shape[1] == 1:
             x = x.repeat(1, 3, 1, 1)
         x = self.resize(x)
+        x = self.normalize(x)
         with torch.no_grad():
             feat = self.model(x.to(self.device))
         return feat.cpu()
 
 
+class _XRVFeatureExtractor(nn.Module):
+    """
+    Penultimate-layer features (1024-d) of TorchXRayVision's DenseNet-121.
+
+    Default weights ("densenet121-res224-rsna") are trained specifically
+    on the RSNA Pneumonia Detection Challenge dataset — the same source
+    distribution as this project's cxr-data-set. This gives a feature
+    space that's directly sensitive to pneumonia-relevant visual patterns,
+    unlike ImageNet-pretrained Inception-v3 or the broader multi-dataset
+    "-all" xrv weights.
+
+    Other useful weight options (pass via `weights=`):
+      "densenet121-res224-all"  -> joint NIH+CheXpert+PadChest+MIMIC+RSNA,
+                                    broader but less pneumonia-specific
+      "densenet121-res224-nih"  -> NIH ChestX-ray14 only
+      "densenet121-res224-chex" -> CheXpert only
+
+    Since this project already depends on torchxrayvision for the PSPNet
+    segmenter, this adds no new dependency.
+    """
+
+    def __init__(self, device: str, weights: str = "densenet121-res224-rsna"):
+        super().__init__()
+        model = xrv.models.DenseNet(weights=weights)
+        self.model = model.to(device).eval()
+        self.device = device
+        self.input_size = 224  # xrv DenseNet default input resolution
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        x : (B, 1, H, W) or (B, 3, H, W), values expected in [0, 1]
+            (single-channel grayscale CXR — extra channels are averaged down,
+            since xrv models are single-channel).
+        Returns (B, 1024) penultimate-layer features.
+        """
+        if x.shape[1] == 3:
+            x = x.mean(dim=1, keepdim=True)
+
+        # xrv models expect inputs scaled to roughly [-1024, 1024] (their
+        # "normalize" convention), not raw [0,1]. If your tensors are
+        # already in [0,1] from the VAE decoder, rescale like this:
+        x_xrv = x * 2048.0 - 1024.0
+
+        if x_xrv.shape[-1] != self.input_size or x_xrv.shape[-2] != self.input_size:
+            x_xrv = F.interpolate(
+                x_xrv, size=(self.input_size, self.input_size),
+                mode="bilinear", align_corners=False,
+            )
+
+        with torch.no_grad():
+            feat = self.model.features(x_xrv.float().to(self.device))
+            feat = F.adaptive_avg_pool2d(feat, (1, 1)).flatten(1)  # (B, 1024)
+
+        return feat.cpu()
+
+
 def _compute_activation_stats(
     images: list[torch.Tensor],
-    extractor: _InceptionFeatureExtractor,
+    extractor: nn.Module,
     batch_size: int = 16,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return (μ, Σ) of Inception activations for a list of images."""
@@ -109,6 +180,9 @@ def frechet_inception_distance(
     device: str = config.DEVICE,
     batch_size: int = 16,
     reference_fid: Optional[float] = None,
+    eps: float = 1e-6,
+    backbone: str = "xrv",
+    extractor: Optional[nn.Module] = None,
 ) -> float:
     """
     FID(X, Xc) as defined in Eq. 10.
@@ -121,20 +195,60 @@ def frechet_inception_distance(
     X_real : list of (1,1,H,W) tensors — real images
     X_cf   : list of (1,1,H,W) tensors — counterfactual images
     reference_fid : FID of the reference/best method for normalisation
+    eps    : regularisation added to the covariance diagonals before
+             sqrtm. FIX (Bug 2): with N samples < 2048 feature dims,
+             the covariance matrices are rank-deficient/singular, which
+             makes scipy.linalg.sqrtm numerically unstable (near-zero
+             eigenvalues produce spurious imaginary/large real components).
+             This is the same fix used by the standard pytorch-fid
+             implementation.
 
-    Returns
-    -------
-    float — raw FID (or normalised FID if reference_fid is given)
+    backbone : "xrv"       -> TorchXRayVision DenseNet-121 (1024-d),
+                              pretrained on chest X-rays. Domain-appropriate,
+                              recommended default for this project.
+               "inception" -> ImageNet Inception-v3 (2048-d), the classic
+                              FID backbone. Kept for comparability with
+                              natural-image FID literature / papers that
+                              report vanilla FID.
+    extractor : pre-built feature extractor to reuse across multiple FID
+                calls (e.g. one built once in run_full_evaluation and
+                shared between the negative-group and positive-group FID
+                calls, instead of reloading weights twice). If None, a
+                fresh extractor is built internally using `backbone`.
+
+    Note
+    ----
+    FID estimates are only stable with large sample sizes (rule of thumb:
+    N >> feature dim). With N ~ 100-200 (typical after filtering into
+    Xn/Xp groups) expect high variance in this number even after the fixes
+    above — increase n_eval wherever your compute budget allows.
     """
-    extractor = _InceptionFeatureExtractor(device)
+    if extractor is None:
+        if backbone == "xrv":
+            extractor = _XRVFeatureExtractor(device)
+        elif backbone == "inception":
+            extractor = _InceptionFeatureExtractor(device)
+        else:
+            raise ValueError(f"Unknown backbone '{backbone}', expected 'xrv' or 'inception'")
     mu1, sigma1 = _compute_activation_stats(X_real, extractor, batch_size)
     mu2, sigma2 = _compute_activation_stats(X_cf,   extractor, batch_size)
+
+    # FIX (Bug 2): regularise before sqrtm to avoid singular-matrix blowups
+    sigma1 = sigma1 + np.eye(sigma1.shape[0]) * eps
+    sigma2 = sigma2 + np.eye(sigma2.shape[0]) * eps
 
     diff = mu1 - mu2
     # scipy>=1.15 dropped the `disp` kwarg and returns the array directly
     # instead of an (array, errest) tuple.
     covmean = linalg.sqrtm(sigma1 @ sigma2)
     if np.iscomplexobj(covmean):
+        # residual imaginary component should be ~0 after regularisation;
+        # if it isn't, something's still off numerically — warn loudly
+        max_imag = np.max(np.abs(covmean.imag))
+        if max_imag > 1e-3:
+            print(f"[metrics] WARNING: sqrtm returned large imaginary "
+                  f"component ({max_imag:.4f}) — FID may be unreliable. "
+                  f"Consider increasing n_eval or eps.")
         covmean = covmean.real
 
     fid = float(diff @ diff + np.trace(sigma1 + sigma2 - 2.0 * covmean))
@@ -149,8 +263,70 @@ def frechet_inception_distance(
 # 3. Foreign-Object Preservation (FOP)  —  Eq. 12
 # ─────────────────────────────────────────────────────────────────────────────
 
+class _XRVSupportDeviceDetector(nn.Module):
+    """
+    Detects presence of support devices (pacemakers, ECG leads, chest
+    tubes, central lines, etc.) using TorchXRayVision's DenseNet-121.
+
+    "Support Devices" is one of CheXpert's 14 original pathology labels,
+    and models trained on (or including) CheXpert expose it directly as
+    an output head. This gives a real, properly-calibrated [0,1]
+    presence probability, trained specifically on chest X-rays for
+    exactly this purpose — unlike a COCO-pretrained object detector,
+    which has never seen a support device in training.
+
+    Requires zero additional fine-tuning or compute: torchxrayvision is
+    already a dependency of this project (used for the PSPNet segmenter),
+    so this just loads a second pretrained xrv model.
+
+    weights options that include "Support Devices" (check
+    model.pathologies if using a different weight set):
+      "densenet121-res224-all"  -> joint NIH+CheXpert+PadChest+MIMIC+RSNA
+                                    (recommended: broadest training data)
+      "densenet121-res224-chex" -> CheXpert only (where the label originates)
+    """
+
+    def __init__(self, device: str, weights: str = "densenet121-res224-all"):
+        super().__init__()
+        model = xrv.models.DenseNet(weights=weights)
+        self.model      = model.to(device).eval()
+        self.device     = device
+        self.input_size = 224
+
+        if "Support Devices" not in model.pathologies:
+            raise ValueError(
+                f"'Support Devices' not found in pathologies for "
+                f"weights='{weights}': {model.pathologies}. Try "
+                f"'densenet121-res224-all' or 'densenet121-res224-chex'."
+            )
+        self.sd_idx = model.pathologies.index("Support Devices")
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        x : (B, 1, H, W) or (B, 3, H, W), values in [0, 1]
+        Returns (B,) support-device presence probability in [0, 1].
+        """
+        if x.shape[1] == 3:
+            x = x.mean(dim=1, keepdim=True)
+
+        x_xrv = x * 2048.0 - 1024.0
+        if x_xrv.shape[-1] != self.input_size or x_xrv.shape[-2] != self.input_size:
+            x_xrv = F.interpolate(
+                x_xrv, size=(self.input_size, self.input_size),
+                mode="bilinear", align_corners=False,
+            )
+
+        with torch.no_grad():
+            # xrv models output already-calibrated [0,1] probabilities
+            # per pathology (sigmoid applied internally), not raw logits.
+            probs = self.model(x_xrv.float().to(self.device))
+            sd_prob = probs[:, self.sd_idx]
+
+        return sd_prob.cpu()
+
+
 def foreign_object_preservation(
-    obj_det,
+    fo_detector,
     X_real: list[torch.Tensor],
     X_cf:   list[torch.Tensor],
     fo_threshold: float = 0.5,
@@ -160,14 +336,30 @@ def foreign_object_preservation(
     FOP(X, Xc) = fraction of images where FO is detected in BOTH
                  the real image AND its counterfactual.
 
-    Only images where O(x) > fo_threshold are considered (paper Eq. 12).
+    Only images where a detection probability > fo_threshold is
+    considered (paper Eq. 12).
+
+    HISTORY:
+      v1 thresholded a raw YOLO backbone feature-vector L2 norm against
+      fo_threshold=0.5 — norms are routinely tens-to-hundreds, so this
+      was true for ~every image, giving a degenerate 1.0 always.
+      v2 fixed the threshold-space bug by using the full YOLO detection
+      head instead, but yolov8n.pt is COCO-pretrained (everyday objects),
+      not trained on medical support devices at all.
+      v3 (this version) replaces YOLO entirely with a TorchXRayVision
+      DenseNet-121 classifier that has a dedicated, CheXpert-trained
+      "Support Devices" output — a properly domain-matched detector,
+      requiring no fine-tuning since it's already pretrained for exactly
+      this label.
 
     Parameters
     ----------
-    obj_det       : YOLOv8FeatureExtractor (or any model returning a scalar FO score)
+    fo_detector   : _XRVSupportDeviceDetector (or any nn.Module returning
+                    a (B,) or scalar [0,1] support-device probability per
+                    image when called on a (1,C,H,W) tensor)
     X_real        : list of (1,1,H,W) tensors
     X_cf          : list of (1,1,H,W) tensors
-    fo_threshold  : detection confidence threshold (paper: 0.5)
+    fo_threshold  : detection probability threshold (paper: 0.5)
 
     Returns
     -------
@@ -177,17 +369,12 @@ def foreign_object_preservation(
 
     preserved, total = 0, 0
     for x, xc in zip(X_real, X_cf):
-        x3  = (x.repeat(1, 3, 1, 1)  if x.shape[1]  == 1 else x).to(device)
-        xc3 = (xc.repeat(1, 3, 1, 1) if xc.shape[1] == 1 else xc).to(device)
-
         with torch.no_grad():
-            # obj_det returns feature vectors; use their L2-norm as a proxy
-            # for FO presence (higher norm = richer feature = FO likely present)
-            feat_x  = obj_det(x3).norm(dim=-1).item()
-            feat_xc = obj_det(xc3).norm(dim=-1).item()
+            conf_real = fo_detector(x.to(device)).item()
+            conf_cf   = fo_detector(xc.to(device)).item()
 
-        fo_in_real = feat_x  > fo_threshold
-        fo_in_cf   = feat_xc > fo_threshold
+        fo_in_real = conf_real > fo_threshold
+        fo_in_cf   = conf_cf   > fo_threshold
 
         if fo_in_real:
             total     += 1
@@ -319,6 +506,7 @@ def run_full_evaluation(
     fo_threshold: float = 0.5,
     ckpt_dir: str = config.CKPT_DIR,
     device: str = config.DEVICE,
+    fid_backbone: str = "xrv",
 ) -> dict:
     """
     Run the complete evaluation protocol from Singla et al. (2022).
@@ -340,7 +528,13 @@ def run_full_evaluation(
 
     Parameters
     ----------
-    n_eval : number of images to sample from each group (capped by group size)
+    n_eval : number of images to sample from each group (capped by group size).
+             NOTE: FID is unstable at small N (see frechet_inception_distance
+             docstring). Prefer n_eval >= 1000 if your generation budget allows.
+    fid_backbone : "xrv" (default, recommended for CXR data) or "inception".
+             See frechet_inception_distance docstring for details. Built
+             once here and reused for both the negative-group and
+             positive-group FID calls to avoid loading weights twice.
 
     Returns
     -------
@@ -387,6 +581,11 @@ def run_full_evaluation(
     xp_list = xp_list[:n_eval]
     print(f"[metrics] Xn={len(xn_list)}  Xp={len(xp_list)}")
 
+    if len(xn_list) < 200 or len(xp_list) < 200:
+        print(f"[metrics] WARNING: group size < 200 — FID estimate will have "
+              f"high variance and likely be biased upward. Consider lowering "
+              f"the f(x)<0.2 / f(x)>0.8 thresholds or increasing n_eval.")
+
     # ── generate counterfactuals ───────────────────────────────────────────────
     print("[metrics] generating Xc (n→p) and Xc (p→n) ...")
 
@@ -421,12 +620,18 @@ def run_full_evaluation(
 
     # ── FID ───────────────────────────────────────────────────────────────────
     print("[metrics] computing FID ...")
-    fid_neg = frechet_inception_distance(xn_list, xc_np, device=device)
-    fid_pos = frechet_inception_distance(xp_list, xc_pn, device=device)
+    fid_extractor = (
+        _XRVFeatureExtractor(device) if fid_backbone == "xrv"
+        else _InceptionFeatureExtractor(device)
+    )
+    fid_neg = frechet_inception_distance(xn_list, xc_np, device=device, extractor=fid_extractor)
+    fid_pos = frechet_inception_distance(xp_list, xc_pn, device=device, extractor=fid_extractor)
 
     # ── FOP ───────────────────────────────────────────────────────────────────
-    fop_np = foreign_object_preservation(obj_det, xn_list, xc_np, fo_threshold, device)
-    fop_pn = foreign_object_preservation(obj_det, xp_list, xc_pn, fo_threshold, device)
+    print("[metrics] computing FOP (TorchXRayVision Support Devices detector) ...")
+    fo_detector = _XRVSupportDeviceDetector(device)
+    fop_np = foreign_object_preservation(fo_detector, xn_list, xc_np, fo_threshold, device)
+    fop_pn = foreign_object_preservation(fo_detector, xp_list, xc_pn, fo_threshold, device)
     fop    = (fop_np + fop_pn) / 2.0
 
     # ── CTR ───────────────────────────────────────────────────────────────────
