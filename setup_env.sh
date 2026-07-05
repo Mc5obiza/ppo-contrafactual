@@ -50,6 +50,10 @@ print("[prefetch] TorchXRayVision PSPNet segmenter ...")
 from src.models import build_segmentation_net
 build_segmentation_net(device="cpu")
 
+print("[prefetch] TorchXRayVision DenseNet-121 (RSNA) — used by src/metrics.py FID) ...")
+import torchxrayvision as xrv
+xrv.models.DenseNet(weights="densenet121-res224-rsna")
+
 print("[prefetch] Stable Diffusion v1.5 (VAE + UNet + scheduler) ...")
 from diffusers import AutoencoderKL, UNet2DConditionModel, DDIMScheduler
 AutoencoderKL.from_pretrained(config.DIFFUSION_MODEL_ID, subfolder="vae", torch_dtype=torch.float16)
