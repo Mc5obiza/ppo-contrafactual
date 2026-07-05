@@ -628,11 +628,20 @@ def run_full_evaluation(
     fid_pos = frechet_inception_distance(xp_list, xc_pn, device=device, extractor=fid_extractor)
 
     # ── FOP ───────────────────────────────────────────────────────────────────
+    # None of TorchXRayVision's shipped pretrained weights ("all", "nih", "pc",
+    # "chex", "rsna", "mimic_nb", "mimic_ch", "resnet50-res512-all") output a
+    # "Support Devices" class — it's only ever a *dataset* label in this
+    # library, never a model prediction — so _XRVSupportDeviceDetector always
+    # raises ValueError. Skip FOP rather than crash the whole evaluation.
     print("[metrics] computing FOP (TorchXRayVision Support Devices detector) ...")
-    fo_detector = _XRVSupportDeviceDetector(device)
-    fop_np = foreign_object_preservation(fo_detector, xn_list, xc_np, fo_threshold, device)
-    fop_pn = foreign_object_preservation(fo_detector, xp_list, xc_pn, fo_threshold, device)
-    fop    = (fop_np + fop_pn) / 2.0
+    try:
+        fo_detector = _XRVSupportDeviceDetector(device)
+        fop_np = foreign_object_preservation(fo_detector, xn_list, xc_np, fo_threshold, device)
+        fop_pn = foreign_object_preservation(fo_detector, xp_list, xc_pn, fo_threshold, device)
+        fop    = (fop_np + fop_pn) / 2.0
+    except ValueError as e:
+        print(f"[metrics] WARNING: skipping FOP — {e}")
+        fop_np = fop_pn = fop = None
 
     # ── CTR ───────────────────────────────────────────────────────────────────
     ctr_results = {}
@@ -698,7 +707,7 @@ def run_full_evaluation(
     results = dict(
         CV=dict(n_to_p=cv_np, p_to_n=cv_pn, mean=cv),
         FID=dict(negative_group=fid_neg, positive_group=fid_pos),
-        FOP=dict(n_to_p=fop_np, p_to_n=fop_pn, mean=fop),
+        FOP=(dict(n_to_p=fop_np, p_to_n=fop_pn, mean=fop) if fop is not None else None),
         CTR=ctr_results,
         SCP=scp_results,
     )
@@ -729,10 +738,13 @@ def _print_results(r: dict) -> None:
     print(f"    Positive group  FID(Xp,  Xc_p→n) : {fid['positive_group']:.2f}")
 
     fop = r["FOP"]
-    print(f"\n► Foreign-Object Preservation (FOP)")
-    print(f"    Xn → Xp : {fop['n_to_p']:.4f}")
-    print(f"    Xp → Xn : {fop['p_to_n']:.4f}")
-    print(f"    mean     : {fop['mean']:.4f}")
+    if fop is not None:
+        print(f"\n► Foreign-Object Preservation (FOP)")
+        print(f"    Xn → Xp : {fop['n_to_p']:.4f}")
+        print(f"    Xp → Xn : {fop['p_to_n']:.4f}")
+        print(f"    mean     : {fop['mean']:.4f}")
+    else:
+        print(f"\n► Foreign-Object Preservation (FOP) — skipped (see warning above)")
 
     if r["CTR"]:
         c = r["CTR"]

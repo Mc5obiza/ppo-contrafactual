@@ -54,6 +54,9 @@ print("[prefetch] TorchXRayVision DenseNet-121 (RSNA) — used by src/metrics.py
 import torchxrayvision as xrv
 xrv.models.DenseNet(weights="densenet121-res224-rsna")
 
+print("[prefetch] TorchXRayVision DenseNet-121 (all) — used by src/metrics.py FOP) ...")
+xrv.models.DenseNet(weights="densenet121-res224-all")
+
 print("[prefetch] Stable Diffusion v1.5 (VAE + UNet + scheduler) ...")
 from diffusers import AutoencoderKL, UNet2DConditionModel, DDIMScheduler
 AutoencoderKL.from_pretrained(config.DIFFUSION_MODEL_ID, subfolder="vae", torch_dtype=torch.float16)
