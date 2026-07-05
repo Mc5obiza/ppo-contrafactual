@@ -20,6 +20,10 @@ CLASSIFIER_CKPT    = "checkpoint/classifier.pt"
 YOLOV8_WEIGHTS     = "yolov8n.pt"
 DIFFUSION_MODEL_ID = "runwayml/stable-diffusion-v1-5"
 
+# Default root for CXRDataset (src/models.py) — an ImageFolder-style
+# {NORMAL,PNEUMONIA}/ layout, unused by the current main.py pipeline.
+CXR_DATA_DIR = "data/cxr"
+
 # ─────────────────────────────────────────────
 # Image / latent geometry
 # ─────────────────────────────────────────────

@@ -17,7 +17,7 @@ import config
 from ingestion import build_dataset
 from src.models import build_classifier, build_segmentation_net, build_object_detector
 from src.generator import build_generator
-from diff_viz import generate_and_plot_diff
+from src.diff_viz import generate_and_plot_diff
 from factory.finetuning import run_lora_finetuning
 from factory.environment import MedicalCounterfactualEnv
 from factory.ppo import PPOActorCritic, PPOTrainer
