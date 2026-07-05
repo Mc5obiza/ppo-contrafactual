@@ -131,7 +131,9 @@ def frechet_inception_distance(
     mu2, sigma2 = _compute_activation_stats(X_cf,   extractor, batch_size)
 
     diff = mu1 - mu2
-    covmean, _ = linalg.sqrtm(sigma1 @ sigma2, disp=False)
+    # scipy>=1.15 dropped the `disp` kwarg and returns the array directly
+    # instead of an (array, errest) tuple.
+    covmean = linalg.sqrtm(sigma1 @ sigma2)
     if np.iscomplexobj(covmean):
         covmean = covmean.real
 

@@ -9,6 +9,8 @@ Also exposes compute_diff() for programmatic use (e.g. metrics, further analysis
 """
 
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")  # headless-safe: SLURM compute nodes have no $DISPLAY
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import torch

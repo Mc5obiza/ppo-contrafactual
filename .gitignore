@@ -1,0 +1,6 @@
+venv/
+__pycache__/
+*.pyc
+logs/
+checkpoints/
+yolov8n.pt
