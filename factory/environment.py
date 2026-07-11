@@ -135,17 +135,18 @@ class MedicalCounterfactualEnv:
     # ──────────────────────────────────────────────────────────────────────────
 
     def _compute_reward(
-        self,
-        x_next: torch.Tensor,
-        d_next: torch.Tensor,
-        tau_t: float,
-    ) -> tuple[float, bool, dict]:
+    self,
+    x_next: torch.Tensor,
+    d_next: torch.Tensor,
+    tau_t: float,
+) -> tuple[float, bool, dict]:
         with torch.no_grad():
             direction_scale = 2.25 if float(self.c) == 1.0 else 1.0
-            R_prog = (self.d_t - d_next).item()
-            R_val  = -d_next.item()
+
+            R_prog   = (self.d_t - d_next).item()
+            R_val    = -d_next.item()
             R_close2 = -(d_next.item() ** 2)
-            R_fid  = -F.mse_loss(x_next, self.x_orig).item()
+            R_fid    = -F.mse_loss(x_next, self.x_orig).item()
 
             S_x    = self.generator._get_seg_mask(self.x_orig)
             l1_map = torch.abs(x_next - self.x_orig)
@@ -159,26 +160,44 @@ class MedicalCounterfactualEnv:
             q_O  = F.softmax(O_next, dim=-1).clamp(1e-8, 1.0)
             kl_obj   = (p_O * (p_O / q_O).log()).sum()
             R_pres   = -(seg_term + config.ETA_OBJ * kl_obj).item()
+
             R_bud    = -1.0
             is_valid = d_next.item() < config.EPSILON_STOP
             R_hit    = float(is_valid)
             R_stop   = float(is_valid) if tau_t > 0.5 else 0.0
 
-        total = (
-            config.LAM_PROG   * (direction_scale * R_prog)
-            + config.LAM_VAL  * (direction_scale * R_val)
-            + config.LAM_CLOSE2 * (direction_scale * R_close2)
-            + config.LAM_FID  * R_fid
+        # NOTE ON direction_scale
+        # ------------------------
+        # Previously, direction_scale (2.25x for c=1.0, the harder n->p
+        # direction) was applied ONLY to the "push toward target" terms
+        # (R_prog, R_val, R_close2, R_hit, R_stop), while R_fid and R_pres
+        # were left unscaled. That meant preservation was implicitly
+        # ~2.25x *less* important relative to progress on exactly the
+        # direction where the policy already struggles -- which is very
+        # plausibly why n->p counterfactuals show diffuse, whole-image
+        # changes (81% of pixels, foreign-object corruption) instead of
+        # localized opacity edits.
+        #
+        # Fix: apply direction_scale to ALL terms uniformly. This keeps
+        # the *ratio* between push-reward and preserve-reward constant
+        # across both directions -- so c=1.0 still gets a stronger overall
+        # learning signal (matches the original intent of compensating for
+        # the harder direction), but preservation is not disproportionately
+        # deprioritized while doing so.
+        total = direction_scale * (
+            config.LAM_PROG     * R_prog
+            + config.LAM_VAL    * R_val
+            + config.LAM_CLOSE2 * R_close2
+            + config.LAM_FID    * R_fid
             + config.LAM_PRES_R * R_pres
-            + config.LAM_BUD  * R_bud
-            + config.LAM_HIT  * (direction_scale * R_hit)
-            + config.LAM_STOP * (direction_scale * R_stop)
+            + config.LAM_BUD    * R_bud
+            + config.LAM_HIT    * R_hit
+            + config.LAM_STOP   * R_stop
         )
         return total, is_valid, dict(
             R_prog=R_prog, R_val=R_val, R_close2=R_close2, R_fid=R_fid,
             R_pres=R_pres, R_bud=R_bud, R_hit=R_hit, R_stop=R_stop,
         )
-
     # ──────────────────────────────────────────────────────────────────────────
     # Gym interface
     # ──────────────────────────────────────────────────────────────────────────
@@ -206,13 +225,10 @@ class MedicalCounterfactualEnv:
         extra_pass_2 = int(torch.sigmoid(action[5]).item() > 0.5)
         strength_boost = 0.85 + 0.30 * torch.sigmoid(action[6])
         guidance_bias = 0.70 + 0.60 * torch.sigmoid(action[7])
-        # New 9th action dim: where guidance starts ramping up, as a
-        # fraction of the trajectory. Mapped to [0.1, 0.5] — never lets
-        # guidance start in the first 10% (too early risks the same kind
-        # of noisy collapse the ramp was meant to fix) or later than the
-        # midpoint (leaves too few steps for guidance to have any effect).
         ramp_start_frac_t = 0.1 + 0.4 * torch.sigmoid(action[8])
         n_passes = config.ENV_REFINEMENT_PASSES + extra_pass_1 + extra_pass_2
+        pres_suppression_floor = 0.6
+        inv_guidance_bias = torch.clamp(1.0 / guidance_bias, min=pres_suppression_floor)
 
         with torch.no_grad():
             x_next = self.x_t
@@ -228,8 +244,8 @@ class MedicalCounterfactualEnv:
                 )
                 pass_pres_scale = (
                     float(pres_scale_t.item())
-                    / float(guidance_bias.item())
-                    * (1.0 - 0.15 * pass_idx)
+                    * float(inv_guidance_bias.item())
+                    * max(1.0 - 0.15 * pass_idx, 0.4)  # also floor the per-pass decay
                 )
                 x_next, _ = self.generator.generate_counterfactual(
                     x_next,
@@ -260,5 +276,6 @@ class MedicalCounterfactualEnv:
             "ramp_start_frac": float(ramp_start_frac_t.item()),
             "n_passes": n_passes,
             "valid": is_valid,
+            "pres_suppression_factor": float(inv_guidance_bias.item()),  # new: log for debugging
         })
         return self.get_observation(), reward, done, info

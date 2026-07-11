@@ -8,6 +8,8 @@ counterfactual. Produces a 3-panel figure:
 Also exposes compute_diff() for programmatic use (e.g. metrics, further analysis).
 """
 
+import os
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -75,11 +77,7 @@ def plot_diff(
     save_path: str | None = None,
 ) -> None:
     """
-    Produce a 3-panel figure: original | counterfactual | difference heatmap.
-
-    The difference panel uses a diverging colormap (blue = decreased intensity,
-    red = increased intensity) so the radiologist can see which lung regions
-    changed and in which direction.
+    Produce a 4-panel figure: original | counterfactual | signed diff | abs diff.
 
     Parameters
     ----------
@@ -99,7 +97,6 @@ def plot_diff(
 
     fig, axes = plt.subplots(1, 4, figsize=(16, 4))
 
-    # ── panel 1: original ────────────────────────────────────────────────────
     axes[0].imshow(orig_np, cmap="gray", vmin=0, vmax=1)
     title_orig = "Original"
     if p_orig is not None:
@@ -107,7 +104,6 @@ def plot_diff(
     axes[0].set_title(title_orig)
     axes[0].axis("off")
 
-    # ── panel 2: counterfactual ───────────────────────────────────────────────
     axes[1].imshow(cf_np, cmap="gray", vmin=0, vmax=1)
     title_cf = f"Counterfactual  (c = {target_c})"
     if p_cf is not None:
@@ -115,7 +111,6 @@ def plot_diff(
     axes[1].set_title(title_cf)
     axes[1].axis("off")
 
-    # ── panel 3: signed difference (diverging) ────────────────────────────────
     vmax_signed = max(abs(diff_np.min()), abs(diff_np.max()), 1e-6)
     im3 = axes[2].imshow(
         diff_np, cmap="RdBu_r",
@@ -125,13 +120,11 @@ def plot_diff(
     axes[2].axis("off")
     fig.colorbar(im3, ax=axes[2], fraction=0.046, pad=0.04)
 
-    # ── panel 4: absolute difference heatmap ─────────────────────────────────
     im4 = axes[3].imshow(abs_np, cmap="hot", vmin=0, vmax=max(abs_np.max(), 1e-6))
     axes[3].set_title("Absolute difference\nheatmap")
     axes[3].axis("off")
     fig.colorbar(im4, ax=axes[3], fraction=0.046, pad=0.04)
 
-    # ── summary stats ─────────────────────────────────────────────────────────
     fig.suptitle(
         f"MAE={stats['l1']:.4f}  |  MSE={stats['l2']:.4f}  |  "
         f"max Δ={stats['max_change']:.4f}  |  "
@@ -150,8 +143,11 @@ def plot_diff(
     _print_stats(stats)
 
 
-def _print_stats(stats: dict) -> None:
-    print("\n── Counterfactual difference summary ──────────────────────────")
+def _print_stats(stats: dict, label: str = "") -> None:
+    header = "Counterfactual difference summary"
+    if label:
+        header += f" ({label})"
+    print(f"\n── {header} " + "─" * max(0, 60 - len(header)))
     print(f"  MAE (L1)          : {stats['l1']:.6f}")
     print(f"  MSE (L2)          : {stats['l2']:.6f}")
     print(f"  Max pixel change  : {stats['max_change']:.6f}")
@@ -160,7 +156,7 @@ def _print_stats(stats: dict) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Convenience wrapper — calls generator + plots in one shot
+# Convenience wrapper — calls generator + plots in one shot (single direction)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def generate_and_plot_diff(
@@ -189,13 +185,10 @@ def generate_and_plot_diff(
     -------
     (x_cf, trajectory, diff_stats)
     """
-    import torch.nn.functional as F
-
     x_cf, trajectory = generator.generate_counterfactual(
         x_orig, target_c, M=M, strength=strength
     )
 
-    # Classifier scores (optional but informative)
     p_orig = p_cf = None
     try:
         with torch.no_grad():
@@ -216,3 +209,93 @@ def generate_and_plot_diff(
 
     stats = compute_diff(x_orig, x_cf)
     return x_cf, trajectory, stats
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NEW: bidirectional wrapper — n→p AND p→n in one call, two separate images
+# ─────────────────────────────────────────────────────────────────────────────
+
+def generate_and_plot_diff_bidirectional(
+    x_neg: torch.Tensor,
+    x_pos: torch.Tensor,
+    generator,
+    classifier,
+    M: int = 5,
+    strength: float = 0.55,
+    save_dir: str | None = None,
+) -> dict[str, tuple[torch.Tensor, list[torch.Tensor], dict]]:
+    """
+    Generate and visualise counterfactuals in BOTH directions, producing
+    two separate 4-panel figures (and two separate saved image files, if
+    save_dir is given):
+
+      n→p : x_neg (classifier predicts "normal", f(x) low)  pushed to c=1.0
+      p→n : x_pos (classifier predicts "pneumonia", f(x) high) pushed to c=0.0
+
+    This mirrors the Xn/Xp split already used throughout metrics.py
+    (CV, FID, and FOP are all computed per-direction there) — the same
+    two query images can be reused for a quick visual sanity-check
+    alongside the quantitative numbers in eval_metrics.json.
+
+    Parameters
+    ----------
+    x_neg      : (1,1,H,W) image classified as negative/normal
+                 (typically f(x) < ~0.2, same threshold used in metrics.py)
+    x_pos      : (1,1,H,W) image classified as positive/pneumonia
+                 (typically f(x) > ~0.8)
+    generator  : PretrainedLatentDiffusionGenerator
+    classifier : nn.Module
+    M          : trajectory checkpoints
+    strength   : denoising strength
+    save_dir   : directory to save both images into. Files are named
+                 'counterfactual_diff_n_to_p.png' and
+                 'counterfactual_diff_p_to_n.png'. If None, figures are
+                 only shown, not saved.
+
+    Returns
+    -------
+    dict with keys "n_to_p" and "p_to_n", each mapping to
+    (x_cf, trajectory, diff_stats) as returned by generate_and_plot_diff.
+    """
+    save_path_np = save_path_pn = None
+    if save_dir is not None:
+        os.makedirs(save_dir, exist_ok=True)
+        save_path_np = os.path.join(save_dir, "counterfactual_diff_n_to_p.png")
+        save_path_pn = os.path.join(save_dir, "counterfactual_diff_p_to_n.png")
+
+    print("\n[diff_viz] generating n→p counterfactual (normal → pneumonia) ...")
+    x_cf_np, traj_np, stats_np = generate_and_plot_diff(
+        x_orig=x_neg,
+        generator=generator,
+        classifier=classifier,
+        target_c=1.0,
+        M=M,
+        strength=strength,
+        save_path=save_path_np,
+    )
+
+    print("\n[diff_viz] generating p→n counterfactual (pneumonia → normal) ...")
+    x_cf_pn, traj_pn, stats_pn = generate_and_plot_diff(
+        x_orig=x_pos,
+        generator=generator,
+        classifier=classifier,
+        target_c=0.0,
+        M=M,
+        strength=strength,
+        save_path=save_path_pn,
+    )
+
+    # side-by-side numeric comparison, easy to eyeball whether the
+    # n→p direction is still touching far more pixels than p→n
+    print("\n── n→p vs p→n diff comparison ─────────────────────────────────")
+    print(f"  {'metric':<14}{'n→p':>12}{'p→n':>12}")
+    print(f"  {'MAE':<14}{stats_np['l1']:>12.4f}{stats_pn['l1']:>12.4f}")
+    print(f"  {'MSE':<14}{stats_np['l2']:>12.4f}{stats_pn['l2']:>12.4f}")
+    print(f"  {'max Δ':<14}{stats_np['max_change']:>12.4f}{stats_pn['max_change']:>12.4f}")
+    print(f"  {'% changed':<14}{stats_np['pct_changed']:>11.1f}%{stats_pn['pct_changed']:>11.1f}%")
+    print("────────────────────────────────────────────────────────────────\n")
+
+    return {
+        "n_to_p": (x_cf_np, traj_np, stats_np),
+        "p_to_n": (x_cf_pn, traj_pn, stats_pn),
+    }
