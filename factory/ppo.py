@@ -89,12 +89,27 @@ class PPOActorCritic(nn.Module):
         )
 
     def get_action_and_value(
-        self, obs: torch.Tensor
+        self, obs: torch.Tensor, deterministic: bool = False
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Parameters
+        ----------
+        obs : torch.Tensor
+        deterministic : bool
+            If True, returns the distribution mean (the raw actor logits)
+            directly instead of sampling from Normal(logits, std). Used at
+            evaluation/inference time (see src/inference.py and
+            MedicalCounterfactualEnv.generate_via_policy) so PPO-guided
+            counterfactual generation is reproducible and not subject to
+            the exploration noise that's appropriate during training but
+            not desirable when reporting metrics or generating figures.
+            Defaults to False so existing training call sites (collect_rollout,
+            update) are unaffected.
+        """
         logits, value, feas, prog, stop = self(obs)
         std      = self._std(logits)
         dist     = torch.distributions.Normal(logits, std)
-        action   = dist.sample()
+        action   = logits if deterministic else dist.sample()
         log_prob = dist.log_prob(action).sum(-1)
         return action, log_prob, value, feas, prog, stop
 

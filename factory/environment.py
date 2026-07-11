@@ -10,6 +10,33 @@ The environment:
     a shaped reward.
   - Terminates when the counterfactual is valid (|f(x_cf) - c| < ε) or the
     budget is exhausted.
+
+CHANGE LOG
+----------
+- _compute_reward: `direction_scale` (2.25x boost for the harder target_c=1.0
+  / n->p direction) previously scaled ONLY the "push toward target" reward
+  terms (R_prog, R_val, R_close2, R_hit, R_stop) and left R_fid / R_pres
+  unscaled. This made preservation ~2.25x *less* important relative to
+  progress specifically on the direction that already struggled most,
+  which is the direct mechanism behind diffuse, whole-image n->p edits
+  (81% of pixels changed, foreign-object corruption) observed in
+  qualitative diff plots. Fixed by applying direction_scale uniformly to
+  ALL reward terms, preserving the push/preserve ratio across both
+  directions.
+- step(): `guidance_bias` (action[7]) previously multiplied cls_scale and
+  divided pres_scale by the same factor with no floor, so a policy could
+  learn to suppress preservation guidance arbitrarily far while boosting
+  classifier guidance, compounding across up to 4 refinement passes.
+  Fixed by flooring the suppression factor (1/guidance_bias) at 0.6, and
+  flooring the per-pass preservation decay at 0.4. Both are now logged
+  in the info dict (`pres_suppression_factor`) for diagnostics — see
+  main.py's run_guidance_diagnostics.
+- Added generate_via_policy(): drives this env's reward/guidance logic
+  using a TRAINED policy's actions on an arbitrary caller-supplied query
+  image, instead of only supporting PPO's own rollout sampling from
+  self._far_indices. This is what lets evaluation (metrics.py,
+  diff_viz.py) actually reflect the trained PPO policy instead of the
+  generator's hardcoded default schedule.
 """
 
 import torch
@@ -135,11 +162,11 @@ class MedicalCounterfactualEnv:
     # ──────────────────────────────────────────────────────────────────────────
 
     def _compute_reward(
-    self,
-    x_next: torch.Tensor,
-    d_next: torch.Tensor,
-    tau_t: float,
-) -> tuple[float, bool, dict]:
+        self,
+        x_next: torch.Tensor,
+        d_next: torch.Tensor,
+        tau_t: float,
+    ) -> tuple[float, bool, dict]:
         with torch.no_grad():
             direction_scale = 2.25 if float(self.c) == 1.0 else 1.0
 
@@ -174,7 +201,7 @@ class MedicalCounterfactualEnv:
         # were left unscaled. That meant preservation was implicitly
         # ~2.25x *less* important relative to progress on exactly the
         # direction where the policy already struggles -- which is very
-        # plausibly why n->p counterfactuals show diffuse, whole-image
+        # plausibly why n->p counterfactuals showed diffuse, whole-image
         # changes (81% of pixels, foreign-object corruption) instead of
         # localized opacity edits.
         #
@@ -198,6 +225,7 @@ class MedicalCounterfactualEnv:
             R_prog=R_prog, R_val=R_val, R_close2=R_close2, R_fid=R_fid,
             R_pres=R_pres, R_bud=R_bud, R_hit=R_hit, R_stop=R_stop,
         )
+
     # ──────────────────────────────────────────────────────────────────────────
     # Gym interface
     # ──────────────────────────────────────────────────────────────────────────
@@ -225,8 +253,24 @@ class MedicalCounterfactualEnv:
         extra_pass_2 = int(torch.sigmoid(action[5]).item() > 0.5)
         strength_boost = 0.85 + 0.30 * torch.sigmoid(action[6])
         guidance_bias = 0.70 + 0.60 * torch.sigmoid(action[7])
+        # 9th action dim: where guidance starts ramping up, as a fraction
+        # of the trajectory. Mapped to [0.1, 0.5] — never lets guidance
+        # start in the first 10% (too early risks the same kind of noisy
+        # collapse the ramp was meant to fix) or later than the midpoint
+        # (leaves too few steps for guidance to have any effect).
         ramp_start_frac_t = 0.1 + 0.4 * torch.sigmoid(action[8])
         n_passes = config.ENV_REFINEMENT_PASSES + extra_pass_1 + extra_pass_2
+
+        # Floor on how much guidance_bias is allowed to suppress
+        # preservation. Previously pass_pres_scale = pres_scale_t /
+        # guidance_bias, fully unbounded below as guidance_bias -> 1.30.
+        # Combined with the per-pass decay (1 - 0.15*pass_idx) and up to
+        # 4 passes, this could push effective preservation guidance to a
+        # small fraction of its nominal value exactly when cls guidance
+        # was simultaneously being boosted the most. We cap the
+        # *suppression* factor (1/guidance_bias) at a minimum of 0.6, so
+        # preservation guidance can be reduced but never crushed relative
+        # to its base value.
         pres_suppression_floor = 0.6
         inv_guidance_bias = torch.clamp(1.0 / guidance_bias, min=pres_suppression_floor)
 
@@ -245,7 +289,7 @@ class MedicalCounterfactualEnv:
                 pass_pres_scale = (
                     float(pres_scale_t.item())
                     * float(inv_guidance_bias.item())
-                    * max(1.0 - 0.15 * pass_idx, 0.4)  # also floor the per-pass decay
+                    * max(1.0 - 0.15 * pass_idx, 0.4)  # floor the per-pass decay too
                 )
                 x_next, _ = self.generator.generate_counterfactual(
                     x_next,
@@ -276,6 +320,86 @@ class MedicalCounterfactualEnv:
             "ramp_start_frac": float(ramp_start_frac_t.item()),
             "n_passes": n_passes,
             "valid": is_valid,
-            "pres_suppression_factor": float(inv_guidance_bias.item()),  # new: log for debugging
+            "pres_suppression_factor": float(inv_guidance_bias.item()),
         })
         return self.get_observation(), reward, done, info
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Policy-guided inference (NEW)
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def generate_via_policy(
+        self,
+        x_orig: torch.Tensor,
+        policy,
+        deterministic: bool = True,
+        max_steps: int | None = None,
+    ) -> tuple[torch.Tensor, list[torch.Tensor], dict]:
+        """
+        Generate a counterfactual for an arbitrary query image using a
+        TRAINED policy's actions, instead of generator.generate_counterfactual's
+        hardcoded default strength/guidance schedule.
+
+        This is the missing link between PPO training and evaluation: prior
+        to this, run_full_evaluation() and diff_viz called
+        generator.generate_counterfactual directly with default args, so the
+        reported CV/FID/FOP numbers and diff plots never actually reflected
+        what the trained PPO policy does. This method steps the policy the
+        same way collect_rollout() does, but on a caller-supplied image
+        rather than one sampled from self._far_indices.
+
+        Parameters
+        ----------
+        x_orig        : (1, 1, H, W) query image, NOT necessarily from this
+                         env's dataset (e.g. a held-out eval image)
+        policy        : trained PPOActorCritic. Must match this env's target_c
+                         — i.e. use the n→p env with a policy trained on
+                         target_c=1.0, and the p→n env with target_c=0.0
+        deterministic : use the policy's mean action (recommended for eval)
+                         rather than sampling, for reproducible results
+        max_steps     : override self.T if provided (e.g. to allow a longer
+                         budget at eval time than was used during training)
+
+        Returns
+        -------
+        (x_cf, trajectory, info) :
+            x_cf       : final counterfactual image, (1, 1, H, W)
+            trajectory : list of x_t at each step (for plot_trajectory)
+            info       : last step's info dict, plus 'n_steps_used' and
+                         'converged' (whether it stopped via validity rather
+                         than budget exhaustion)
+        """
+        budget = max_steps if max_steps is not None else self.T
+
+        # Bypass the dataset-sampling half of reset(): set state directly
+        # from the caller-supplied image instead of self._sample_query_image().
+        self.current_step = 0
+        self.x_orig = x_orig.to(self.device)
+        self.x_t    = self.x_orig.clone()
+        with torch.no_grad():
+            self.z_orig = self.generator.encoder(self.x_orig)
+            x3_orig     = (
+                self.x_orig.repeat(1, 3, 1, 1) if self.x_orig.shape[1] == 1 else self.x_orig
+            )
+            p_orig   = self.f(x3_orig)
+            self.d_t = torch.abs(p_orig - self.c_tensor)
+
+        trajectory = [self.x_t.clone()]
+        info = {}
+        done = False
+        step_count = 0
+
+        with torch.no_grad():
+            while not done and step_count < budget:
+                obs = self.get_observation()
+                action, _log_prob, _value, _feas, _prog, _stop = (
+                    policy.get_action_and_value(obs.unsqueeze(0), deterministic=deterministic)
+                )
+                action = action.squeeze(0)
+                _obs_next, _reward, done, info = self.step(action)
+                trajectory.append(self.x_t.clone())
+                step_count += 1
+
+        info["n_steps_used"] = step_count
+        info["converged"]    = bool(info.get("valid", False))
+        return self.x_t, trajectory, info

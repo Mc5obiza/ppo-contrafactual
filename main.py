@@ -6,14 +6,49 @@ End-to-end pipeline:
     2. Load pretrained models (classifier, segmenter, object detector)
     3. Build generator with LoRA
     4. LoRA fine-tuning (denoising)
-    5. PPO training
-    6. Evaluation + visualisation
+    5. PPO training — TWO policies, one per direction (n→p, p→n)
+    6. Evaluation + visualisation, using the trained policies
     7. Save checkpoints
+
+CHANGE LOG
+----------
+- Trains TWO separate PPOActorCritic policies instead of one: one for
+  target_c=1.0 (n→p, normal→pneumonia) and one for target_c=0.0 (p→n,
+  pneumonia→normal). MedicalCounterfactualEnv is built around a single
+  fixed target_c per instance, so a shared conditional policy would
+  require a larger refactor (randomized target_c per episode + dual
+  far-index pools). Two independently trained policies matches the
+  current architecture and lets each specialize on its direction — the
+  two directions are known to behave very differently (CV asymmetry:
+  0.76 n→p vs 0.94 p→n before the reward-symmetry fix in environment.py).
+- Added run_guidance_diagnostics(): samples rollouts from a TRAINED
+  policy and reports guidance_bias / pres_suppression_factor / n_passes
+  statistics, to verify the environment.py reward/guidance_bias fix is
+  actually changing policy behaviour (not just the reward math) before
+  spending time on the full metric suite.
+- Added _pick_query_images(): selects one confidently-negative
+  (f(x)<0.2) and one confidently-positive (f(x)>0.8) query image for the
+  qualitative diff plot, using the SAME thresholds as the Xn/Xp groups
+  in metrics.run_full_evaluation, instead of the previous arbitrary
+  dataset[0].
+- Step 6 (evaluation) and Step 6B (diff plots) now pass the two trained
+  policies through to run_full_evaluation / generate_and_plot_diff_bidirectional
+  so reported CV/FID/FOP numbers and the two saved diff images reflect
+  the actual PPO-guided pipeline, not the generator's hardcoded default
+  schedule.
+- Checkpoints are now saved per-direction under ckpt_dir/n_to_p/ and
+  ckpt_dir/p_to_n/, since there are now two distinct ppo_policy.pt files.
+  Note: generator.unet / cond_proj weights are identical in both
+  subdirectories since LoRA fine-tuning (Step 4) is shared and only run
+  once — this is intentional (one fine-tuned generator, two PPO policies
+  steering it) but does mean the generator weights are duplicated on
+  disk; consider saving them once at the top level if storage is tight.
 """
 
 import os
 import json
 
+import numpy as np
 import torch
 
 import config
@@ -24,12 +59,13 @@ from diff_viz import generate_and_plot_diff_bidirectional
 from factory.finetuning import run_lora_finetuning
 from factory.environment import MedicalCounterfactualEnv
 from factory.ppo import PPOActorCritic, PPOTrainer
+from src.inference import DirectionalPolicy
 from src.metrics import run_full_evaluation
 from factory.evaluate import plot_reward_trace, save_checkpoints
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# NEW: guidance-fix diagnostics
+# Guidance-fix diagnostics
 # ─────────────────────────────────────────────────────────────────────────────
 
 def run_guidance_diagnostics(
@@ -75,7 +111,7 @@ def run_guidance_diagnostics(
             obs, done = env.reset(), False
             while not done:
                 action, _log_prob, _value, _feas, _prog, _stop = (
-                    policy.get_action_and_value(obs.unsqueeze(0))
+                    policy.get_action_and_value(obs.unsqueeze(0), deterministic=False)
                 )
                 action = action.squeeze(0)
                 obs, reward, done, info = env.step(action)
@@ -83,9 +119,6 @@ def run_guidance_diagnostics(
                 guidance_biases.append(info["guidance_bias"])
                 n_passes_list.append(info["n_passes"])
                 rewards.append(reward)
-                # pres_suppression_factor is only present after the fix to
-                # environment.py's step(); fall back gracefully if an older
-                # checkpoint/environment is being diagnosed.
                 if "pres_suppression_factor" in info:
                     suppression_facts.append(info["pres_suppression_factor"])
     policy.train()
@@ -133,7 +166,7 @@ def run_guidance_diagnostics(
     return stats
 
 
-def _save_diagnostics(stats: dict, ckpt_dir: str, filename: str = "guidance_diagnostics.json") -> None:
+def _save_diagnostics(stats: dict, ckpt_dir: str, filename: str) -> None:
     os.makedirs(ckpt_dir, exist_ok=True)
     path = os.path.join(ckpt_dir, filename)
     with open(path, "w") as f:
@@ -142,7 +175,7 @@ def _save_diagnostics(stats: dict, ckpt_dir: str, filename: str = "guidance_diag
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# NEW: query-image selection for the bidirectional diff plot
+# Query-image selection for the bidirectional diff plot
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _pick_query_images(
@@ -194,10 +227,77 @@ def _pick_query_images(
     return x_neg, x_pos
 
 
-def main():
-    import numpy as np
-    global np  # used inside run_guidance_diagnostics
+# ─────────────────────────────────────────────────────────────────────────────
+# Per-direction PPO training
+# ─────────────────────────────────────────────────────────────────────────────
 
+def _train_directional_policy(
+    target_c: float,
+    label: str,
+    dataset,
+    classifier,
+    generator,
+    seg_net,
+    obj_det,
+) -> DirectionalPolicy:
+    """
+    Build an env + policy for one direction, train it, run diagnostics,
+    save a per-direction checkpoint, and return both env and policy
+    bundled as a DirectionalPolicy for use at evaluation time.
+
+    Parameters
+    ----------
+    target_c : 1.0 for n→p, 0.0 for p→n
+    label    : human-readable name for logging/checkpoint dir ("n_to_p" / "p_to_n")
+    """
+    print("\n" + "=" * 70)
+    print(f"STEP 5 — PPO training  [{label}, target_c={target_c}]")
+    print("=" * 70)
+
+    env = MedicalCounterfactualEnv(
+        dataset=dataset,
+        classifier=classifier,
+        target_c=target_c,
+        generator=generator,
+        seg_net=seg_net,
+        obj_det=obj_det,
+        budget_T=config.BUDGET_T,
+        device=config.DEVICE,
+    )
+
+    obs     = env.reset()
+    obs_dim = obs.shape[0]
+    print(f"[{label}] obs_dim = {obs_dim}")
+
+    policy = PPOActorCritic(obs_dim=obs_dim, action_dim=config.ACTION_DIM).to(config.DEVICE)
+    print(f"[{label}] policy params = {sum(p.numel() for p in policy.parameters()):,}")
+
+    trainer = PPOTrainer(env, policy, lr=config.LR)
+    trainer.train(
+        n_episodes=config.N_EPISODES,
+        log_every=max(1, config.N_EPISODES // 10),
+    )
+
+    # per-direction reward trace + guidance diagnostics
+    transitions = trainer.collect_rollout()
+    plot_reward_trace(transitions)
+
+    diag_stats = run_guidance_diagnostics(env, policy, n_episodes=20)
+    _save_diagnostics(diag_stats, config.CKPT_DIR, filename=f"guidance_diagnostics_{label}.json")
+
+    # per-direction checkpoint, so n→p and p→n policies don't overwrite
+    # each other in the shared ckpt_dir
+    ckpt_dir_direction = os.path.join(config.CKPT_DIR, label)
+    save_checkpoints(policy, generator, ckpt_dir=ckpt_dir_direction)
+
+    return DirectionalPolicy(env=env, policy=policy, target_c=target_c)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Main pipeline
+# ─────────────────────────────────────────────────────────────────────────────
+
+def main():
     # ── 1. Dataset ────────────────────────────────────────────────────────────
     print("=" * 70)
     print("STEP 1 — Dataset ingestion")
@@ -208,9 +308,9 @@ def main():
     print("\n" + "=" * 70)
     print("STEP 2 — Loading pretrained models")
     print("=" * 70)
-    classifier               = build_classifier()
+    classifier                = build_classifier()
     seg_net, lung_channel_idx = build_segmentation_net()
-    obj_det                  = build_object_detector()
+    obj_det                   = build_object_detector()
 
     # ── 3. Generator + LoRA ───────────────────────────────────────────────────
     print("\n" + "=" * 70)
@@ -223,57 +323,35 @@ def main():
         obj_det=obj_det,
     )
 
-    # ── 4. LoRA fine-tuning ───────────────────────────────────────────────────
+    # ── 4. LoRA fine-tuning (shared generator, both directions) ──────────────
     print("\n" + "=" * 70)
     print("STEP 4 — LoRA denoising fine-tuning")
     print("=" * 70)
     run_lora_finetuning(generator, dataset)
 
-    # ── 5. PPO environment + policy ───────────────────────────────────────────
-    print("\n" + "=" * 70)
-    print("STEP 5 — PPO training")
-    print("=" * 70)
-    env = MedicalCounterfactualEnv(
-        dataset=dataset,
-        classifier=classifier,
-        target_c=config.TARGET_C,
-        generator=generator,
-        seg_net=seg_net,
-        obj_det=obj_det,
-        budget_T=config.BUDGET_T,
-        device=config.DEVICE,
+    # ── 5. Train TWO policies, one per direction ──────────────────────────────
+    # MedicalCounterfactualEnv is built around a single fixed target_c per
+    # instance, so a shared conditional policy would need a larger
+    # refactor (randomized target_c per episode, dual far-index pools).
+    # Two independently trained policies matches the current architecture
+    # and lets each specialize on its (very differently-behaved)
+    # direction — n→p is the harder direction per the CV asymmetry
+    # (0.76 vs 0.94) and the reward/guidance_bias fix in environment.py.
+    policy_n_to_p = _train_directional_policy(
+        target_c=1.0, label="n_to_p",
+        dataset=dataset, classifier=classifier, generator=generator,
+        seg_net=seg_net, obj_det=obj_det,
+    )
+    policy_p_to_n = _train_directional_policy(
+        target_c=0.0, label="p_to_n",
+        dataset=dataset, classifier=classifier, generator=generator,
+        seg_net=seg_net, obj_det=obj_det,
     )
 
-    obs     = env.reset()
-    obs_dim = obs.shape[0]
-    print(f"obs_dim = {obs_dim}")
-
-    policy = PPOActorCritic(obs_dim=obs_dim, action_dim=config.ACTION_DIM).to(config.DEVICE)
-    print(f"policy params = {sum(p.numel() for p in policy.parameters()):,}")
-
-    trainer = PPOTrainer(env, policy, lr=config.LR)
-    trainer.train(
-        n_episodes=config.N_EPISODES,
-        log_every=max(1, config.N_EPISODES // 10),
-    )
-
-    # ── 6. Evaluation ─────────────────────────────────────────────────────────
+    # ── 6. Evaluation — now PPO-guided instead of generator-default ──────────
     print("\n" + "=" * 70)
-    print("STEP 6 — Evaluation")
+    print("STEP 6 — Evaluation (PPO-guided generation)")
     print("=" * 70)
-
-    transitions = trainer.collect_rollout()
-    plot_reward_trace(transitions)
-
-    # NEW: guidance-fix diagnostics — confirms the reward/guidance_bias fix
-    # is actually changing policy behaviour (not just the reward math) for
-    # THIS run's target_c, before spending time on the full metric suite.
-    print("\n" + "=" * 70)
-    print("STEP 6A — Guidance diagnostics (reward-fix sanity check)")
-    print("=" * 70)
-    diag_stats = run_guidance_diagnostics(env, policy, n_episodes=20)
-    _save_diagnostics(diag_stats, config.CKPT_DIR)
-
     eval_results = run_full_evaluation(
         dataset=dataset,
         classifier=classifier,
@@ -284,11 +362,10 @@ def main():
         n_eval=min(200, len(dataset)),
         ckpt_dir=config.CKPT_DIR,
         device=config.DEVICE,
+        policy_n_to_p=policy_n_to_p,
+        policy_p_to_n=policy_p_to_n,
+        deterministic_policy=True,
     )
-    # NEW: FOP was already computed by run_full_evaluation but never
-    # surfaced in this summary line — added here since it's the metric
-    # most directly relevant to verifying the foreign-object corruption
-    # issue seen in the diff plots is actually fixed.
     print(
         f"Evaluation metrics: "
         f"CV={eval_results['CV']['mean']:.4f} "
@@ -300,38 +377,27 @@ def main():
     )
 
     print("\n" + "=" * 70)
-    print("STEP 6B — Counterfactual diff plots (n→p and p→n)")
+    print("STEP 6B — Counterfactual diff plots (n→p and p→n, PPO-guided)")
     print("=" * 70)
-    # CHANGED: previously plotted a single direction using dataset[0] with
-    # config.TARGET_C. Now selects one confidently-negative and one
-    # confidently-positive query image (same criteria as the Xn/Xp groups
-    # in metrics.py) and produces TWO separate images, one per direction,
-    # so both counterfactual directions can be visually sanity-checked
-    # against the CV/FOP numbers above.
     x_neg, x_pos = _pick_query_images(
         dataset, classifier, device=config.DEVICE, low=0.2, high=0.8
     )
     os.makedirs(config.CKPT_DIR, exist_ok=True)
-    diff_results = generate_and_plot_diff_bidirectional(
+    generate_and_plot_diff_bidirectional(
         x_neg=x_neg,
         x_pos=x_pos,
         generator=generator,
         classifier=classifier,
-        M=5,
-        strength=0.55,
         save_dir=config.CKPT_DIR,
+        directional_policy_n_to_p=policy_n_to_p,
+        directional_policy_p_to_n=policy_p_to_n,
+        deterministic_policy=True,
     )
     print(
         f"[main] saved: "
         f"{os.path.join(config.CKPT_DIR, 'counterfactual_diff_n_to_p.png')}, "
         f"{os.path.join(config.CKPT_DIR, 'counterfactual_diff_p_to_n.png')}"
     )
-
-    # ── 7. Save ───────────────────────────────────────────────────────────────
-    print("\n" + "=" * 70)
-    print("STEP 7 — Saving checkpoints")
-    print("=" * 70)
-    save_checkpoints(policy, generator)
 
     print("\n✓ Pipeline complete.")
 
