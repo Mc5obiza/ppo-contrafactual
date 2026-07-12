@@ -23,20 +23,44 @@ CHANGE LOG
   qualitative diff plots. Fixed by applying direction_scale uniformly to
   ALL reward terms, preserving the push/preserve ratio across both
   directions.
+  NOTE: under PPO+GAE's advantage normalization (adv is renormalized to
+  zero mean / unit std per update in compute_gae), a uniform scalar
+  multiplying the whole reward washes out almost entirely — so this fix
+  is close to equivalent to training as if direction_scale were always
+  1.0. That's fine (it removes the *relative* re-weighting that caused
+  the bug), but don't expect direction_scale to still give the n->p
+  direction extra learning signal the way it originally intended to.
+  If the harder direction still lags after retraining, address it via
+  training hyperparameters (more episodes, lower entropy coef, etc.) for
+  that policy specifically, not via reward scaling.
 - step(): `guidance_bias` (action[7]) previously multiplied cls_scale and
-  divided pres_scale by the same factor with no floor, so a policy could
-  learn to suppress preservation guidance arbitrarily far while boosting
-  classifier guidance, compounding across up to 4 refinement passes.
-  Fixed by flooring the suppression factor (1/guidance_bias) at 0.6, and
-  flooring the per-pass preservation decay at 0.4. Both are now logged
-  in the info dict (`pres_suppression_factor`) for diagnostics — see
-  main.py's run_guidance_diagnostics.
+  divided pres_scale by the same factor with no floor. Added a floor on
+  the suppression factor (1/guidance_bias) and per-pass decay. NOTE: given
+  guidance_bias's actual range (0.70, 1.30) from its sigmoid transform,
+  1/guidance_bias only ranges (0.769, 1.428) and the per-pass decay only
+  reaches 0.55 at pass_idx=3 — so the 0.6/0.4 floors below never actually
+  bind given the current action-space bounds. They're left in as a safety
+  margin against future action-range changes, but the real constraint
+  today is the action transform itself. If you want a floor that actually
+  matters, tighten it above the natural minimum (e.g. min=1.0 to prevent
+  guidance_bias from reducing pres_scale at all) or widen guidance_bias's
+  sigmoid range and re-add a binding floor.
+  Both are logged in the info dict (`pres_suppression_factor`) for
+  diagnostics — see main.py's run_guidance_diagnostics.
 - Added generate_via_policy(): drives this env's reward/guidance logic
   using a TRAINED policy's actions on an arbitrary caller-supplied query
   image, instead of only supporting PPO's own rollout sampling from
   self._far_indices. This is what lets evaluation (metrics.py,
   diff_viz.py) actually reflect the trained PPO policy instead of the
-  generator's hardcoded default schedule.
+  generator's hardcoded default schedule. Wrapped in policy.eval()/
+  policy.train() (harmless today since PPOActorCritic has no dropout/
+  batchnorm, but correct practice and future-proof) inside a try/finally
+  so eval mode isn't left stuck on if generation raises partway through.
+- _compute_reward: caches the fixed-for-the-episode segmentation mask
+  S_x = generator._get_seg_mask(x_orig) instead of recomputing it on
+  every single step of every episode (x_orig never changes mid-episode).
+  Computed once in reset() / generate_via_policy() and reused in
+  _compute_reward().
 """
 
 import torch
@@ -96,9 +120,13 @@ class MedicalCounterfactualEnv:
             f"> {far_threshold} away from target_c={target_c}"
         )
 
-        # Episode state (set by reset())
+        # Episode state (set by reset() / generate_via_policy())
         self.current_step = 0
         self.x_orig = self.x_t = self.z_orig = self.d_t = None
+        # Cached per-episode segmentation mask of x_orig, used by
+        # _compute_reward. x_orig is fixed for the whole episode, so
+        # there's no need to recompute this on every step.
+        self._S_x_orig = None
 
     # ──────────────────────────────────────────────────────────────────────────
     # Initialisation helpers
@@ -139,6 +167,31 @@ class MedicalCounterfactualEnv:
         x, _label = self.dataset[idx]
         return x.unsqueeze(0).to(self.device)
 
+    def _init_episode_state(self, x_orig: torch.Tensor) -> None:
+        """
+        Shared initialization logic for a new episode, given a query image.
+        Used by both reset() (dataset-sampled x_orig) and
+        generate_via_policy() (externally-supplied x_orig), so the two
+        code paths can't drift out of sync.
+
+        Sets: x_orig, x_t, z_orig, d_t, current_step, and caches the
+        segmentation mask of x_orig for reuse in _compute_reward.
+        """
+        self.current_step = 0
+        self.x_orig = x_orig.to(self.device)
+        self.x_t    = self.x_orig.clone()
+        with torch.no_grad():
+            self.z_orig = self.generator.encoder(self.x_orig)
+            x3_orig     = (
+                self.x_orig.repeat(1, 3, 1, 1) if self.x_orig.shape[1] == 1 else self.x_orig
+            )
+            p_orig   = self.f(x3_orig)
+            self.d_t = torch.abs(p_orig - self.c_tensor)
+            # Cache the segmentation mask once per episode — x_orig is
+            # fixed for the whole episode, so _compute_reward doesn't
+            # need to recompute this on every single step.
+            self._S_x_orig = self.generator._get_seg_mask(self.x_orig)
+
     # ──────────────────────────────────────────────────────────────────────────
     # Observation
     # ──────────────────────────────────────────────────────────────────────────
@@ -175,7 +228,10 @@ class MedicalCounterfactualEnv:
             R_close2 = -(d_next.item() ** 2)
             R_fid    = -F.mse_loss(x_next, self.x_orig).item()
 
-            S_x    = self.generator._get_seg_mask(self.x_orig)
+            # Use the cached per-episode mask instead of recomputing it
+            # every step (x_orig — and therefore its mask — never changes
+            # within an episode).
+            S_x    = self._S_x_orig
             l1_map = torch.abs(x_next - self.x_orig)
             seg_term = (S_x * l1_map).sum() / (S_x.sum() + 1e-8)
 
@@ -193,24 +249,10 @@ class MedicalCounterfactualEnv:
             R_hit    = float(is_valid)
             R_stop   = float(is_valid) if tau_t > 0.5 else 0.0
 
-        # NOTE ON direction_scale
-        # ------------------------
-        # Previously, direction_scale (2.25x for c=1.0, the harder n->p
-        # direction) was applied ONLY to the "push toward target" terms
-        # (R_prog, R_val, R_close2, R_hit, R_stop), while R_fid and R_pres
-        # were left unscaled. That meant preservation was implicitly
-        # ~2.25x *less* important relative to progress on exactly the
-        # direction where the policy already struggles -- which is very
-        # plausibly why n->p counterfactuals showed diffuse, whole-image
-        # changes (81% of pixels, foreign-object corruption) instead of
-        # localized opacity edits.
-        #
-        # Fix: apply direction_scale to ALL terms uniformly. This keeps
-        # the *ratio* between push-reward and preserve-reward constant
-        # across both directions -- so c=1.0 still gets a stronger overall
-        # learning signal (matches the original intent of compensating for
-        # the harder direction), but preservation is not disproportionately
-        # deprioritized while doing so.
+        # direction_scale is applied uniformly to ALL reward terms (see
+        # module-level CHANGE LOG note above for why this differs from
+        # the original, buggy, partially-scaled version — and why it's
+        # close to a no-op under GAE's advantage normalization).
         total = direction_scale * (
             config.LAM_PROG     * R_prog
             + config.LAM_VAL    * R_val
@@ -231,16 +273,7 @@ class MedicalCounterfactualEnv:
     # ──────────────────────────────────────────────────────────────────────────
 
     def reset(self) -> torch.Tensor:
-        self.current_step = 0
-        self.x_orig = self._sample_query_image()
-        self.x_t    = self.x_orig.clone()
-        with torch.no_grad():
-            self.z_orig = self.generator.encoder(self.x_orig)
-            x3_orig     = (
-                self.x_orig.repeat(1, 3, 1, 1) if self.x_orig.shape[1] == 1 else self.x_orig
-            )
-            p_orig   = self.f(x3_orig)
-            self.d_t = torch.abs(p_orig - self.c_tensor)
+        self._init_episode_state(self._sample_query_image())
         return self.get_observation()
 
     def step(self, action: torch.Tensor) -> tuple[torch.Tensor, float, bool, dict]:
@@ -262,15 +295,11 @@ class MedicalCounterfactualEnv:
         n_passes = config.ENV_REFINEMENT_PASSES + extra_pass_1 + extra_pass_2
 
         # Floor on how much guidance_bias is allowed to suppress
-        # preservation. Previously pass_pres_scale = pres_scale_t /
-        # guidance_bias, fully unbounded below as guidance_bias -> 1.30.
-        # Combined with the per-pass decay (1 - 0.15*pass_idx) and up to
-        # 4 passes, this could push effective preservation guidance to a
-        # small fraction of its nominal value exactly when cls guidance
-        # was simultaneously being boosted the most. We cap the
-        # *suppression* factor (1/guidance_bias) at a minimum of 0.6, so
-        # preservation guidance can be reduced but never crushed relative
-        # to its base value.
+        # preservation. NOTE (see module CHANGE LOG): given
+        # guidance_bias's actual range (0.70, 1.30), this floor does not
+        # currently bind — 1/guidance_bias never goes below ~0.769. Left
+        # in as a safety margin; see the note above for what to change if
+        # you want it to actually constrain behavior.
         pres_suppression_floor = 0.6
         inv_guidance_bias = torch.clamp(1.0 / guidance_bias, min=pres_suppression_floor)
 
@@ -289,7 +318,7 @@ class MedicalCounterfactualEnv:
                 pass_pres_scale = (
                     float(pres_scale_t.item())
                     * float(inv_guidance_bias.item())
-                    * max(1.0 - 0.15 * pass_idx, 0.4)  # floor the per-pass decay too
+                    * max(1.0 - 0.15 * pass_idx, 0.4)  # per-pass decay floor
                 )
                 x_next, _ = self.generator.generate_counterfactual(
                     x_next,
@@ -325,7 +354,7 @@ class MedicalCounterfactualEnv:
         return self.get_observation(), reward, done, info
 
     # ──────────────────────────────────────────────────────────────────────────
-    # Policy-guided inference (NEW)
+    # Policy-guided inference
     # ──────────────────────────────────────────────────────────────────────────
 
     def generate_via_policy(
@@ -358,7 +387,19 @@ class MedicalCounterfactualEnv:
         deterministic : use the policy's mean action (recommended for eval)
                          rather than sampling, for reproducible results
         max_steps     : override self.T if provided (e.g. to allow a longer
-                         budget at eval time than was used during training)
+                         budget at eval time than was used during training).
+                         NOTE: get_observation()'s step-fraction feature
+                         (current_step / self.T) is computed against
+                         self.T, not max_steps. Passing a max_steps that
+                         differs from self.T means the policy will see
+                         step-fraction values it never saw during training
+                         (e.g. never reaching ~1.0 near termination, or
+                         exceeding 1.0). If you need a different budget at
+                         eval time, prefer temporarily setting self.T to
+                         that value (and restoring it afterward) over
+                         passing max_steps, unless you're deliberately
+                         testing generalization to an out-of-distribution
+                         budget.
 
         Returns
         -------
@@ -371,34 +412,27 @@ class MedicalCounterfactualEnv:
         """
         budget = max_steps if max_steps is not None else self.T
 
-        # Bypass the dataset-sampling half of reset(): set state directly
-        # from the caller-supplied image instead of self._sample_query_image().
-        self.current_step = 0
-        self.x_orig = x_orig.to(self.device)
-        self.x_t    = self.x_orig.clone()
-        with torch.no_grad():
-            self.z_orig = self.generator.encoder(self.x_orig)
-            x3_orig     = (
-                self.x_orig.repeat(1, 3, 1, 1) if self.x_orig.shape[1] == 1 else self.x_orig
-            )
-            p_orig   = self.f(x3_orig)
-            self.d_t = torch.abs(p_orig - self.c_tensor)
+        self._init_episode_state(x_orig)
 
         trajectory = [self.x_t.clone()]
         info = {}
         done = False
         step_count = 0
 
-        with torch.no_grad():
-            while not done and step_count < budget:
-                obs = self.get_observation()
-                action, _log_prob, _value, _feas, _prog, _stop = (
-                    policy.get_action_and_value(obs.unsqueeze(0), deterministic=deterministic)
-                )
-                action = action.squeeze(0)
-                _obs_next, _reward, done, info = self.step(action)
-                trajectory.append(self.x_t.clone())
-                step_count += 1
+        policy.eval()
+        try:
+            with torch.no_grad():
+                while not done and step_count < budget:
+                    obs = self.get_observation()
+                    action, _log_prob, _value, _feas, _prog, _stop = (
+                        policy.get_action_and_value(obs.unsqueeze(0), deterministic=deterministic)
+                    )
+                    action = action.squeeze(0)
+                    _obs_next, _reward, done, info = self.step(action)
+                    trajectory.append(self.x_t.clone())
+                    step_count += 1
+        finally:
+            policy.train()
 
         info["n_steps_used"] = step_count
         info["converged"]    = bool(info.get("valid", False))
