@@ -10,8 +10,6 @@ Evaluation and visualisation utilities:
 
 import os
 
-import matplotlib
-matplotlib.use("Agg")  # headless-safe: SLURM compute nodes have no $DISPLAY
 import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
@@ -78,18 +76,14 @@ def plot_reward_trace(transitions: list) -> None:
     fig, ax = plt.subplots(figsize=(8, 4))
     steps = list(range(len(transitions)))
     ax.plot(steps, flat_rewards,           marker="o", label="flat $R_t$")
-    ax.plot(steps, shaped_rewards.cpu().numpy(), marker="s", label=r"shaped $\tilde{R}_t$")
+    ax.plot(steps, shaped_rewards.detach().cpu().numpy(), marker="s", label=r"shaped $\tilde{R}_t$")
     ax.set_xlabel("step")
     ax.set_ylabel("reward")
     ax.set_title("Flat vs. GAE-shaped reward per step")
     ax.legend()
     ax.grid(alpha=0.3)
     plt.tight_layout()
-    os.makedirs(config.CKPT_DIR, exist_ok=True)
-    out_path = os.path.join(config.CKPT_DIR, "reward_trace.png")
-    plt.savefig(out_path, dpi=150)
-    plt.close(fig)
-    print(f"[evaluate] saved reward trace to '{out_path}'")
+    plt.show()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -122,11 +116,7 @@ def plot_trajectory(
 
     plt.suptitle(f"Progressive counterfactual trajectory (target c = {target_c})")
     plt.tight_layout()
-    os.makedirs(config.CKPT_DIR, exist_ok=True)
-    out_path = os.path.join(config.CKPT_DIR, "trajectory.png")
-    plt.savefig(out_path, dpi=150)
-    plt.close(fig)
-    print(f"[evaluate] saved trajectory plot to '{out_path}'")
+    plt.show()
 
 
 # ─────────────────────────────────────────────────────────────────────────────

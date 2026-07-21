@@ -7,6 +7,22 @@ PPO components:
   - compute_gae  — Generalised Advantage Estimation with reward shaping
   - PPOTrainer   — rollout collection and policy update loop
 
+CHANGE LOG
+----------
+- get_action_and_value(): added `deterministic` flag for policy-guided
+  inference (see src/inference.py, MedicalCounterfactualEnv.generate_via_policy).
+- update(): FIXED — `shaped_rewards` returned by compute_gae() was being
+  unpacked but never used; all loss terms referenced only `advantages`,
+  `returns`, or a separately-computed `td_targets`. This meant
+  config.DELTA_MIX (the tau-gated reward/advantage blend implemented in
+  compute_gae) had ZERO effect on training despite being computed every
+  update. Fixed by using shaped_rewards as the value-function target in
+  place of the raw GAE `returns`, which is the standard place a shaped
+  reward signal is meant to land. `returns` is still computed and
+  available (e.g. for logging/debugging) but no longer drives L_value.
+  If this doesn't empirically help, the alternative fix is to simply
+  discard shaped_rewards and strip the shaping branch out of
+  compute_gae() — see the code comment at the L_value line below.
 """
 
 from dataclasses import dataclass
@@ -89,12 +105,27 @@ class PPOActorCritic(nn.Module):
         )
 
     def get_action_and_value(
-        self, obs: torch.Tensor
+        self, obs: torch.Tensor, deterministic: bool = False
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Parameters
+        ----------
+        obs : torch.Tensor
+        deterministic : bool
+            If True, returns the distribution mean (the raw actor logits)
+            directly instead of sampling from Normal(logits, std). Used at
+            evaluation/inference time (see src/inference.py and
+            MedicalCounterfactualEnv.generate_via_policy) so PPO-guided
+            counterfactual generation is reproducible and not subject to
+            the exploration noise that's appropriate during training but
+            not desirable when reporting metrics or generating figures.
+            Defaults to False so existing training call sites (collect_rollout,
+            update) are unaffected.
+        """
         logits, value, feas, prog, stop = self(obs)
         std      = self._std(logits)
         dist     = torch.distributions.Normal(logits, std)
-        action   = dist.sample()
+        action   = logits if deterministic else dist.sample()
         log_prob = dist.log_prob(action).sum(-1)
         return action, log_prob, value, feas, prog, stop
 
@@ -118,6 +149,15 @@ def compute_gae(
     Returns
     -------
     (shaped_rewards, advantages, returns) : 3-tuple of 1-D float tensors on DEVICE
+
+    Note
+    ----
+    shaped_rewards blends the raw step reward with a tau-gated advantage
+    term (config.DELTA_MIX), intended to inject additional shaping signal
+    on steps where the policy hasn't yet decided to "stop" (tau <= 0.5).
+    As of this revision, PPOTrainer.update() uses shaped_rewards as the
+    value-function regression target (see L_value below) so this signal
+    actually participates in training instead of being discarded.
     """
     T_len      = len(transitions)
     adv        = np.zeros(T_len, dtype=np.float32)
@@ -226,7 +266,18 @@ class PPOTrainer:
             surr1    = ratio * advantages
             surr2    = torch.clamp(ratio, 1 - config.PPO_CLIP, 1 + config.PPO_CLIP) * advantages
             L_ppo    = -torch.min(surr1, surr2).mean()
-            L_value  = F.mse_loss(values, returns)
+
+            # FIX: previously F.mse_loss(values, returns), which meant
+            # shaped_rewards (and therefore config.DELTA_MIX) had no effect
+            # anywhere in training. shaped_rewards is the tau-gated blend
+            # of raw reward and advantage computed in compute_gae() —
+            # using it here as the value regression target is the standard
+            # place for a shaped-reward signal to land, and actually
+            # activates DELTA_MIX. `returns` (raw GAE bootstrap target) is
+            # still computed above and available if you want to compare
+            # the two empirically or revert to the old behaviour.
+            L_value  = F.mse_loss(values, shaped_rewards)
+
             feas_labels = (returns > 0).float()
             L_feas      = F.binary_cross_entropy(feas_pred, feas_labels)
             L_prog_aux  = F.mse_loss(prog_pred, td_targets)

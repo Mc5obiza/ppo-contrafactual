@@ -7,12 +7,18 @@ Trains the generator on the RSNA dataset using a standard diffusion
 denoising objective (L_diff = MSE between predicted and actual noise),
 with AMP (fp16 autocast) and gradient clipping for stability.
 
-
+CHANGE FROM ORIGINAL: added per-epoch checkpointing + resume support.
+For long server runs (25+ epochs), losing everything to a walltime
+cutoff or job preemption is expensive — this saves LoRA weights,
+cond_proj, optimizer, and scaler state after every epoch, and can
+resume from the latest checkpoint automatically if the job restarts.
 """
 
+import os
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, WeightedRandomSampler
+from peft import get_peft_model_state_dict, set_peft_model_state_dict
 
 import config
 
@@ -96,6 +102,84 @@ def _build_balanced_sampler(dataset) -> WeightedRandomSampler:
     )
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Checkpointing
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _checkpoint_path(ckpt_dir: str) -> str:
+    return os.path.join(ckpt_dir, "finetuning_latest.pt")
+
+
+def _save_checkpoint(
+    ckpt_dir: str,
+    epoch: int,
+    generator,
+    optimizer,
+    scaler,
+) -> None:
+    """
+    Save everything needed to resume training after this epoch:
+      - LoRA adapter weights (via peft's get_peft_model_state_dict —
+        much smaller than the full UNet state_dict, since only LoRA
+        params are trainable)
+      - cond_proj weights
+      - optimizer + scaler state (so resumed training has correct
+        momentum/AMP scale, not a cold restart)
+      - the epoch index itself, so resume knows where to continue
+
+    Overwrites a single 'finetuning_latest.pt' each epoch rather than
+    keeping one file per epoch — keeps disk usage flat across a long run.
+    Change to an epoch-numbered filename below if you want to keep every
+    epoch's checkpoint instead (uses more disk).
+    """
+    os.makedirs(ckpt_dir, exist_ok=True)
+    path = _checkpoint_path(ckpt_dir)
+
+    checkpoint = {
+        "epoch": epoch,
+        "lora_state_dict": get_peft_model_state_dict(generator.unet),
+        "cond_proj_state_dict": generator.cond_proj.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "scaler_state_dict": scaler.state_dict(),
+    }
+    # atomic-ish write: save to a temp file then rename, so a crash mid-save
+    # doesn't corrupt the checkpoint you'd resume from
+    tmp_path = path + ".tmp"
+    torch.save(checkpoint, tmp_path)
+    os.replace(tmp_path, path)
+    print(f"[finetuning] checkpoint saved: {path} (epoch {epoch})")
+
+
+def _load_checkpoint(ckpt_dir: str, generator, optimizer, scaler) -> int:
+    """
+    Load the latest checkpoint if one exists, restoring LoRA weights,
+    cond_proj, optimizer, and scaler state.
+
+    Returns
+    -------
+    int : the epoch to resume FROM (i.e. training should start at
+          `resume_epoch`, since `epoch` in the checkpoint was already
+          completed). Returns 0 if no checkpoint was found (fresh start).
+    """
+    path = _checkpoint_path(ckpt_dir)
+    if not os.path.exists(path):
+        print(f"[finetuning] no checkpoint found at {path} — starting fresh")
+        return 0
+
+    print(f"[finetuning] found checkpoint at {path} — resuming")
+    checkpoint = torch.load(path, map_location=config.DEVICE)
+
+    set_peft_model_state_dict(generator.unet, checkpoint["lora_state_dict"])
+    generator.cond_proj.load_state_dict(checkpoint["cond_proj_state_dict"])
+    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    scaler.load_state_dict(checkpoint["scaler_state_dict"])
+
+    resume_epoch = checkpoint["epoch"] + 1
+    print(f"[finetuning] resumed from epoch {checkpoint['epoch']} — "
+          f"continuing at epoch {resume_epoch}")
+    return resume_epoch
+
+
 def run_lora_finetuning(
     generator,
     dataset,
@@ -105,6 +189,8 @@ def run_lora_finetuning(
     log_every: int   = config.LOG_EVERY_N_STEPS,
     num_workers: int = 2,
     use_balanced_sampling: bool = True,
+    ckpt_dir: str = config.CKPT_DIR,
+    resume: bool = True,
 ) -> None:
     """
     Fine-tune the generator's UNet LoRA adapters and cond_proj on the given dataset.
@@ -121,8 +207,15 @@ def run_lora_finetuning(
     use_balanced_sampling : bool
         If True (default), uses a WeightedRandomSampler so each epoch sees
         an approximately equal number of positive and negative examples.
-        This directly targets the n_to_p / p_to_n counterfactual validity
-        asymmetry caused by RSNA's ~3:1 negative:positive class imbalance.
+    ckpt_dir : str
+        Directory to save/load the per-epoch checkpoint
+        ('finetuning_latest.pt' inside this dir).
+    resume : bool
+        If True (default), automatically resumes from the latest
+        checkpoint in ckpt_dir if one exists — safe to leave on even for
+        a fresh run (it just won't find anything to resume from). Set to
+        False to always start from scratch and overwrite any existing
+        checkpoint.
     """
     trainable_params = [
         p for p in
@@ -133,6 +226,14 @@ def run_lora_finetuning(
 
     optimizer = torch.optim.AdamW(trainable_params, lr=lr)
     scaler    = torch.amp.GradScaler('cuda')
+
+    start_epoch = 0
+    if resume:
+        start_epoch = _load_checkpoint(ckpt_dir, generator, optimizer, scaler)
+        if start_epoch >= n_epochs:
+            print(f"[finetuning] checkpoint already at epoch {start_epoch} >= "
+                  f"n_epochs={n_epochs} — nothing to do")
+            return
 
     loader_kwargs = dict(
         batch_size  = batch_size,
@@ -149,10 +250,11 @@ def run_lora_finetuning(
     print(
         f"[finetuning] {len(dataset)} images | "
         f"{len(train_loader)} steps/epoch | batch_size={batch_size} | "
-        f"balanced_sampling={use_balanced_sampling}"
+        f"balanced_sampling={use_balanced_sampling} | "
+        f"epochs {start_epoch}->{n_epochs - 1}"
     )
 
-    for epoch in range(n_epochs):
+    for epoch in range(start_epoch, n_epochs):
         running_loss, n_valid_steps = 0.0, 0
         running_loss_pos, n_valid_pos = 0.0, 0
         running_loss_neg, n_valid_neg = 0.0, 0
@@ -211,3 +313,8 @@ def run_lora_finetuning(
             f"avg_L_diff_pos_batches={avg_pos:.4f} (n={n_valid_pos}) | "
             f"avg_L_diff_neg_batches={avg_neg:.4f} (n={n_valid_neg})"
         )
+
+        # save after EVERY epoch — cheap relative to an epoch's training
+        # time, and this is exactly what protects a long HPC run against
+        # a walltime cutoff or preemption killing the job mid-run
+        _save_checkpoint(ckpt_dir, epoch, generator, optimizer, scaler)

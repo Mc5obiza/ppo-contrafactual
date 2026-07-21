@@ -2,15 +2,31 @@
 src/diff_viz.py
 ===============
 Visualise the pixel-level difference between an original image and its
-counterfactual. Produces a 3-panel figure:
-  [original]  |  [counterfactual]  |  [difference heatmap]
+counterfactual. Produces a 4-panel figure:
+  [original]  |  [counterfactual]  |  [signed diff]  |  [absolute diff heatmap]
 
 Also exposes compute_diff() for programmatic use (e.g. metrics, further analysis).
+
+CHANGE LOG
+----------
+- generate_and_plot_diff(): accepts an optional `directional_policy`
+  (src.inference.DirectionalPolicy). If provided, generation is driven
+  by the trained PPO policy's actions (via env.generate_via_policy)
+  instead of calling generator.generate_counterfactual directly with a
+  fixed M/strength. This makes single-direction diff plots reflect the
+  actual trained pipeline.
+- Added generate_and_plot_diff_bidirectional(): runs BOTH directions
+  (n→p and p→n) in one call, saving two SEPARATE image files and
+  printing a side-by-side MAE/MSE/max-Δ/%-changed comparison table, so
+  the asymmetry between directions is visible directly in the console
+  output as well as in the two images.
+- _print_stats() accepts an optional `label` to disambiguate console
+  output when both directions are logged back to back.
 """
 
+import os
+
 import numpy as np
-import matplotlib
-matplotlib.use("Agg")  # headless-safe: SLURM compute nodes have no $DISPLAY
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import torch
@@ -77,9 +93,9 @@ def plot_diff(
     save_path: str | None = None,
 ) -> None:
     """
-    Produce a 3-panel figure: original | counterfactual | difference heatmap.
+    Produce a 4-panel figure: original | counterfactual | signed diff | abs diff.
 
-    The difference panel uses a diverging colormap (blue = decreased intensity,
+    The difference panels use a diverging colormap (blue = decreased intensity,
     red = increased intensity) so the radiologist can see which lung regions
     changed and in which direction.
 
@@ -152,8 +168,11 @@ def plot_diff(
     _print_stats(stats)
 
 
-def _print_stats(stats: dict) -> None:
-    print("\n── Counterfactual difference summary ──────────────────────────")
+def _print_stats(stats: dict, label: str = "") -> None:
+    header = "Counterfactual difference summary"
+    if label:
+        header += f" ({label})"
+    print(f"\n── {header} " + "─" * max(0, 60 - len(header)))
     print(f"  MAE (L1)          : {stats['l1']:.6f}")
     print(f"  MSE (L2)          : {stats['l2']:.6f}")
     print(f"  Max pixel change  : {stats['max_change']:.6f}")
@@ -162,7 +181,7 @@ def _print_stats(stats: dict) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Convenience wrapper — calls generator + plots in one shot
+# Convenience wrapper — calls generator + plots in one shot (single direction)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def generate_and_plot_diff(
@@ -173,6 +192,8 @@ def generate_and_plot_diff(
     M: int = 5,
     strength: float = 0.55,
     save_path: str | None = None,
+    directional_policy=None,
+    deterministic_policy: bool = True,
 ) -> tuple[torch.Tensor, list[torch.Tensor], dict]:
     """
     Generate a counterfactual from x_orig and immediately visualise the diff.
@@ -183,21 +204,34 @@ def generate_and_plot_diff(
     generator  : PretrainedLatentDiffusionGenerator
     classifier : nn.Module
     target_c   : float
-    M          : int    — trajectory checkpoints
-    strength   : float  — denoising strength (0–1)
+    M          : int    — trajectory checkpoints (ignored if directional_policy given)
+    strength   : float  — denoising strength (ignored if directional_policy given)
     save_path  : str | None
+    directional_policy : src.inference.DirectionalPolicy | None
+        If provided, generates via the trained PPO policy instead of
+        generator.generate_counterfactual(..., M, strength) directly.
+        M and strength are ignored in that case — the policy controls
+        its own step count and per-step strength/guidance via its
+        matching environment's step() logic.
+    deterministic_policy : bool
+        Use the policy's mean action (recommended for reproducible
+        figures/metrics) rather than sampling. Only relevant when
+        directional_policy is provided.
 
     Returns
     -------
     (x_cf, trajectory, diff_stats)
     """
-    import torch.nn.functional as F
+    if directional_policy is not None:
+        from src.inference import generate_counterfactual_with_policy
+        x_cf, trajectory, _gen_info = generate_counterfactual_with_policy(
+            x_orig, directional_policy, deterministic=deterministic_policy
+        )
+    else:
+        x_cf, trajectory = generator.generate_counterfactual(
+            x_orig, target_c, M=M, strength=strength
+        )
 
-    x_cf, trajectory = generator.generate_counterfactual(
-        x_orig, target_c, M=M, strength=strength
-    )
-
-    # Classifier scores (optional but informative)
     p_orig = p_cf = None
     try:
         with torch.no_grad():
@@ -218,3 +252,109 @@ def generate_and_plot_diff(
 
     stats = compute_diff(x_orig, x_cf)
     return x_cf, trajectory, stats
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Bidirectional wrapper — n→p AND p→n in one call, two separate images
+# ─────────────────────────────────────────────────────────────────────────────
+
+def generate_and_plot_diff_bidirectional(
+    x_neg: torch.Tensor,
+    x_pos: torch.Tensor,
+    generator,
+    classifier,
+    M: int = 5,
+    strength: float = 0.55,
+    save_dir: str | None = None,
+    directional_policy_n_to_p=None,
+    directional_policy_p_to_n=None,
+    deterministic_policy: bool = True,
+) -> dict[str, tuple[torch.Tensor, list[torch.Tensor], dict]]:
+    """
+    Generate and visualise counterfactuals in BOTH directions, producing
+    two separate 4-panel figures (and two separate saved image files, if
+    save_dir is given):
+
+      n→p : x_neg (classifier predicts "normal", f(x) low)  pushed to c=1.0
+      p→n : x_pos (classifier predicts "pneumonia", f(x) high) pushed to c=0.0
+
+    This mirrors the Xn/Xp split already used throughout metrics.py
+    (CV, FID, and FOP are all computed per-direction there) — the same
+    two query images can be reused for a quick visual sanity-check
+    alongside the quantitative numbers in eval_metrics.json.
+
+    Parameters
+    ----------
+    x_neg      : (1,1,H,W) image classified as negative/normal
+                 (typically f(x) < ~0.2, same threshold used in metrics.py)
+    x_pos      : (1,1,H,W) image classified as positive/pneumonia
+                 (typically f(x) > ~0.8)
+    generator  : PretrainedLatentDiffusionGenerator
+    classifier : nn.Module
+    M          : trajectory checkpoints (ignored for directions using a policy)
+    strength   : denoising strength (ignored for directions using a policy)
+    save_dir   : directory to save both images into. Files are named
+                 'counterfactual_diff_n_to_p.png' and
+                 'counterfactual_diff_p_to_n.png'. If None, figures are
+                 only shown, not saved.
+    directional_policy_n_to_p, directional_policy_p_to_n :
+                 src.inference.DirectionalPolicy | None
+                 If provided, each direction uses its matching trained
+                 policy for generation instead of the generator's
+                 default schedule.
+    deterministic_policy : bool
+                 Passed through to generate_and_plot_diff for both calls.
+
+    Returns
+    -------
+    dict with keys "n_to_p" and "p_to_n", each mapping to
+    (x_cf, trajectory, diff_stats) as returned by generate_and_plot_diff.
+    """
+    save_path_np = save_path_pn = None
+    if save_dir is not None:
+        os.makedirs(save_dir, exist_ok=True)
+        save_path_np = os.path.join(save_dir, "counterfactual_diff_n_to_p.png")
+        save_path_pn = os.path.join(save_dir, "counterfactual_diff_p_to_n.png")
+
+    print("\n[diff_viz] generating n→p counterfactual (normal → pneumonia) ...")
+    x_cf_np, traj_np, stats_np = generate_and_plot_diff(
+        x_orig=x_neg,
+        generator=generator,
+        classifier=classifier,
+        target_c=1.0,
+        M=M,
+        strength=strength,
+        save_path=save_path_np,
+        directional_policy=directional_policy_n_to_p,
+        deterministic_policy=deterministic_policy,
+    )
+    _print_stats(stats_np, label="n→p")
+
+    print("\n[diff_viz] generating p→n counterfactual (pneumonia → normal) ...")
+    x_cf_pn, traj_pn, stats_pn = generate_and_plot_diff(
+        x_orig=x_pos,
+        generator=generator,
+        classifier=classifier,
+        target_c=0.0,
+        M=M,
+        strength=strength,
+        save_path=save_path_pn,
+        directional_policy=directional_policy_p_to_n,
+        deterministic_policy=deterministic_policy,
+    )
+    _print_stats(stats_pn, label="p→n")
+
+    # side-by-side numeric comparison, easy to eyeball whether the
+    # n→p direction is still touching far more pixels than p→n
+    print("\n── n→p vs p→n diff comparison ─────────────────────────────────")
+    print(f"  {'metric':<14}{'n→p':>12}{'p→n':>12}")
+    print(f"  {'MAE':<14}{stats_np['l1']:>12.4f}{stats_pn['l1']:>12.4f}")
+    print(f"  {'MSE':<14}{stats_np['l2']:>12.4f}{stats_pn['l2']:>12.4f}")
+    print(f"  {'max Δ':<14}{stats_np['max_change']:>12.4f}{stats_pn['max_change']:>12.4f}")
+    print(f"  {'% changed':<14}{stats_np['pct_changed']:>11.1f}%{stats_pn['pct_changed']:>11.1f}%")
+    print("────────────────────────────────────────────────────────────────\n")
+
+    return {
+        "n_to_p": (x_cf_np, traj_np, stats_np),
+        "p_to_n": (x_cf_pn, traj_pn, stats_pn),
+    }

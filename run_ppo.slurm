@@ -8,6 +8,8 @@
 #SBATCH --time=1-00:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=melkiayoub724@gmail.com
 #
 # Runs the full PPO counterfactual pipeline (main.py) on a compute node.
 # Compute nodes have NO internet access, so this script only ever loads the

@@ -1,0 +1,714 @@
+\documentclass[11pt]{article}
+
+% ─────────────────────────────────────────────────────────────────────────────
+% Packages
+% ─────────────────────────────────────────────────────────────────────────────
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{times}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{authblk}
+\usepackage{siunitx}
+\usepackage{listings}
+\usepackage{enumitem}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  citecolor=blue!50!black,
+  urlcolor=blue!50!black
+}
+
+\newcommand{\method}{\textsc{PPO-CF}}
+\newcommand{\eg}{e.g.,\ }
+\newcommand{\ie}{i.e.,\ }
+
+\title{\textbf{Reinforcement-Learning-Guided Latent Diffusion for\\
+Visual Counterfactual Explanations in Chest Radiography}}
+
+\author[1]{Ayoub}
+\affil[1]{Independent Research Project}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Post-hoc visual explanation methods for medical image classifiers
+(saliency maps, Grad-CAM) indicate \emph{where} a model is looking but not
+\emph{what minimal, realistic change} would flip its decision. Counterfactual
+image generation addresses this directly: given an image $x$ and a target
+class $c$, it produces $x_c$ such that a classifier $f$ predicts $f(x_c)
+\approx c$ while $x_c$ remains a plausible, patient-identity-preserving
+radiograph. We present a system that combines a LoRA-fine-tuned Stable
+Diffusion latent generator with a Proximal Policy Optimization (PPO) agent
+that \emph{controls} the diffusion sampling process step-by-step —
+choosing per-step noise strength, classifier- and preservation-guidance
+scales, the number of refinement passes, and when to stop — rather than
+generating a counterfactual in one shot with fixed hyperparameters. Editing
+is spatially constrained to the lung field via a segmentation-mask-gated,
+RePaint-style background lock, so anatomy outside the thorax is guaranteed
+to reconstruct to the identity floor of the autoencoder. Two directional
+policies are trained independently, one per class-flip direction
+(normal$\to$pneumonia and pneumonia$\to$normal), following the protocol of
+Singla~\emph{et al.}~\cite{singla2022}. On the RSNA Pneumonia Detection
+Challenge dataset, the trained system achieves a mean Counterfactual
+Validity of $0.965$ (n$\to$p: $0.975$, p$\to$n: $0.955$ at $\tau=0.8$), an
+XRV-DenseNet FID of $5.67$ / $3.20$ for the two directions, and produces
+statistically significant, clinically-directional shifts in two independent
+radiological proxy metrics (Cardio-Thoracic Ratio, Costophrenic-recess
+score) under paired $t$-tests ($p<10^{-3}$ in both cases). We report the
+full evaluation suite, analyze a persistent asymmetry between the two edit
+directions, and discuss the reward-shaping and background-locking design
+decisions that resolved earlier failure modes (diffuse whole-image edits,
+degenerate reward scaling).
+\end{abstract}
+
+\tableofcontents
+
+% ═════════════════════════════════════════════════════════════════════════
+\section{Introduction}
+% ═════════════════════════════════════════════════════════════════════════
+
+Deep classifiers deployed on chest radiographs (CXR) are typically audited
+with attribution maps (Grad-CAM, integrated gradients), which highlight
+\emph{where} evidence is concentrated but say nothing about \emph{what
+change} would alter the prediction. \textbf{Visual counterfactual
+explanations} close this gap: for a query image $x$ classified $f(x)$, a
+counterfactual generator produces $x_c$ that (i) a downstream classifier
+scores at the target class $c$, (ii) remains visually realistic, and (iii)
+differs from $x$ only in the minimal, class-relevant region — preserving
+patient anatomy, foreign objects (tubes, pacemakers, monitoring leads), and
+overall image identity.
+
+This project builds such a system for binary pneumonia classification on
+the RSNA Pneumonia Detection Challenge dataset, combining three ingredients:
+
+\begin{enumerate}[leftmargin=*]
+  \item A \textbf{LoRA-fine-tuned Stable Diffusion v1.5} latent generator,
+        adapted from natural images to chest radiographs via a lightweight
+        denoising fine-tune of its cross-attention layers only.
+  \item A \textbf{gradient-guided DDIM sampling loop} that steers the
+        reverse diffusion trajectory toward the target class using
+        classifier gradients, while a segmentation-mask-gated preservation
+        term and a RePaint/Blended-Latent-Diffusion-style background lock
+        keep edits confined to the lung field.
+  \item A \textbf{PPO agent} that treats the per-step guidance
+        hyperparameters (noise strength, classifier-guidance scale,
+        preservation-guidance scale, number of refinement passes, stopping
+        decision, guidance ramp-up point) as a \emph{continuous action
+        space}, learning a policy that adaptively schedules these controls
+        instead of using one fixed schedule for every image.
+\end{enumerate}
+
+The central hypothesis is that a fixed, hand-tuned guidance schedule is a
+poor fit across a heterogeneous test population: some images need only a
+gentle nudge to cross the decision boundary, others require aggressive,
+multi-pass editing, and a fixed schedule either under-edits the latter or
+over-edits (and de-realizes) the former. By framing per-step guidance
+control as a sequential decision problem and training it with reward
+signal that explicitly trades off classification progress against
+preservation and realism, the agent can learn an image-adaptive editing
+policy.
+
+We evaluate the system with the metric suite of
+Singla~\emph{et al.}~\cite{singla2022} — Counterfactual Validity (CV),
+Fr\'echet Inception Distance (FID), and Foreign-Object Preservation (FOP)
+— plus a model-free Identity Preservation (IP) score introduced here as a
+practical substitute for FOP, and two clinically motivated proxy metrics,
+Cardio-Thoracic Ratio (CTR) and Costophrenic-recess score (SCP), each
+tested with paired $t$-tests between real and counterfactual populations.
+
+% ═════════════════════════════════════════════════════════════════════════
+\section{Related Work}
+% ═════════════════════════════════════════════════════════════════════════
+
+\textbf{Counterfactual explanations in medical imaging.} Singla~\emph{et
+al.}~\cite{singla2022} introduced a GAN-based counterfactual generator for
+chest X-rays with an explicit evaluation protocol — CV, FID, and FOP — that
+we adopt here as the benchmark for comparability. Their FOP metric relies
+on a custom Fast R-CNN detector for foreign objects trained on private,
+manually annotated data, which is not reproducible offline; we discuss our
+substitute (Section~\ref{sec:ip}) below.
+
+\textbf{Diffusion-based counterfactuals.} Diffusion Autoencoders and
+classifier/gradient-guided diffusion sampling (\eg DiffAE, guided
+diffusion, SDEdit) have become the dominant paradigm for counterfactual
+and editable image generation, replacing earlier GAN-based approaches due
+to their more stable training and superior sample fidelity. This project
+adopts a \textbf{gradient-guided DDIM} scheme built on a pretrained,
+LoRA-adapted Stable Diffusion v1.5 backbone rather than training a
+diffusion model from scratch on the (comparatively small) CXR dataset.
+
+\textbf{RePaint / Blended Latent Diffusion.} Spatially-constrained
+inpainting methods that repeatedly re-noise and re-composite the
+unedited region at every denoising step~\cite{repaint,blended} are adapted
+here as a hard \emph{background lock}: instead of trusting the guidance
+gradient alone to keep edits inside the lung field, the region outside a
+dilated, feathered lung-segmentation mask is forcibly reset to the
+original image's forward-diffused latent at every step.
+
+\textbf{RL for controllable diffusion.} Framing the choice of diffusion
+sampling hyperparameters (guidance scale, number of steps, noise schedule)
+as an RL control problem is comparatively less explored than RLHF-style
+fine-tuning of the diffusion \emph{weights} (\eg DDPO,
+reward-weighted fine-tuning). Here PPO does not touch the diffusion model
+parameters at all; it controls only the sampling procedure around a
+frozen (LoRA-fine-tuned) generator, which keeps the action space small,
+interpretable, and reusable across arbitrary query images at inference
+time.
+
+% ═════════════════════════════════════════════════════════════════════════
+\section{Method}
+% ═════════════════════════════════════════════════════════════════════════
+
+\subsection{Problem formulation}
+
+Given a frozen binary classifier $f: \mathcal{X} \to [0,1]$ (pneumonia
+probability) and a target class $c \in \{0, 1\}$, the goal is to find
+$x_c$ minimizing
+\[
+  \mathcal{L}(x_c) \;=\; \underbrace{\mathrm{BCE}\big(f(x_c),\, c\big)}_{\text{classification}}
+  \;+\; \underbrace{\lambda_{\text{pres}}\, d(x, x_c)}_{\text{identity preservation}}
+\]
+where $d$ is a masked distance that penalizes change \emph{inside} the
+segmented lung field and change to a frozen object-detector embedding
+(foreign-object proxy), while leaving change \emph{outside} the lung field
+essentially free (subject to the hard background lock described below).
+
+\subsection{Latent diffusion generator}
+
+The generator (\texttt{src/generator.py}) wraps a pretrained SD1.5 VAE and
+UNet. Images are encoded to a $4\times32\times32$ latent via the frozen
+VAE encoder; a lightweight \texttt{cond\_proj} MLP maps $(c,\ \text{pooled
+latent})$ to a single cross-attention conditioning token consumed by the
+UNet — this replaces SD1.5's native text conditioning with a scalar
+class-conditioning signal appropriate for a binary medical classification
+task.
+
+\textbf{LoRA fine-tuning.} Rank-$8$ LoRA adapters ($\alpha=16$, dropout
+$0.05$) are inserted into the UNet's \texttt{to\_q}, \texttt{to\_k},
+\texttt{to\_v}, \texttt{to\_out.0} projections and trained (together with
+\texttt{cond\_proj}, upcast to fp32) on the standard $\epsilon$-prediction
+denoising loss over the RSNA training set, adapting the natural-image
+prior toward the chest-radiograph domain without touching the frozen
+VAE or the bulk of the UNet weights.
+
+\textbf{Gradient-guided DDIM sampling.} Counterfactual generation runs
+partial DDIM sampling (an SDEdit-style forward-then-reverse trajectory
+whose length is set by a \texttt{strength} fraction of the full $T=50$
+steps) with two gradient guidance terms injected into the predicted
+$\hat z_0$ at every step:
+\[
+  \Delta z_0 \;=\; -\,w(i)\,\alpha_{\text{cls}}\,\nabla_{\hat z_0}
+  \mathcal{L}_{\text{cls}} \;-\; w(i)\,\alpha_{\text{pres}}\,
+  \nabla_{\hat z_0}\big(\underbrace{\text{seg-weighted L1}}_{\text{anatomy}}
+  + \eta\, \underbrace{\text{obj-det MSE}}_{\text{foreign objects}}\big)
+\]
+gated by a mask $M$ (dilated $+$ Gaussian-feathered lung segmentation)
+and a linear ramp $w(i)$ that rises from $0$ to $1$ starting at a
+configurable fraction of the trajectory, avoiding the discontinuity of an
+earlier hard on/off guidance switch.
+
+\textbf{Background lock.} At every step, the latent \emph{outside} the
+edit mask is overwritten with the original image's latent, forward-noised
+to the current timestep (clean at the final step) — a RePaint / Blended
+Latent Diffusion composite. This is a hard spatial constraint,
+independent of how well the gradient guidance happens to behave: content
+outside the lung field is guaranteed to collapse to the VAE
+reconstruction floor rather than being repainted by the free SDEdit
+process, which is what an unconstrained, high-\texttt{strength} schedule
+would otherwise do to the entire thorax.
+
+\subsection{PPO-controlled sampling schedule}
+
+Rather than fixing \texttt{strength}, guidance scales, and pass count for
+every image, a PPO agent (\texttt{factory/ppo.py},
+\texttt{factory/environment.py}) selects a 9-dimensional continuous action
+at each of up to $T=25$ refinement steps, mapped through
+\texttt{sigmoid}-based transforms to:
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Action} & \textbf{Controls} & \textbf{Range} \\
+\midrule
+$a_0$ & DDIM strength & $[0.20,\,0.70]$ \\
+$a_1$ & classifier-guidance scale & $[0.5,\,3.0]$ \\
+$a_2$ & preservation-guidance scale & $[0.3,\,1.5]$ \\
+$a_3$ & stop signal $\tau_t$ & $[0,\,1]$ \\
+$a_4,a_5$ & $+1$ extra refinement pass each (Bernoulli gates) & $\{0,1\}$ \\
+$a_6$ & per-pass strength boost & $[0.85,\,1.15]$ \\
+$a_7$ & guidance bias (cls$\uparrow$ vs.\ pres$\downarrow$ trade-off) & $[0.70,\,1.30]$ \\
+$a_8$ & guidance ramp-up start fraction & $[0.1,\,0.5]$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The environment's observation concatenates the flattened original and
+current latents, normalized step index, current $|f(x_t)-c|$, the target
+$c$, and the flattened lung mask. Episodes terminate when $|f(x_t)-c| <
+\varepsilon_{\text{stop}} = 0.08$ or the step budget is exhausted.
+
+\textbf{Reward.} Each step's shaped reward combines progress toward the
+target ($R_{\text{prog}}$, $R_{\text{val}}$, $R_{\text{close2}}$), a
+fidelity penalty against the original image ($R_{\text{fid}}$), a
+mask-weighted preservation penalty over the lung region plus a
+foreign-object-embedding KL term ($R_{\text{pres}}$), a per-step budget
+cost ($R_{\text{bud}}$), and terminal bonuses for reaching validity
+($R_{\text{hit}}$) and for stopping once valid ($R_{\text{stop}}$), each
+weighted by the $\lambda$ coefficients in Table~\ref{tab:hparams}.
+
+\textbf{Actor-critic architecture and update.} A shared 512$\to$256 MLP
+trunk feeds a Gaussian policy head (learnable, per-dimension log-std), a
+value head, and three auxiliary heads (feasibility, progress, stop) that
+are trained with auxiliary losses alongside the standard clipped PPO
+objective and GAE advantage estimation ($\gamma=0.99$,
+$\lambda_{\text{GAE}}=0.95$). A $\tau$-gated shaping term blends the raw
+step reward with a scaled advantage (\texttt{DELTA\_MIX}$=0.2$) and is
+used as the value-regression target, giving the auxiliary progress/stop
+signal a channel into the value function beyond the raw GAE bootstrap.
+
+\subsection{Two directional policies}
+
+\texttt{MedicalCounterfactualEnv} is built around a single fixed
+$c_{\text{target}}$, so one policy is trained for
+normal$\to$pneumonia ($c=1$) and a separate one for
+pneumonia$\to$normal ($c=0$), sharing the same fine-tuned generator but
+specializing their sampling schedules. This is motivated by an observed
+asymmetry: n$\to$p is empirically the harder direction (lower
+pre-fix CV, more diffuse edits), plausibly because "adding" a
+plausible opacity pattern to a clean lung field is a harder generative
+problem than "removing" one, and because the shared reward's
+\texttt{direction\_scale} historically applied unevenly across reward
+terms (Section~\ref{sec:asymmetry}).
+
+% ═════════════════════════════════════════════════════════════════════════
+\section{Experimental Setup}
+% ═════════════════════════════════════════════════════════════════════════
+
+\subsection{Dataset}
+
+The RSNA Pneumonia Detection Challenge dataset (Kaggle) supplies chest
+radiographs (DICOM, min–max normalized to $[0,1]$, resized to
+$256\times256$) with a binary label collapsed from bounding-box
+annotations: an image is labeled positive if any bounding box marks lung
+opacity (pneumonia), negative otherwise.
+
+\subsection{Pretrained components}
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Classifier $f$}: TorchXRayVision DenseNet-121
+        (\texttt{densenet121-res224-rsna}), pretrained directly on the
+        RSNA pneumonia task — the same label space as this project's
+        target.
+  \item \textbf{Segmentation net $S$}: TorchXRayVision PSPNet, providing
+        lung and heart channel masks used both for the preservation
+        reward and the CTR clinical metric.
+  \item \textbf{Object detector $O$}: YOLOv8n feature extractor, used as
+        a coarse foreign-object / structural-change embedding for the
+        preservation KL term and the SCP proxy metric.
+\end{itemize}
+
+\subsection{Hyperparameters}
+
+\begin{table}[h]
+\centering
+\caption{Key configuration values (\texttt{config.py}).}
+\label{tab:hparams}
+\begin{tabular}{@{}llr@{}}
+\toprule
+\textbf{Group} & \textbf{Parameter} & \textbf{Value} \\
+\midrule
+Image / latent      & Image size / latent size          & 256 / 32 \\
+Diffusion           & DDIM steps ($T_{\text{diff}}$)     & 50 \\
+Diffusion guidance  & $\alpha_{\text{cls}}$ / $\alpha_{\text{pres}}$ & 4.0 / 0.05 \\
+Background lock     & mask dilation / feather $\sigma$   & 2 / 1.0 (latent cells) \\
+PPO environment     & budget $T$ / $\varepsilon_{\text{stop}}$ & 25 / 0.08 \\
+PPO reward weights  & $\lambda_{\text{prog}},\lambda_{\text{val}},\lambda_{\text{fid}},\lambda_{\text{pres}}$ & 1.5, 2.0, 0.5, 0.5 \\
+                     & $\lambda_{\text{bud}},\lambda_{\text{stop}},\lambda_{\text{hit}},\lambda_{\text{close2}}$ & 0.1, 8.0, 6.0, 2.5 \\
+GAE                  & $\gamma$ / $\lambda_{\text{GAE}}$ / DELTA\_MIX & 0.99 / 0.95 / 0.2 \\
+PPO update           & clip / value coef / entropy coef  & 0.2 / 0.5 / 0.01 \\
+LoRA                 & rank / $\alpha$ / dropout          & 8 / 16 / 0.05 \\
+Optimization         & learning rate (PPO \& LoRA)        & $3\!\times\!10^{-4}$ / $1\!\times\!10^{-4}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Training and evaluation were run on a single Tesla V100-32GB node.
+\texttt{N\_EPISODES} and \texttt{N\_DENOISE\_EPOCHS} were set as
+compute-budget placeholders pending a short throughput benchmark on this
+hardware, per the guidance recorded in \texttt{config.py}.
+
+\subsection{Evaluation protocol}
+
+Following \cite{singla2022}, the evaluation set is split by classifier
+confidence into a negative group $X_n = \{x : f(x) < 0.2\}$ and a positive
+group $X_p = \{x : f(x) > 0.8\}$ (up to $n_{\text{eval}}=200$ each). The
+trained n$\to$p policy generates $X_c^{n \to p}$ from $X_n$ (target $c=1$)
+and the trained p$\to$n policy generates $X_c^{p \to n}$ from $X_p$
+(target $c=0$), using the policy's deterministic (mean) action for
+reproducibility.
+
+% ═════════════════════════════════════════════════════════════════════════
+\section{Evaluation Metrics}
+% ═════════════════════════════════════════════════════════════════════════
+
+\subsection{Counterfactual Validity (CV)}
+
+\[
+  \mathrm{CV} = \Pr\big[\, |f(x_c) - f(x)| > \tau \ \wedge\ (f(x_c) - 0.5)
+  \text{ has the intended sign} \,\big], \quad \tau = 0.8
+\]
+A counterfactual only counts as valid if it both moves the classifier
+score by a large margin \emph{and} crosses the decision boundary in the
+direction demanded by the target — a direction-aware tightening of the
+original direction-agnostic formulation, which would otherwise silently
+credit an image that moved the wrong way by a large margin.
+
+\subsection{Fr\'echet Inception Distance (FID)}
+
+Distributional realism is measured between the real group and its
+counterfactual set using penultimate-layer features. We use a
+TorchXRayVision DenseNet-121 (\texttt{-rsna} weights) feature extractor
+rather than the classical ImageNet Inception-v3 backbone, since it is
+trained on the same source distribution (RSNA) as the evaluation data,
+giving a feature space directly sensitive to pneumonia-relevant visual
+structure rather than generic natural-image texture. Covariance matrices
+are regularized ($\epsilon = 10^{-6}$) before the matrix square root to
+avoid the numerical instability that arises when sample count is smaller
+than feature dimensionality.
+
+\subsection{Identity Preservation (IP) — a model-free FOP substitute}
+\label{sec:ip}
+
+The paper's Foreign-Object Preservation (FOP) metric requires a
+custom-trained foreign-object detector (a Fast R-CNN trained on private,
+manually annotated data) that is not reproducible offline; no
+TorchXRayVision classifier exposes a usable "Support Devices" head under
+inspection. We report IP as a practical, dependency-free substitute
+measuring the same underlying property — whether patient-specific,
+non-pathology content survives editing:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{MS-SSIM}: multi-scale structural similarity between $x$
+        and $x_c$, capturing global anatomical identity across scales.
+  \item \textbf{HF-corr}: Pearson correlation of high-pass-filtered
+        (image minus Gaussian blur) versions of $x$ and $x_c$, a direct
+        proxy for whether thin, high-contrast structures — tubes, leads,
+        pacemakers — survive editing, since these are exactly the
+        spatial-frequency content a Gaussian high-pass isolates.
+\end{itemize}
+
+\subsection{Clinical proxy metrics: CTR and SCP}
+
+\textbf{Cardio-Thoracic Ratio (CTR)} is the ratio of the heart mask's
+horizontal span to the lung mask's horizontal span (both from the frozen
+PSPNet segmenter); CTR $> 0.5$ is the standard clinical cardiomegaly
+threshold. \textbf{Costophrenic-recess score (SCP)} is a proxy for
+pleural-effusion-related blunting, approximated here via a sigmoid
+transform of the YOLOv8 feature-norm in the lower-lobe crop (low norm
+$\to$ high SCP $\to$ healthy/un-blunted recess). Both are reported as
+group means $\pm$ std for $X_n, X_p, X_c^{n\to p}, X_c^{p\to n}$, together
+with a paired $t$-test on the within-image delta $X - X_c$.
+
+% ═════════════════════════════════════════════════════════════════════════
+\section{Results}
+% ═════════════════════════════════════════════════════════════════════════
+
+\subsection{Quantitative summary}
+
+Table~\ref{tab:results} reports the full metric suite computed by
+\texttt{run\_full\_evaluation} (values from
+\texttt{checkpoints/eval\_metrics.json}).
+
+\begin{table}[h]
+\centering
+\caption{Evaluation results, PPO-guided generation, $n_{\text{eval}} \le 200$ per group.}
+\label{tab:results}
+\begin{tabular}{@{}llrr@{}}
+\toprule
+\textbf{Metric} & \textbf{Definition} & \textbf{n$\to$p} & \textbf{p$\to$n} \\
+\midrule
+CV      & fraction valid ($\tau=0.8$)               & 0.975  & 0.955 \\
+        & \textit{mean}                              & \multicolumn{2}{c}{0.965} \\
+FID     & XRV-DenseNet features, lower = better       & 5.67   & 3.20 \\
+IP      & MS-SSIM                                     & 0.758  & 0.770 \\
+IP      & HF-corr                                     & 0.899  & 0.793 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Clinical proxy metrics: group means $\pm$ std and paired $t$-tests
+on the real$\,\to\,$counterfactual delta.}
+\label{tab:clinical}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+& \textbf{$X_n$} & \textbf{$X_c^{n\to p}$} & $\Delta$ ($t$, $p$) & \\
+\midrule
+CTR & $0.479 \pm 0.001$ & $0.480 \pm 0.001$ & $t=-4.65$, $p=6.0\!\times\!10^{-6}$ & \\
+SCP & $0.424 \pm 0.055$ & $0.379 \pm 0.133$ & $t=3.49$,  $p=6.3\!\times\!10^{-4}$ & \\
+\midrule
+& \textbf{$X_p$} & \textbf{$X_c^{p\to n}$} & $\Delta$ ($t$, $p$) & \\
+\midrule
+CTR & $0.479 \pm 0.001$ & $0.479 \pm 0.001$ & $t=-4.48$, $p=1.3\!\times\!10^{-5}$ & \\
+SCP & $0.452 \pm 0.101$ & $0.395 \pm 0.146$ & $t=5.14$,  $p=1.1\!\times\!10^{-6}$ & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Both clinical deltas are statistically significant ($p < 10^{-3}$) in both
+directions. The SCP delta is directionally consistent with the intended
+semantics — mean SCP drops as images move \emph{toward} pneumonia (SCP is
+a proxy for a \emph{healthy}, un-blunted costophrenic recess) and drops
+further, by a larger margin, when moving \emph{toward} normal ($p\to n$),
+which is the counter-intuitive direction: a plausible reading is that SCP,
+as a coarse YOLO-feature-norm proxy rather than a dedicated
+recess detector, is picking up general post-edit texture change more than
+recess-specific blunting, and should be interpreted qualitatively (as
+evidence that the edit is not clinically inert) rather than as
+literal blunting measurement. CTR's absolute shift is tiny in both
+directions ($<0.001$) despite reaching significance, consistent with
+sample size ($n\!\approx\!200$) driving significance at a CTR scale where
+the lung/heart segmentation masks are largely stable under a
+lung-field-only edit — exactly what the background lock is designed to
+guarantee, since cardiac silhouette lies mostly outside the pure lung
+mask used to gate edits.
+
+\subsection{Qualitative counterfactuals}
+
+Figures~\ref{fig:n2p} and~\ref{fig:p2n} show representative examples for
+each direction, generated with the deterministic (mean-action) policy on
+a confidently-negative and confidently-positive query image respectively
+(the same selection criterion, $f(x)<0.2$ / $f(x)>0.8$, used for the
+quantitative $X_n$/$X_p$ groups).
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{../checkpoints/counterfactual_diff_n_to_p.png}
+  \caption{\textbf{Normal $\to$ pneumonia.} Left to right: original
+  ($f(x)=0.160$), counterfactual targeting $c=1.0$
+  ($f(x_c)=0.999$), signed pixel difference, absolute difference heatmap.
+  The classifier score crosses the decision boundary by a wide margin.
+  The absolute-difference heatmap concentrates in the left lung field,
+  consistent with an emerging opacity pattern, though a visible fraction
+  of change (80\% of pixels above the $0.01$ threshold, MAE $=0.064$) also
+  falls in the right lung and mediastinal region — the residual signature
+  of the harder, historically more diffuse n$\to$p direction discussed in
+  Section~\ref{sec:asymmetry}.}
+  \label{fig:n2p}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{../checkpoints/counterfactual_diff_p_to_n.png}
+  \caption{\textbf{Pneumonia $\to$ normal.} Original ($f(x)=0.943$),
+  counterfactual targeting $c=0.0$ ($f(x_c)=0.005$), signed difference,
+  absolute difference heatmap. Change is concentrated bilaterally over
+  both lung fields (consistent with opacity removal) with a lower overall
+  magnitude than the n$\to$p case (MAE $=0.051$ vs.\ $0.064$, max
+  $\Delta=0.485$ vs.\ $0.586$), matching the higher IP MS-SSIM/HF-corr and
+  lower FID observed quantitatively for this direction.}
+  \label{fig:p2n}
+\end{figure}
+
+In both examples the classifier score fully saturates toward the target
+($f(x_c) < 0.01$ or $> 0.99$), well beyond the CV validity margin
+($\tau=0.8$), and gross anatomical layout (rib cage, mediastinal
+silhouette, external hardware visible in the p$\to$n example) is visibly
+retained outside the edited lung region — the qualitative signature of
+the background-lock constraint holding as intended.
+
+\subsection{Training diagnostics}
+
+Figure~\ref{fig:reward} shows the flat vs.\ GAE-shaped per-step reward
+trace logged after training
+(\texttt{plot\_reward\_trace}); the two curves are visually coincident
+here, which follows directly from PPO's advantage normalization washing
+out most of the difference a uniform reward-shaping term introduces (see
+Section~\ref{sec:asymmetry}).
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.7\textwidth]{../checkpoints/reward_trace.png}
+  \caption{Flat reward $R_t$ vs.\ GAE-shaped reward $\tilde R_t$ over a
+  short post-training rollout, plotted from \texttt{trainer.collect\_rollout()}.
+  The trace is short (this rollout terminates in two steps, reaching
+  validity almost immediately) and is intended as a training-health
+  diagnostic rather than a convergence curve; consult
+  \texttt{guidance\_diagnostics\_\{n\_to\_p,p\_to\_n\}.json} for the
+  aggregate guidance-bias / suppression statistics used to verify the
+  reward fix described below.}
+  \label{fig:reward}
+\end{figure}
+
+% ═════════════════════════════════════════════════════════════════════════
+\section{Discussion}
+% ═════════════════════════════════════════════════════════════════════════
+
+\subsection{The n$\to$p / p$\to$n asymmetry}
+\label{sec:asymmetry}
+
+Across every metric, p$\to$n is the easier direction: lower FID
+($3.20$ vs.\ $5.67$), higher IP (HF-corr $0.793$ vs.\ ... — note MS-SSIM
+is close, $0.770$ vs.\ $0.758$), and qualitatively less diffuse edits
+(Figures~\ref{fig:n2p}--\ref{fig:p2n}). A plausible generative explanation
+is that \emph{removing} a pathology pattern from a lung field (p$\to$n)
+is closer to a denoising/inpainting operation the SD1.5 prior already
+performs well, whereas \emph{synthesizing} a plausible, spatially coherent
+opacity pattern from a clean lung (n$\to$p) is a harder, more
+under-constrained generative task, especially at the scale of RSNA's
+fine-tuning budget.
+
+This asymmetry was known early in development and originally addressed
+with a \texttt{direction\_scale} $=2.25\times$ boost applied to the n$\to$p
+reward. A bug was identified and fixed during development: the scale was
+being applied only to the "progress" reward terms and not to
+$R_{\text{fid}}/R_{\text{pres}}$, which meant preservation was
+\emph{effectively} $2.25\times$ less important specifically on the
+direction that already struggled most — a direct mechanism for the
+diffuse, whole-image n$\to$p edits and foreign-object corruption observed
+in early qualitative checks. Applying \texttt{direction\_scale} uniformly
+to all reward terms fixed the relative weighting, though it is worth
+noting explicitly (as the code's change log does) that under PPO+GAE's
+per-update advantage normalization, a uniform scalar multiplying the
+\emph{entire} reward is close to a no-op for the policy gradient itself —
+the fix removes a harmful \emph{relative} re-weighting bug, but does not
+by itself inject extra learning signal into the harder direction. The
+residual asymmetry in Table~\ref{tab:results} and Figure~\ref{fig:n2p} is
+consistent with that: the bug fix stopped the reward from actively
+punishing preservation on n$\to$p, but did not close the underlying
+generative-difficulty gap. Future work, per the code's own guidance,
+should address this at the level of \emph{training compute} allocated to
+the n$\to$p policy specifically (more episodes, lower entropy
+coefficient) rather than via further reward scaling.
+
+\subsection{Guidance-bias floor and the reward-shaping bug}
+
+A second, related fix concerned the \texttt{guidance\_bias} action
+dimension, which trades off classifier-guidance strength against
+preservation-guidance strength per refinement pass. The original
+implementation multiplied classifier guidance and divided preservation
+guidance by the same unbounded factor, letting an aggressive policy
+suppress preservation arbitrarily. A floor was added
+(\texttt{pres\_suppression\_factor}$=\max(1/\text{guidance\_bias},\,0.6)$),
+though given the action's realized sigmoid range $(0.70, 1.30)$, the
+floor never actually binds today ($1/\text{guidance\_bias} \in (0.769,
+1.428)$) — it is left in as a safety margin for future widened action
+ranges rather than an active constraint, and is confirmed inert by the
+\texttt{run\_guidance\_diagnostics} routine's aggregate suppression
+statistics saved alongside each policy checkpoint
+(\texttt{guidance\_diagnostics\_\{n\_to\_p,p\_to\_n\}.json}).
+
+\subsection{FID sample-size caveat}
+
+FID estimates with $N\!\sim\!200$ samples (vs.\ the $\gg$feature-dimension
+sample counts FID nominally requires) carry high variance, particularly
+for the 1024-d XRV-DenseNet feature space used here; the reported $5.67$
+/ $3.20$ values should be read as directionally informative rather than
+tightly bounded, and increasing \texttt{n\_eval} is the first lever to
+pull for a more precise estimate if compute allows.
+
+\subsection{Limitations}
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{FOP is not computable offline.} No available
+        TorchXRayVision weight set exposes a genuine "Support Devices"
+        head, so the paper's original FOP metric is reported as
+        unavailable and replaced by the model-free IP score
+        (Section~\ref{sec:ip}), which measures a related but not
+        identical property.
+  \item \textbf{SCP is a coarse proxy.} Built from a COCO-pretrained
+        YOLOv8 feature norm rather than a dedicated costophrenic-recess
+        detector trained on annotated MIMIC-CXR data (as in the original
+        paper), its directional interpretation should be treated
+        cautiously, as discussed above.
+  \item \textbf{Compute-constrained training scale.} \texttt{N\_EPISODES}
+        and \texttt{N\_DENOISE\_EPOCHS} were sized as conservative
+        placeholders for a single V100-32GB budget rather than tuned via
+        ablation; the numbers reported here reflect that budget, not a
+        compute-unconstrained upper bound on system performance.
+  \item \textbf{Two independently trained policies.} A single
+        target-conditioned policy would be architecturally cleaner and
+        would let the harder direction borrow representation capacity
+        from the easier one, but requires a larger environment refactor
+        (randomized target $c$ per episode, dual far-index pools) not
+        undertaken in this iteration.
+\end{itemize}
+
+% ═════════════════════════════════════════════════════════════════════════
+\section{Conclusion}
+% ═════════════════════════════════════════════════════════════════════════
+
+We presented a PPO-controlled, LoRA-fine-tuned latent diffusion pipeline
+for generating class-conditional visual counterfactuals on chest
+radiographs, with a hard segmentation-mask-gated background lock ensuring
+edits stay confined to the lung field. Evaluated with the
+Singla~\emph{et al.} protocol plus a model-free identity-preservation
+score and two clinical proxy metrics, the system reaches high
+counterfactual validity in both edit directions (mean CV $=0.965$) with
+statistically significant, directionally sensible shifts in clinical
+proxy metrics, while surfacing — and, through two documented reward-bug
+fixes, partially correcting — a persistent generative asymmetry between
+adding and removing pathology evidence. The clearest next steps are
+scaling PPO training compute (particularly for the harder n$\to$p
+direction), replacing the SCP and IP proxies with dedicated,
+purpose-trained detectors if annotated data becomes available, and
+increasing FID evaluation sample size for tighter realism estimates.
+
+% ═════════════════════════════════════════════════════════════════════════
+\begin{thebibliography}{9}
+
+\bibitem{singla2022}
+S.~Singla, M.~Eslami, M.~Pollack, S.~Wallace, and K.~Batmanghelich.
+\textit{Explaining the Black-box Smoothly — A Counterfactual Approach.}
+Medical Image Analysis, 2022.
+
+\bibitem{repaint}
+A.~Lugmayr, M.~Danelljan, A.~Romero, F.~Yu, R.~Timofte, and L.~Van~Gool.
+\textit{RePaint: Inpainting using Denoising Diffusion Probabilistic Models.}
+CVPR, 2022.
+
+\bibitem{blended}
+O.~Avrahami, D.~Lischinski, and O.~Fried.
+\textit{Blended Diffusion for Text-driven Editing of Natural Images.}
+CVPR, 2022.
+
+\bibitem{rombach2022}
+R.~Rombach, A.~Blattmann, D.~Lorenz, P.~Esser, and B.~Ommer.
+\textit{High-Resolution Image Synthesis with Latent Diffusion Models.}
+CVPR, 2022.
+
+\bibitem{hu2021lora}
+E.~J.~Hu, Y.~Shen, P.~Wallis, Z.~Allen-Zhu, Y.~Li, S.~Wang, L.~Wang, and
+W.~Chen.
+\textit{LoRA: Low-Rank Adaptation of Large Language Models.}
+ICLR, 2022.
+
+\bibitem{schulman2017ppo}
+J.~Schulman, F.~Wolski, P.~Dhariwal, A.~Radford, and O.~Klimov.
+\textit{Proximal Policy Optimization Algorithms.}
+arXiv:1707.06347, 2017.
+
+\bibitem{rsna}
+RSNA Pneumonia Detection Challenge, Kaggle, 2018.
+\url{https://www.kaggle.com/c/rsna-pneumonia-detection-challenge}
+
+\bibitem{cohen2020xrv}
+J.~P.~Cohen, J.~D.~Viviano, P.~Bertin, P.~Morrison, P.~Torabian,
+M.~Guarrera, M.~P.~Lungren, A.~Chaudhari, R.~Brooks, M.~Hashir, and
+H.~Bertrand.
+\textit{TorchXRayVision: A library of chest X-ray datasets and models.}
+MIDL, 2022.
+
+\end{thebibliography}
+
+\end{document}

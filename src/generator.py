@@ -161,6 +161,47 @@ class PretrainedLatentDiffusionGenerator(nn.Module):
         return lung_mask.to(x.dtype)
 
     # ──────────────────────────────────────────────────────────────────────────
+    # Edit-mask shaping (dilation + feathering) for background locking
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def _gaussian_blur(self, m: torch.Tensor, sigma: float) -> torch.Tensor:
+        """
+        Separable Gaussian blur on a (B, 1, H, W) tensor. Used to feather a
+        hard mask edge so the locked-background composite has no visible seam
+        (the core trick Blended Latent Diffusion adds over naive RePaint).
+        """
+        if sigma is None or sigma <= 0.0:
+            return m
+        radius = max(1, int(3.0 * sigma))
+        coords = torch.arange(-radius, radius + 1, device=m.device, dtype=torch.float32)
+        g = torch.exp(-(coords ** 2) / (2.0 * sigma ** 2))
+        g = (g / g.sum()).to(m.dtype)
+        kx = g.view(1, 1, 1, -1)
+        ky = g.view(1, 1, -1, 1)
+        m = F.conv2d(m, kx, padding=(0, radius))
+        m = F.conv2d(m, ky, padding=(radius, 0))
+        return m
+
+    def _build_edit_mask(
+        self, latent_mask: torch.Tensor, dilation: int, feather_sigma: float
+    ) -> torch.Tensor:
+        """
+        Turn the raw lung latent mask into a soft *edit* mask in [0, 1]:
+          - dilate (morphological, via max-pool) so opacities sitting on the
+            lung boundary aren't clipped out of the editable region;
+          - feather (Gaussian) so the background-lock composite blends
+            smoothly instead of showing a hard cut at the lung border.
+        Operates at latent resolution (LATENT_SIZE x LATENT_SIZE); a dilation
+        of `d` there corresponds to ~d * IMG_SIZE/LATENT_SIZE pixels.
+        """
+        m = latent_mask
+        if dilation and dilation > 0:
+            k = 2 * dilation + 1
+            m = F.max_pool2d(m, kernel_size=k, stride=1, padding=dilation)
+        m = self._gaussian_blur(m, feather_sigma)
+        return m.clamp(0.0, 1.0).to(latent_mask.dtype)
+
+    # ──────────────────────────────────────────────────────────────────────────
     # Training loss (LoRA fine-tuning)
     # ──────────────────────────────────────────────────────────────────────────
 
@@ -207,6 +248,9 @@ class PretrainedLatentDiffusionGenerator(nn.Module):
         cls_guidance_scale: float = 1.0,
         pres_guidance_scale: float = 1.0,
         guidance_ramp_start_frac: float = 0.25,
+        lock_background: bool = config.LOCK_BACKGROUND,
+        bg_mask_dilation: int = config.BG_MASK_DILATION,
+        bg_mask_feather: float = config.BG_MASK_FEATHER,
     ) -> tuple[torch.Tensor, list[torch.Tensor]]:
         """
         Produce a counterfactual image x_cf targeting class c_scalar.
@@ -225,6 +269,25 @@ class PretrainedLatentDiffusionGenerator(nn.Module):
             of the trajectory. Replaces the old hard on/off switch at the
             trajectory midpoint with a smooth linear ramp, to avoid the
             discontinuity that could kick a step into a noisy collapse.
+        lock_background : bool
+            If True, apply RePaint / Blended-Latent-Diffusion style masked
+            latent blending at EVERY denoising step: the region OUTSIDE the
+            (dilated, feathered) lung mask is overwritten with the original
+            latent re-noised to the current timestep, so it can only follow
+            the identity trajectory. This is the hard spatial lock that the
+            per-step guidance masking (below) does NOT provide on its own —
+            masked guidance only gates the *correction gradient*, while the
+            free SDEdit denoising of a high-`strength` init still repaints
+            the whole thorax. With the lock on, out-of-lung change collapses
+            to the VAE round-trip floor by construction. Set False to
+            reproduce the old unconstrained behaviour for A/B comparison.
+        bg_mask_dilation : int
+            Morphological dilation (in latent cells) applied to the lung mask
+            before it's used as the edit region, so boundary opacities aren't
+            clipped. ~1 latent cell ≈ IMG_SIZE/LATENT_SIZE pixels.
+        bg_mask_feather : float
+            Gaussian sigma (in latent cells) used to feather the edit-mask
+            edge so the locked-background composite has no visible seam.
 
         Returns
         -------
@@ -253,6 +316,19 @@ class PretrainedLatentDiffusionGenerator(nn.Module):
             # change across the guidance loop below, so recomputing them per
             # step (as the original code did) was pure wasted compute.
             S_x = self._get_seg_mask(x)
+            latent_mask = F.interpolate(
+                S_x,
+                size=(config.LATENT_SIZE, config.LATENT_SIZE),
+                mode="bilinear",
+                align_corners=False,
+            )
+            # Soft edit mask (dilated + feathered) used BOTH to gate the
+            # guidance gradient and to composite the locked background. Using
+            # one mask for both keeps the region PPO's guidance can push and
+            # the region generation is allowed to change perfectly consistent.
+            edit_mask = self._build_edit_mask(
+                latent_mask, bg_mask_dilation, bg_mask_feather
+            ).to(z_t.dtype)
             O_x = self.obj_det(self._to_rgb(x))
 
         trajectory     = []
@@ -289,11 +365,29 @@ class PretrainedLatentDiffusionGenerator(nn.Module):
                     grad_pres, = torch.autograd.grad(L_pres_g, z0_hat_g)
 
                 with torch.no_grad():
-                    z_t = (
-                        z_t
+                    action = (
                         - guidance_weight * (config.ALPHA_CLS  * 1.15 * cls_guidance_scale) * grad_cls.to(self.dtype)
                         - guidance_weight * (config.ALPHA_PRES * pres_guidance_scale) * grad_pres.to(self.dtype)
                     )
+                    action = action * edit_mask.to(action.dtype)
+                    z_t = z_t + action
+
+            # ── background lock (RePaint / Blended Latent Diffusion) ──────────
+            # Overwrite everything outside the edit mask with the ORIGINAL
+            # latent forward-diffused to the next timestep, so only the lung
+            # region is free to change. On the final step the original latent
+            # is used clean, pinning the out-of-lung output to x's VAE
+            # reconstruction. This is the hard spatial constraint; masked
+            # guidance above only steers, it does not lock.
+            if lock_background:
+                with torch.no_grad():
+                    if i < n_steps - 1:
+                        t_next   = timesteps[i + 1].reshape(1)
+                        noise_bg = torch.randn_like(z0_orig_4d)
+                        z_bg     = self.scheduler.add_noise(z0_orig_4d, noise_bg, t_next)
+                    else:
+                        z_bg = z0_orig_4d
+                    z_t = edit_mask * z_t + (1.0 - edit_mask) * z_bg.to(z_t.dtype)
 
             if i in checkpoint_idx:
                 with torch.no_grad():
