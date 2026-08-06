@@ -1,17 +1,53 @@
 """
 main.py
 =======
-End-to-end pipeline:
+TRAINING pipeline (Steps 1-5):
     1. Ingest RSNA dataset
     2. Load pretrained models (classifier, segmenter, object detector)
     3. Build generator with LoRA
     4. LoRA fine-tuning (denoising)
     5. PPO training — TWO policies, one per direction (n→p, p→n)
-    6. Evaluation + visualisation, using the trained policies
-    7. Save checkpoints
+       + per-direction guidance diagnostics and checkpoints
+
+Evaluation is NOT run here. See eval_main.py (sbatch run_eval_ppo.slurm),
+which reloads the checkpoints this script writes.
+
+Usage
+-----
+    python main.py                        # both directions, sequentially
+    python main.py --direction n_to_p     # one direction (what run_ppo.slurm does)
 
 CHANGE LOG
 ----------
+- SPLIT PER DIRECTION. Added --direction {n_to_p,p_to_n,both}; run_ppo.slurm
+  is now a 2-task array, one direction per task.
+
+  WHY: publicgpu caps --time at 24h (MaxTime=1-00:00:00 — it cannot be raised)
+  and BOTH directions did not fit in one. Job 17653310 spent its full 24h on a
+  Tesla P100 and reached ~30 of 100 updates of n_to_p alone. The directions
+  share nothing but the Step 4 generator, which finetuning.py already resumes
+  from disk as a no-op, so running them as separate jobs is a free 2x on the
+  budget with no effect on the training itself.
+
+  The other half of that fix is in factory/ppo.py: PPOTrainer.train() now
+  checkpoints every few updates and honours a PPO_WALLCLOCK_BUDGET_S soft
+  deadline, so a direction that still needs more than 24h pauses cleanly and
+  resumes on resubmission instead of losing the run. _train_directional_policy
+  returns None in that case and writes NO final artefacts — see its docstring.
+- SPLIT FROM EVALUATION. Steps 6 (metric suite) and 6B (counterfactual
+  diff plots) moved to eval_main.py; _pick_query_images moved with them,
+  and Steps 1-3 moved to pipeline.build_common() so both entry points
+  construct the same objects.
+
+  WHY: PPO training is ~12-20h on the GPUs this job lands on (Quadro
+  RTX 5000 / Tesla P100) and evaluation is a further ~2.5-5h. A single
+  process that walltimes out in Step 6 discards the finished policies
+  with it. Job 17644171 did exactly that — both policies were saved
+  (22:21 and 11:05) and then the eval phase was killed at the 24h
+  boundary, producing nothing recoverable. Splitting also means eval can
+  be re-run (different n_eval, regenerated plots, metric fixes) without
+  repeating a PPO run.
+
 - Trains TWO separate PPOActorCritic policies instead of one: one for
   target_c=1.0 (n→p, normal→pneumonia) and one for target_c=0.0 (p→n,
   pneumonia→normal). MedicalCounterfactualEnv is built around a single
@@ -26,18 +62,8 @@ CHANGE LOG
   statistics, to verify the environment.py reward/guidance_bias fix is
   actually changing policy behaviour (not just the reward math) before
   spending time on the full metric suite.
-- Added _pick_query_images(): selects one confidently-negative
-  (f(x)<0.2) and one confidently-positive (f(x)>0.8) query image for the
-  qualitative diff plot, using the SAME thresholds as the Xn/Xp groups
-  in metrics.run_full_evaluation, instead of the previous arbitrary
-  dataset[0].
-- Step 6 (evaluation) and Step 6B (diff plots) now pass the two trained
-  policies through to run_full_evaluation / generate_and_plot_diff_bidirectional
-  so reported CV/FID/FOP numbers and the two saved diff images reflect
-  the actual PPO-guided pipeline, not the generator's hardcoded default
-  schedule.
-- Checkpoints are now saved per-direction under ckpt_dir/n_to_p/ and
-  ckpt_dir/p_to_n/, since there are now two distinct ppo_policy.pt files.
+- Checkpoints are saved per-direction under ckpt_dir/n_to_p/ and
+  ckpt_dir/p_to_n/, since there are two distinct ppo_policy.pt files.
   Note: generator.unet / cond_proj weights are identical in both
   subdirectories since LoRA fine-tuning (Step 4) is shared and only run
   once — this is intentional (one fine-tuned generator, two PPO policies
@@ -45,6 +71,7 @@ CHANGE LOG
   disk; consider saving them once at the top level if storage is tight.
 """
 
+import argparse
 import os
 import json
 
@@ -52,17 +79,12 @@ import numpy as np
 import torch
 
 import config
-from ingestion import build_dataset
-from src.models import  build_segmentation_net, build_object_detector
-from src.generator import build_generator
-from src.diff_viz import generate_and_plot_diff_bidirectional
+from pipeline import build_common
 from factory.finetuning import run_lora_finetuning
 from factory.environment import MedicalCounterfactualEnv
 from factory.ppo import PPOActorCritic, PPOTrainer
 from src.inference import DirectionalPolicy
-from src.metrics import run_full_evaluation
 from factory.evaluate import plot_reward_trace, save_checkpoints
-from src.xrv_classifier import build_xrv_classifier
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -176,59 +198,6 @@ def _save_diagnostics(stats: dict, ckpt_dir: str, filename: str) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Query-image selection for the bidirectional diff plot
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _pick_query_images(
-    dataset,
-    classifier,
-    device: str,
-    low: float = 0.2,
-    high: float = 0.8,
-    scan_batch_size: int = 32,
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """
-    Scan the dataset for the first confidently-negative image (f(x) < low)
-    and first confidently-positive image (f(x) > high), matching the same
-    grouping criteria used in metrics.run_full_evaluation, so the images
-    used for the visual diff plot are representative of the Xn / Xp groups
-    the quantitative metrics are actually computed over.
-
-    Returns
-    -------
-    (x_neg, x_pos) : each (1, 1, H, W) on `device`
-    """
-    from torch.utils.data import DataLoader
-
-    loader = DataLoader(dataset, batch_size=scan_batch_size, shuffle=True, num_workers=2)
-    to_rgb = lambda t: t.repeat(1, 3, 1, 1) if t.shape[1] == 1 else t
-
-    x_neg = x_pos = None
-    with torch.no_grad():
-        for x_batch, _labels in loader:
-            x_batch = x_batch.to(device)
-            scores  = classifier(to_rgb(x_batch)).squeeze(-1)
-            for i in range(len(x_batch)):
-                s = scores[i].item()
-                if x_neg is None and s < low:
-                    x_neg = x_batch[i].unsqueeze(0).clone()
-                if x_pos is None and s > high:
-                    x_pos = x_batch[i].unsqueeze(0).clone()
-            if x_neg is not None and x_pos is not None:
-                break
-
-    if x_neg is None or x_pos is None:
-        raise RuntimeError(
-            f"[main] could not find both a negative (f(x)<{low}) and "
-            f"positive (f(x)>{high}) example for the diff plot — dataset "
-            f"may be too small or classifier scores too concentrated. "
-            f"found_neg={x_neg is not None}, found_pos={x_pos is not None}"
-        )
-
-    return x_neg, x_pos
-
-
-# ─────────────────────────────────────────────────────────────────────────────
 # Per-direction PPO training
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -240,11 +209,23 @@ def _train_directional_policy(
     generator,
     seg_net,
     obj_det,
-) -> DirectionalPolicy:
+) -> DirectionalPolicy | None:
     """
     Build an env + policy for one direction, train it, run diagnostics,
     save a per-direction checkpoint, and return both env and policy
-    bundled as a DirectionalPolicy for use at evaluation time.
+    bundled as a DirectionalPolicy.
+
+    The checkpoint written here is what eval_main.py reloads — see
+    pipeline.load_directional_policy(), which rebuilds this same env and
+    restores ppo_policy.pt into a matching PPOActorCritic.
+
+    Returns None if PPOTrainer.train() stopped on the wall-clock budget rather
+    than finishing. In that case NOTHING downstream runs: no reward trace, no
+    guidance diagnostics, and no save_checkpoints(). Those all describe a
+    finished policy, and writing a half-trained ppo_policy.pt would be worse
+    than writing nothing — eval_main.py cannot tell the two apart, so a paused
+    run would silently be evaluated as a completed one. The resumable state
+    lives in ppo_latest.pt; resubmit to continue.
 
     Parameters
     ----------
@@ -274,10 +255,18 @@ def _train_directional_policy(
     print(f"[{label}] policy params = {sum(p.numel() for p in policy.parameters()):,}")
 
     trainer = PPOTrainer(env, policy, lr=config.LR)
-    trainer.train(
+    completed = trainer.train(
         n_episodes=config.N_EPISODES,
         log_every=max(1, config.N_EPISODES // 10),
+        label=label,
+        ckpt_dir=config.CKPT_DIR,
     )
+    if not completed:
+        print(f"\n[main] {label} PAUSED on the wall-clock budget — resumable "
+              f"state is in '{os.path.join(config.CKPT_DIR, label, 'ppo_latest.pt')}'.")
+        print(f"[main] skipping reward trace, guidance diagnostics and the final "
+              f"checkpoint: this policy is not finished.")
+        return None
 
     # per-direction reward trace + guidance diagnostics
     transitions = trainer.collect_rollout()
@@ -295,42 +284,46 @@ def _train_directional_policy(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Main pipeline
+# Training pipeline
 # ─────────────────────────────────────────────────────────────────────────────
 
-def main():
-    # ── 1. Dataset ────────────────────────────────────────────────────────────
-    print("=" * 70)
-    print("STEP 1 — Dataset ingestion")
-    print("=" * 70)
-    dataset = build_dataset(img_size=config.IMG_SIZE)
+DIRECTIONS = {
+    "n_to_p": 1.0,   # normal   -> pneumonia
+    "p_to_n": 0.0,   # pneumonia -> normal
+}
 
-    # ── 2. Pretrained models ──────────────────────────────────────────────────
-    print("\n" + "=" * 70)
-    print("STEP 2 — Loading pretrained models")
-    print("=" * 70)
-    classifier                = build_xrv_classifier(weights="densenet121-res224-rsna")
-    seg_net, lung_channel_idx = build_segmentation_net()
-    obj_det                   = build_object_detector()
 
-    # ── 3. Generator + LoRA ───────────────────────────────────────────────────
-    print("\n" + "=" * 70)
-    print("STEP 3 — Building generator with LoRA")
-    print("=" * 70)
-    generator = build_generator(
-        classifier=classifier,
-        seg_net=seg_net,
-        lung_channel_idx=lung_channel_idx,
-        obj_det=obj_det,
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="PPO counterfactual TRAINING pipeline (Steps 1-5). "
+                    "Evaluation lives in eval_main.py."
     )
+    parser.add_argument(
+        "--direction",
+        choices=[*DIRECTIONS, "both"],
+        default="both",
+        help="Which PPO policy to train. run_ppo.slurm submits one array task "
+             "per direction so each gets its own 24h walltime; 'both' (the "
+             "default) trains them sequentially in one process, which is what "
+             "a bare 'python main.py' does and what previously did not fit.",
+    )
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    labels = list(DIRECTIONS) if args.direction == "both" else [args.direction]
+
+    # ── 1-3. Dataset, pretrained models, generator ───────────────────────────
+    ctx = build_common()
 
     # ── 4. LoRA fine-tuning (shared generator, both directions) ──────────────
     print("\n" + "=" * 70)
     print("STEP 4 — LoRA denoising fine-tuning")
     print("=" * 70)
-    run_lora_finetuning(generator, dataset)
+    run_lora_finetuning(ctx.generator, ctx.dataset)
 
-    # ── 5. Train TWO policies, one per direction ──────────────────────────────
+    # ── 5. Train one policy per requested direction ───────────────────────────
     # MedicalCounterfactualEnv is built around a single fixed target_c per
     # instance, so a shared conditional policy would need a larger
     # refactor (randomized target_c per episode, dual far-index pools).
@@ -338,75 +331,48 @@ def main():
     # and lets each specialize on its (very differently-behaved)
     # direction — n→p is the harder direction per the CV asymmetry
     # (0.76 vs 0.94) and the reward/guidance_bias fix in environment.py.
-    policy_n_to_p = _train_directional_policy(
-        target_c=1.0, label="n_to_p",
-        dataset=dataset, classifier=classifier, generator=generator,
-        seg_net=seg_net, obj_det=obj_det,
-    )
-    policy_p_to_n = _train_directional_policy(
-        target_c=0.0, label="p_to_n",
-        dataset=dataset, classifier=classifier, generator=generator,
-        seg_net=seg_net, obj_det=obj_det,
-    )
-
-    # ── 6. Evaluation — now PPO-guided instead of generator-default ──────────
-    print("\n" + "=" * 70)
-    print("STEP 6 — Evaluation (PPO-guided generation)")
-    print("=" * 70)
-    eval_results = run_full_evaluation(
-        dataset=dataset,
-        classifier=classifier,
-        generator=generator,
-        seg_net=seg_net,
-        lung_channel_idx=lung_channel_idx,
-        obj_det=obj_det,
-        n_eval=min(200, len(dataset)),
-        ckpt_dir=config.CKPT_DIR,
-        device=config.DEVICE,
-        policy_n_to_p=policy_n_to_p,
-        policy_p_to_n=policy_p_to_n,
-        deterministic_policy=True,
-    )
-    print(
-        f"Evaluation metrics: "
-        f"CV={eval_results['CV']['mean']:.4f} "
-        f"(n→p={eval_results['CV']['n_to_p']:.4f}, p→n={eval_results['CV']['p_to_n']:.4f}) | "
-        f"FID_neg={eval_results['FID']['negative_group']:.4f} | "
-        f"FID_pos={eval_results['FID']['positive_group']:.4f}"
-    )
-    _ip = eval_results.get('IP')
-    if _ip:
-        _g = lambda d, k: f"{d[k]:.4f}" if d and d.get(k) is not None else "N/A"
-        print(
-            f"Identity Preservation (IP): "
-            f"n→p MS-SSIM={_g(_ip['n_to_p'], 'ms_ssim')}/HF={_g(_ip['n_to_p'], 'hf_corr')} | "
-            f"p→n MS-SSIM={_g(_ip['p_to_n'], 'ms_ssim')}/HF={_g(_ip['p_to_n'], 'hf_corr')}"
+    #
+    # The directions are INDEPENDENT — they share only the Step 4 generator,
+    # which is already trained and resumed above — so run_ppo.slurm submits
+    # them as separate array tasks and each gets its own 24h walltime.
+    finished, paused = [], []
+    for label in labels:
+        result = _train_directional_policy(
+            target_c=DIRECTIONS[label], label=label,
+            dataset=ctx.dataset, classifier=ctx.classifier, generator=ctx.generator,
+            seg_net=ctx.seg_net, obj_det=ctx.obj_det,
         )
+        (finished if result is not None else paused).append(label)
+        if result is None:
+            # Out of wall clock. Any remaining direction would be killed
+            # mid-rollout, so don't start one.
+            break
 
     print("\n" + "=" * 70)
-    print("STEP 6B — Counterfactual diff plots (n→p and p→n, PPO-guided)")
+    print("✓ TRAINING COMPLETE" if not paused else "⏸ TRAINING PAUSED (wall-clock budget)")
     print("=" * 70)
-    x_neg, x_pos = _pick_query_images(
-        dataset, classifier, device=config.DEVICE, low=0.2, high=0.8
-    )
-    os.makedirs(config.CKPT_DIR, exist_ok=True)
-    generate_and_plot_diff_bidirectional(
-        x_neg=x_neg,
-        x_pos=x_pos,
-        generator=generator,
-        classifier=classifier,
-        save_dir=config.CKPT_DIR,
-        directional_policy_n_to_p=policy_n_to_p,
-        directional_policy_p_to_n=policy_p_to_n,
-        deterministic_policy=True,
-    )
-    print(
-        f"[main] saved: "
-        f"{os.path.join(config.CKPT_DIR, 'counterfactual_diff_n_to_p.png')}, "
-        f"{os.path.join(config.CKPT_DIR, 'counterfactual_diff_p_to_n.png')}"
-    )
+    for label in finished:
+        print(f"  {label}: done → {config.CKPT_DIR}/{label}/"
+              f"  (ppo_policy.pt, unet_finetuned.pt, cond_proj.pt)")
+    for label in paused:
+        print(f"  {label}: PAUSED → {config.CKPT_DIR}/{label}/ppo_latest.pt "
+              f"(resumable state only, no ppo_policy.pt yet)")
+    for label in labels:
+        if label not in finished and label not in paused:
+            print(f"  {label}: NOT STARTED (ran out of wall clock beforehand)")
 
-    print("\n✓ Pipeline complete.")
+    if paused:
+        print("\n  Resubmit to continue from the saved state — training picks up")
+        print("  at the next update rather than restarting:")
+        print(f"        sbatch run_ppo.slurm          # both directions")
+        print(f"        sbatch --array=<task> run_ppo.slurm   # just the paused one")
+    elif set(labels) >= set(DIRECTIONS):
+        print("\n  Next: run the evaluation pipeline against these checkpoints —")
+        print("        sbatch run_eval_ppo.slurm")
+    else:
+        missing = [d for d in DIRECTIONS if d not in finished]
+        print(f"\n  Still to train before evaluation: {', '.join(missing)}")
+        print(f"        python main.py --direction {missing[0]}")
 
 
 if __name__ == "__main__":

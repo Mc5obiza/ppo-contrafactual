@@ -169,7 +169,21 @@ def _load_checkpoint(ckpt_dir: str, generator, optimizer, scaler) -> int:
     print(f"[finetuning] found checkpoint at {path} — resuming")
     checkpoint = torch.load(path, map_location=config.DEVICE)
 
-    set_peft_model_state_dict(generator.unet, checkpoint["lora_state_dict"])
+    try:
+        set_peft_model_state_dict(generator.unet, checkpoint["lora_state_dict"])
+    except (RuntimeError, ValueError, KeyError) as err:
+        # LoRA A/B matrices are shaped (r, in) / (out, r), so a LORA_R or
+        # LORA_TARGETS change makes a saved adapter unloadable. Resuming is
+        # exactly where that bites, and the raw error does not say why.
+        raise RuntimeError(
+            f"[finetuning] cannot resume '{path}' into the adapter this config "
+            f"builds (LORA_R={config.LORA_R}, LORA_TARGETS={config.LORA_TARGETS}).\n"
+            f"The checkpoint was written under a different LoRA rank or target "
+            f"set; those are baked into the adapter tensor shapes.\n"
+            f"To start the new adapter from scratch, move the checkpoint aside:\n"
+            f"    mv {path} {os.path.join(os.path.dirname(path), 'archive_v1_rank8', '')}\n"
+            f"Original error:\n{err}"
+        ) from err
     generator.cond_proj.load_state_dict(checkpoint["cond_proj_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     scaler.load_state_dict(checkpoint["scaler_state_dict"])

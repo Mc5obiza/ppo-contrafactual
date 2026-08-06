@@ -51,6 +51,126 @@ import torchxrayvision as xrv
 import config
 
 
+_to_rgb = lambda t: t.repeat(1, 3, 1, 1) if t.shape[1] == 1 else t
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 0. Shared group scan / scoring / config stamp
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# These three live here rather than in a caller because THREE entry points must
+# agree on them exactly: run_full_evaluation, heldout_validation.py, and
+# eval_main.py's sharded generate/reduce split. The split in particular is only
+# correct if a shard process and the reduce process derive byte-identical Xn/Xp
+# lists from the dataset — so there must be exactly one implementation of the
+# scan, not a copy per caller that can drift.
+
+
+def scan_groups(
+    dataset,
+    classifier,
+    n_eval: int,
+    device: str = config.DEVICE,
+    batch_size: int = 32,
+    tag: str = "metrics",
+) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
+    """
+    Split the dataset into Xn (f(x) < 0.2) and Xp (f(x) > 0.8) using the
+    GUIDANCE classifier, truncated to n_eval each.
+
+    DETERMINISM CONTRACT — this function must return the same lists in the same
+    order in every process, because eval_main.py --stage generate (running as N
+    independent SLURM array tasks) and --stage reduce each call it and then
+    index into the result. Two things guarantee that and must not change:
+
+      * shuffle=False here, so the DataLoader walks the dataset in index order;
+      * RSNACXRDataset.samples is built from a pandas groupby("patientId")
+        (ingestion.py), whose index is sorted by key — so dataset index order is
+        a stable function of patient ID, not of os.listdir order.
+
+    Returns (xn_list, xp_list), each a list of (1, 1, H, W) CPU tensors.
+    """
+    print(f"[{tag}] scanning dataset for Xn / Xp (n_eval={n_eval}) ...")
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=2)
+
+    xn_list, xp_list = [], []
+    with torch.no_grad():
+        for x_batch, _ in loader:
+            x_batch = x_batch.to(device)
+            scores = classifier(_to_rgb(x_batch)).squeeze(-1)
+            xn_list.extend([
+                x_batch[i].unsqueeze(0).cpu()
+                for i in range(len(x_batch)) if scores[i].item() < 0.2
+            ])
+            xp_list.extend([
+                x_batch[i].unsqueeze(0).cpu()
+                for i in range(len(x_batch)) if scores[i].item() > 0.8
+            ])
+            if len(xn_list) >= n_eval and len(xp_list) >= n_eval:
+                break
+
+    xn_list, xp_list = xn_list[:n_eval], xp_list[:n_eval]
+    print(f"[{tag}] Xn={len(xn_list)}  Xp={len(xp_list)}")
+    return xn_list, xp_list
+
+
+def score_batch(
+    x_list: list[torch.Tensor],
+    classifier,
+    device: str = config.DEVICE,
+    batch_size: int = 32,
+) -> torch.Tensor:
+    """
+    Score a list of (1,1,H,W) tensors -> (N,) float tensor on CPU.
+
+    Batched rather than one image at a time: the metric phase scores four
+    groups of up to 200 images each, and at batch size 1 that was 800 separate
+    forward passes for no reason.
+    """
+    out = []
+    with torch.no_grad():
+        for i in range(0, len(x_list), batch_size):
+            batch = torch.cat(x_list[i : i + batch_size]).to(device)
+            out.append(classifier(_to_rgb(batch)).squeeze(-1).float().cpu())
+    return torch.cat(out) if out else torch.empty(0)
+
+
+def current_cfg_stamp() -> dict:
+    """
+    The config knobs that change what a counterfactual looks like.
+
+    Written alongside every cached counterfactual (heldout_validation.py's
+    cf_cache.pt, eval_main.py's cf_shard_*.pt) so a cache generated under one
+    ablation arm can never be silently scored and reported as another. For the
+    sharded eval it is also a consistency check ACROSS shards: eight array
+    tasks that disagree on this stamp did not evaluate the same pipeline.
+
+    Covers the generation objective (guidance ensemble, alpha weights), the
+    spatial constraints (anchor, Grad-CAM mask, background lock), and the
+    episode/diffusion budgets. Deliberately NOT covered: reward-shaping knobs
+    that only affect PPO training, since the policies are loaded from a
+    checkpoint here and reward is never computed.
+    """
+    return {
+        "GUIDANCE_ENSEMBLE_WEIGHTS": list(config.GUIDANCE_ENSEMBLE_WEIGHTS),
+        "ANCHOR_TO_EPISODE_ORIGIN": config.ANCHOR_TO_EPISODE_ORIGIN,
+        "USE_GRADCAM_MASK": config.USE_GRADCAM_MASK,
+        "USE_SPARSITY_REWARD": config.USE_SPARSITY_REWARD,
+        "BUDGET_T": config.BUDGET_T,
+        "EDIT_BUDGET_L1": config.EDIT_BUDGET_L1,
+        "ENV_REFINEMENT_PASSES": config.ENV_REFINEMENT_PASSES,
+        # Added with the sharded-eval split: all four change the pixels a
+        # counterfactual ends up with, so a shard written before/after a change
+        # to any of them must not be mixed with one written after/before.
+        "T_DIFF": config.T_DIFF,
+        "FIXED_EPISODE_LENGTH": config.FIXED_EPISODE_LENGTH,
+        "LOCK_BACKGROUND": config.LOCK_BACKGROUND,
+        "ALPHA_CLS": config.ALPHA_CLS,
+        "ALPHA_PRES": config.ALPHA_PRES,
+        "ETA_OBJ": config.ETA_OBJ,
+    }
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. Counterfactual Validity (CV)  —  Eq. 11
 # ─────────────────────────────────────────────────────────────────────────────
@@ -64,13 +184,12 @@ def counterfactual_validity(
 ) -> float:
     """
     CV(X, Xc) = fraction of counterfactuals that move the classifier score
-    by more than τ *in the intended direction* AND cross the decision
+    by at least τ *in the intended direction* AND cross the decision
     boundary.
 
-    NOTE: an earlier version used |f(x) - f(xc)| > τ, which is
-    direction-agnostic — it counts a score change in the WRONG direction as
-    valid, silently inflating CV. A counterfactual is only "valid" if it
-    actually flips the prediction the way the target demands.
+    This uses a stricter, paper-aligned criterion than a simple absolute change:
+    the counterfactual must both (a) move in the desired direction by the
+    required margin and (b) actually cross the decision boundary.
 
     Parameters
     ----------
@@ -83,15 +202,34 @@ def counterfactual_validity(
 
     Returns
     -------
-    float  CV score ∈ [0, 1]
+    float  CV score ∈ [0, 1], or NaN if the batch is empty/non-finite.
     """
-    assert f_x.shape == f_xc.shape, "f_x and f_xc must have the same shape"
+    if f_x.shape != f_xc.shape:
+        raise AssertionError("f_x and f_xc must have the same shape")
+
+    f_x = f_x.detach().reshape(-1)
+    f_xc = f_xc.detach().reshape(-1)
+
+    if f_x.numel() == 0:
+        return float("nan")
+
+    finite_mask = torch.isfinite(f_x) & torch.isfinite(f_xc)
+    if finite_mask.sum() == 0:
+        return float("nan")
+
+    f_x = f_x[finite_mask]
+    f_xc = f_xc[finite_mask]
+
     if target == "positive":
-        valid = (f_xc - f_x > tau) & (f_xc > boundary)
+        moved = (f_xc - f_x) >= tau
+        crossed = (f_x <= boundary) & (f_xc > boundary)
     elif target == "negative":
-        valid = (f_x - f_xc > tau) & (f_xc < boundary)
+        moved = (f_x - f_xc) >= tau
+        crossed = (f_x >= boundary) & (f_xc < boundary)
     else:
         raise ValueError(f"target must be 'positive' or 'negative', got {target!r}")
+
+    valid = moved & crossed
     return valid.float().mean().item()
 
 
@@ -569,8 +707,115 @@ def identity_preservation(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# 3c. Edit concentration  —  model-free locality / adversarial discriminator
+# ─────────────────────────────────────────────────────────────────────────────
+
+def edit_concentration(
+    X_real: list[torch.Tensor],
+    X_cf:   list[torch.Tensor],
+    top_frac: float = 0.05,
+) -> dict:
+    """
+    Fraction of total |x_cf - x| mass held by the top `top_frac` of pixels,
+    averaged over pairs. Needs no model and no downloads.
+
+    WHY THIS IS HERE
+    ----------------
+    A semantic edit and an adversarial perturbation are separated by their
+    L0/L-inf profile, not by their magnitude. A focal consolidation is
+    large-amplitude over a small support and concentrates most of its mass in
+    a few pixels; an adversarial perturbation is small-amplitude over a wide
+    support and spreads mass almost uniformly. Uniform change scores exactly
+    `top_frac` (0.05), so that value is the noise floor and >~0.5 is focal.
+
+    Calibration on synthetic pairs: a diffuse edit (75% of pixels, MAE 0.037 —
+    close to what this pipeline measured) scores 0.067; a compact 12x12 patch
+    scores 1.000. v1 counterfactuals scored 0.282 (n→p) / 0.297 (p→n), i.e.
+    partly localized but mostly diffuse.
+
+    Also returns mean L1 and the fraction of pixels moved by >0.01, matching
+    the "% changed" figure diff_viz prints, so the numbers are directly
+    comparable to the counterfactual_diff plots.
+
+    Shared with heldout_validation.py, which imports it from here so both
+    reports compute concentration exactly the same way.
+    """
+    concs, maes, fracs = [], [], []
+    for x, xc in zip(X_real, X_cf):
+        d = (xc.float() - x.float()).abs().flatten()
+        total = d.sum()
+        if total <= 0:
+            continue
+        k = max(1, int(round(top_frac * d.numel())))
+        topk = torch.topk(d, k).values.sum()
+        concs.append((topk / total).item())
+        maes.append(d.mean().item())
+        fracs.append((d > 0.01).float().mean().item())
+
+    return dict(
+        concentration=float(np.mean(concs)) if concs else float("nan"),
+        uniform_baseline=top_frac,
+        mae=float(np.mean(maes)) if maes else float("nan"),
+        frac_changed=float(np.mean(fracs)) if fracs else float("nan"),
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 4. Cardio-Thoracic Ratio (CTR)  —  cardiomegaly clinical metric
 # ─────────────────────────────────────────────────────────────────────────────
+
+def compute_ctr_batch(
+    x_list: list[torch.Tensor],
+    seg_net: nn.Module,
+    lung_channel_idx: list[int],
+    heart_channel_idx: int,
+    device: str = config.DEVICE,
+    seg_input_size: int = config.SEG_INPUT_SIZE,
+    batch_size: int = 16,
+) -> list[float]:
+    """
+    Cardio-Thoracic Ratio over a list of images -> list[float], NaN where a
+    mask came out empty.
+
+    Batched because the metric phase runs CTR over four groups of up to 200
+    images each, and the PSPNet forward is at SEG_INPUT_SIZE=512 — 800 of those
+    one at a time was tens of minutes of pure launch overhead. Only the
+    segmentation forward is batched; the per-image column spans below are cheap
+    numpy on an already-thresholded mask.
+
+    See compute_ctr for the definition and the Chamveha et al. (2020) reference.
+    """
+    out: list[float] = []
+    for i in range(0, len(x_list), batch_size):
+        chunk = torch.cat(x_list[i : i + batch_size]).to(device)   # (b,1,H,W)
+        H, W  = chunk.shape[-2:]
+
+        x_xrv = chunk * 2048.0 - 1024.0
+        if (H, W) != (seg_input_size, seg_input_size):
+            x_xrv = F.interpolate(
+                x_xrv, size=(seg_input_size, seg_input_size),
+                mode="bilinear", align_corners=False,
+            )
+
+        with torch.no_grad():
+            seg_out = seg_net(x_xrv.float())          # (b, n_classes, H', W')
+            lung = (torch.sigmoid(seg_out[:, lung_channel_idx]).amax(dim=1) > 0.5)
+            heart = (torch.sigmoid(seg_out[:, heart_channel_idx]) > 0.5)
+        lung_np  = lung.cpu().numpy()                 # (b, H', W')
+        heart_np = heart.cpu().numpy()                # (b, H', W')
+
+        for b in range(lung_np.shape[0]):
+            lung_mask, heart_mask = lung_np[b], heart_np[b]
+            if lung_mask.sum() == 0 or heart_mask.sum() == 0:
+                out.append(float("nan"))
+                continue
+            heart_cols    = np.where(heart_mask.any(axis=0))[0]
+            cardiac_diam  = float(heart_cols[-1] - heart_cols[0]) if len(heart_cols) >= 2 else 0.0
+            lung_cols     = np.where(lung_mask.any(axis=0))[0]
+            thoracic_diam = float(lung_cols[-1] - lung_cols[0]) if len(lung_cols) >= 2 else 1.0
+            out.append(cardiac_diam / (thoracic_diam + 1e-8))
+    return out
+
 
 def compute_ctr(
     x: torch.Tensor,
@@ -588,6 +833,10 @@ def compute_ctr(
       - cardiac diameter  = horizontal span of the heart mask
       - thoracic diameter = horizontal span of the lung mask
 
+    Single-image wrapper over compute_ctr_batch, kept because other callers
+    (and the paper's notation) work one image at a time. The metric suite uses
+    the batched form.
+
     Parameters
     ----------
     x                 : (1, 1, H, W) CXR image, values in [0, 1]
@@ -599,43 +848,42 @@ def compute_ctr(
     -------
     float — CTR value (or np.nan if masks are empty)
     """
-    B, C, H, W = x.shape
-
-    x_xrv = x * 2048.0 - 1024.0
-    if (H, W) != (seg_input_size, seg_input_size):
-        x_xrv = F.interpolate(
-            x_xrv, size=(seg_input_size, seg_input_size),
-            mode="bilinear", align_corners=False,
-        )
-
-    with torch.no_grad():
-        seg_out = seg_net(x_xrv.float().to(device))  # (1, n_classes, H', W')
-
-    # ── lung mask ─────────────────────────────────────────────────────────────
-    lung_logits  = seg_out[:, lung_channel_idx, :, :]
-    lung_mask    = (torch.sigmoid(lung_logits).amax(dim=1) > 0.5).squeeze(0).cpu().numpy()
-
-    # ── heart mask ────────────────────────────────────────────────────────────
-    heart_logits = seg_out[:, heart_channel_idx, :, :]
-    heart_mask   = (torch.sigmoid(heart_logits) > 0.5).squeeze(0).squeeze(0).cpu().numpy()
-
-    if lung_mask.sum() == 0 or heart_mask.sum() == 0:
-        return float("nan")
-
-    # horizontal span of heart
-    heart_cols     = np.where(heart_mask.any(axis=0))[0]
-    cardiac_diam   = float(heart_cols[-1] - heart_cols[0]) if len(heart_cols) >= 2 else 0.0
-
-    # horizontal span of lungs
-    lung_cols      = np.where(lung_mask.any(axis=0))[0]
-    thoracic_diam  = float(lung_cols[-1] - lung_cols[0])  if len(lung_cols) >= 2 else 1.0
-
-    return cardiac_diam / (thoracic_diam + 1e-8)
+    return compute_ctr_batch(
+        [x], seg_net, lung_channel_idx, heart_channel_idx, device, seg_input_size
+    )[0]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 5. Score for normal CostoPhrenic recess (SCP)  —  pleural effusion metric
 # ─────────────────────────────────────────────────────────────────────────────
+
+def compute_scp_batch(
+    x_list: list[torch.Tensor],
+    obj_det,
+    device: str = config.DEVICE,
+    batch_size: int = 16,
+) -> list[float]:
+    """
+    SCP proxy over a list of images -> list[float]. Batched form of
+    compute_scp (see it for the definition and its caveats — the proxy is
+    known to saturate, and run_full_evaluation flags that).
+
+    Same motivation as compute_ctr_batch: 800 single-image YOLO forwards in the
+    metric phase for no reason.
+    """
+    out: list[float] = []
+    for i in range(0, len(x_list), batch_size):
+        chunk = torch.cat(x_list[i : i + batch_size]).to(device)
+        H = chunk.shape[-2]
+        lower_third = chunk[:, :, int(2 * H / 3) :, :]
+        x3 = _to_rgb(lower_third)
+        with torch.no_grad():
+            feat = obj_det(x3)                             # (b, D)
+            norms = feat.norm(dim=-1)                      # (b,)
+            scps = torch.sigmoid(-norms.float() / 50.0)
+        out.extend(scps.cpu().tolist())
+    return out
+
 
 def compute_scp(
     x: torch.Tensor,
@@ -661,18 +909,10 @@ def compute_scp(
     -------
     float — SCP proxy score
     """
-    B, C, H, W = x.shape
-    # crop lower third of the image (CP recess region)
-    lower_third = x[:, :, int(2 * H / 3) :, :]
-    x3 = lower_third.repeat(1, 3, 1, 1) if lower_third.shape[1] == 1 else lower_third
-
-    with torch.no_grad():
-        feat = obj_det(x3.to(device))                  # (1, D)
-        # proxy: low feature-norm in lower lobe = healthy (no fluid = high SCP)
-        norm_val = feat.norm(dim=-1).item()
-        scp = float(torch.sigmoid(torch.tensor(-norm_val / 50.0)).item())
-
-    return scp
+    # Single-image wrapper over compute_scp_batch. The proxy itself is
+    # unchanged: low feature-norm in the lower lobe = healthy (no fluid, so
+    # high SCP).
+    return compute_scp_batch([x], obj_det, device)[0]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -695,6 +935,10 @@ def run_full_evaluation(
     policy_n_to_p=None,
     policy_p_to_n=None,
     deterministic_policy: bool = True,
+    xn_list: Optional[list[torch.Tensor]] = None,
+    xp_list: Optional[list[torch.Tensor]] = None,
+    xc_np: Optional[list[torch.Tensor]] = None,
+    xc_pn: Optional[list[torch.Tensor]] = None,
 ) -> dict:
     """
     Run the complete evaluation protocol from Singla et al. (2022).
@@ -738,13 +982,27 @@ def run_full_evaluation(
              Passed through to generate_batch_with_policy when policies
              are provided. True (default) uses the policy's mean action
              for reproducible eval numbers.
+    xn_list, xp_list, xc_np, xc_pn : list[Tensor] | None
+             PRECOMPUTED path. Supply all four to skip both the group scan and
+             counterfactual generation and go straight to scoring — this is
+             what eval_main.py --stage reduce uses to compute metrics from
+             counterfactuals that eight SLURM array tasks generated hours
+             earlier. Generation is ~29h at n_eval=200 and the metrics on top
+             are minutes, so decoupling them is what lets the eval finish
+             inside the 24h partition cap at all, and lets a metric fix be
+             re-run without regenerating anything.
+             All four or none — a partial set is a caller bug (scoring
+             supplied counterfactuals against freshly scanned originals would
+             silently pair the wrong images) and raises.
+             `dataset` and `classifier` are then only used for scoring, and
+             `generator` / the policies are not used at all.
 
     Returns
     -------
     dict with all metric values, also printed to stdout and saved as JSON.
     """
     from scipy import stats as scipy_stats
-    from src.inference import generate_batch_with_policy
+    from src.inference import EVAL_PN_SEED_OFFSET, generate_batch_with_policy
 
     print("\n" + "=" * 70)
     print("EVALUATION — Singla et al. (2022) metrics")
@@ -764,67 +1022,70 @@ def run_full_evaluation(
     if heart_channel_idx is None:
         print("[metrics] WARNING: heart channel not found in seg_net.targets — CTR will be skipped")
 
-    # ── scan dataset for Xn / Xp ──────────────────────────────────────────────
-    print("[metrics] scanning dataset for negative/positive groups ...")
-    loader = DataLoader(dataset, batch_size=32, shuffle=False, num_workers=2)
-    to_rgb = lambda t: t.repeat(1, 3, 1, 1) if t.shape[1] == 1 else t
+    precomputed = [xn_list, xp_list, xc_np, xc_pn]
+    if any(v is not None for v in precomputed) and not all(v is not None for v in precomputed):
+        raise ValueError(
+            "run_full_evaluation: xn_list/xp_list/xc_np/xc_pn must be supplied "
+            "all together or not at all — a partial set would pair scanned "
+            "originals against unrelated counterfactuals. Got: "
+            + ", ".join(
+                f"{n}={'set' if v is not None else 'None'}"
+                for n, v in zip(("xn_list", "xp_list", "xc_np", "xc_pn"), precomputed)
+            )
+        )
 
-    xn_list, xp_list = [], []
-    with torch.no_grad():
-        for x_batch, _ in loader:
-            x_batch = x_batch.to(device)
-            scores  = classifier(to_rgb(x_batch)).squeeze(-1)
-            xn_list.extend([
-                x_batch[i].unsqueeze(0).cpu()
-                for i in range(len(x_batch)) if scores[i].item() < 0.2
-            ])
-            xp_list.extend([
-                x_batch[i].unsqueeze(0).cpu()
-                for i in range(len(x_batch)) if scores[i].item() > 0.8
-            ])
-            if len(xn_list) >= n_eval and len(xp_list) >= n_eval:
-                break
+    if all(v is not None for v in precomputed):
+        # ── precomputed path (eval_main.py --stage reduce) ────────────────────
+        print(f"[metrics] using PRECOMPUTED counterfactuals — skipping scan and "
+              f"generation. Xn={len(xn_list)}  Xp={len(xp_list)}")
+        if not (len(xn_list) == len(xc_np) and len(xp_list) == len(xc_pn)):
+            raise ValueError(
+                f"precomputed group/counterfactual lengths disagree: "
+                f"Xn={len(xn_list)} Xc_n→p={len(xc_np)} | "
+                f"Xp={len(xp_list)} Xc_p→n={len(xc_pn)}"
+            )
+    else:
+        # ── scan dataset for Xn / Xp ──────────────────────────────────────────
+        xn_list, xp_list = scan_groups(dataset, classifier, n_eval, device)
 
-    xn_list = xn_list[:n_eval]
-    xp_list = xp_list[:n_eval]
-    print(f"[metrics] Xn={len(xn_list)}  Xp={len(xp_list)}")
+        # ── generate counterfactuals ──────────────────────────────────────────
+        print("[metrics] generating Xc (n→p) and Xc (p→n) ...")
+
+        def _generate_batch(
+            x_list: list, target_c: float, directional_policy,
+            index_offset: int, label: str,
+        ) -> list[torch.Tensor]:
+            if directional_policy is not None:
+                return generate_batch_with_policy(
+                    x_list, directional_policy,
+                    deterministic=deterministic_policy,
+                    index_offset=index_offset, label=label, progress_every=10,
+                )
+            # fallback: direct generator call with default schedule
+            cfs = []
+            for x in x_list:
+                xc, _ = generator.generate_counterfactual(x.to(device), target_c, M=1)
+                cfs.append(xc.detach().cpu())
+            return cfs
+
+        # index_offset values must match eval_main.py's sharded generate stage,
+        # so a single-process run and a sharded one produce identical images.
+        xc_np = _generate_batch(xn_list, 1.0, policy_n_to_p, 0, "n_to_p")
+        xc_pn = _generate_batch(xp_list, 0.0, policy_p_to_n,
+                                EVAL_PN_SEED_OFFSET, "p_to_n")
+        if hasattr(generator, "cam_degeneracy_summary"):
+            print(generator.cam_degeneracy_summary())
 
     if len(xn_list) < 200 or len(xp_list) < 200:
         print(f"[metrics] WARNING: group size < 200 — FID estimate will have "
               f"high variance and likely be biased upward. Consider lowering "
               f"the f(x)<0.2 / f(x)>0.8 thresholds or increasing n_eval.")
 
-    # ── generate counterfactuals ───────────────────────────────────────────────
-    print("[metrics] generating Xc (n→p) and Xc (p→n) ...")
-
-    def _generate_batch(x_list: list, target_c: float, directional_policy) -> list[torch.Tensor]:
-        if directional_policy is not None:
-            return generate_batch_with_policy(
-                x_list, directional_policy, deterministic=deterministic_policy
-            )
-        # fallback: direct generator call with default schedule
-        cfs = []
-        for x in x_list:
-            xc, _ = generator.generate_counterfactual(x.to(device), target_c, M=1)
-            cfs.append(xc.detach().cpu())
-        return cfs
-
-    xc_np = _generate_batch(xn_list, 1.0, policy_n_to_p)   # negative → push positive
-    xc_pn = _generate_batch(xp_list, 0.0, policy_p_to_n)   # positive → push negative
-
     # ── classifier scores ──────────────────────────────────────────────────────
-    def _score_batch(x_list):
-        scores = []
-        with torch.no_grad():
-            for x in x_list:
-                s = classifier(to_rgb(x.to(device))).item()
-                scores.append(s)
-        return torch.tensor(scores)
-
-    f_xn    = _score_batch(xn_list)
-    f_xp    = _score_batch(xp_list)
-    f_xc_np = _score_batch(xc_np)
-    f_xc_pn = _score_batch(xc_pn)
+    f_xn    = score_batch(xn_list, classifier, device)
+    f_xp    = score_batch(xp_list, classifier, device)
+    f_xc_np = score_batch(xc_np,   classifier, device)
+    f_xc_pn = score_batch(xc_pn,   classifier, device)
 
     # ── CV ────────────────────────────────────────────────────────────────────
     cv_np = counterfactual_validity(f_xn, f_xc_np, target="positive", tau=tau_cv)
@@ -837,8 +1098,25 @@ def run_full_evaluation(
         _XRVFeatureExtractor(device) if fid_backbone == "xrv"
         else _InceptionFeatureExtractor(device)
     )
+    # SAME-group FID: counterfactual vs its SOURCE class. A large value here is
+    # ambiguous — it could mean the class genuinely changed, or that the
+    # counterfactual is off-manifold. Kept for continuity with earlier runs.
     fid_neg = frechet_inception_distance(xn_list, xc_np, device=device, extractor=fid_extractor)
     fid_pos = frechet_inception_distance(xp_list, xc_pn, device=device, extractor=fid_extractor)
+
+    # CROSS-group FID: counterfactual vs its TARGET class. This is the actual
+    # realism test — an n→p counterfactual should be indistinguishable from
+    # REAL positives, so LOW is good and the ambiguity above disappears.
+    # Reading the two together separates the cases: high same-group + low
+    # cross-group is a real class change; high on BOTH is an off-manifold edit,
+    # which is what a tiny pixel change producing a huge feature-space shift
+    # (v1: MAE 0.036 with FID 103.8) looks like.
+    fid_np_vs_real_pos = frechet_inception_distance(
+        xp_list, xc_np, device=device, extractor=fid_extractor
+    )
+    fid_pn_vs_real_neg = frechet_inception_distance(
+        xn_list, xc_pn, device=device, extractor=fid_extractor
+    )
 
     # ── FOP ───────────────────────────────────────────────────────────────────
     print("[metrics] computing FOP (TorchXRayVision Support Devices detector) ...")
@@ -854,15 +1132,19 @@ def run_full_evaluation(
     ip_np = identity_preservation(xn_list, xc_np, device)
     ip_pn = identity_preservation(xp_list, xc_pn, device)
 
+    # ── Edit concentration (model-free locality check) ────────────────────────
+    print("[metrics] computing edit concentration ...")
+    ec_np = edit_concentration(xn_list, xc_np)
+    ec_pn = edit_concentration(xp_list, xc_pn)
+
     # ── CTR ───────────────────────────────────────────────────────────────────
     ctr_results = {}
     if heart_channel_idx is not None:
         print("[metrics] computing CTR ...")
         def _ctr_batch(x_list):
-            return [
-                compute_ctr(x.to(device), seg_net, lung_channel_idx, heart_channel_idx, device)
-                for x in x_list
-            ]
+            return compute_ctr_batch(
+                x_list, seg_net, lung_channel_idx, heart_channel_idx, device
+            )
         ctr_xn    = np.array(_ctr_batch(xn_list))
         ctr_xp    = np.array(_ctr_batch(xp_list))
         ctr_xc_np = np.array(_ctr_batch(xc_np))
@@ -891,7 +1173,7 @@ def run_full_evaluation(
     # ── SCP ───────────────────────────────────────────────────────────────────
     print("[metrics] computing SCP ...")
     def _scp_batch(x_list):
-        return [compute_scp(x.to(device), obj_det, device) for x in x_list]
+        return compute_scp_batch(x_list, obj_det, device)
 
     scp_xn    = np.array(_scp_batch(xn_list))
     scp_xp    = np.array(_scp_batch(xp_list))
@@ -903,6 +1185,19 @@ def run_full_evaluation(
     t_sn, p_sn = scipy_stats.ttest_rel(scp_xn, scp_xc_np)
     t_sp, p_sp = scipy_stats.ttest_rel(scp_xp, scp_xc_pn)
 
+    # DEGENERACY CHECK. compute_scp is a proxy — sigmoid(-‖yolo_feat‖ / 50) on
+    # the lower third of the image — and in practice it saturates: the previous
+    # run measured std 0.0008 on a mean of 0.479 across all four groups, i.e.
+    # the metric is a constant and its t-tests are testing numerical noise.
+    # Flagged rather than silently reported, so a p-value from a constant is
+    # never mistaken for a clinical finding. If this fires, either fix the
+    # proxy (a real CP-recess detector) or drop SCP from the writeup.
+    scp_spread = float(
+        max(scp_xn.std(), scp_xp.std(), scp_xc_np.std(), scp_xc_pn.std())
+    )
+    scp_scale = float(abs(np.mean([scp_xn.mean(), scp_xp.mean()])) + 1e-8)
+    scp_degenerate = bool(scp_spread / scp_scale < 0.02)   # <2% relative spread
+
     scp_results = dict(
         mean_xn=float(scp_xn.mean()),       std_xn=float(scp_xn.std()),
         mean_xp=float(scp_xp.mean()),       std_xp=float(scp_xp.std()),
@@ -912,14 +1207,23 @@ def run_full_evaluation(
         t_n=float(t_sn), p_n=float(p_sn),
         mean_delta_p=float(delta_sp.mean()), std_delta_p=float(delta_sp.std()),
         t_p=float(t_sp), p_p=float(p_sp),
+        degenerate=scp_degenerate,
+        relative_spread=float(scp_spread / scp_scale),
     )
 
     # ── assemble results dict ─────────────────────────────────────────────────
     results = dict(
         CV=dict(n_to_p=cv_np, p_to_n=cv_pn, mean=cv),
-        FID=dict(negative_group=fid_neg, positive_group=fid_pos),
+        FID=dict(
+            # vs SOURCE class (ambiguous — see the comment at the call site)
+            negative_group=fid_neg, positive_group=fid_pos,
+            # vs TARGET class (the realism test; lower is better)
+            n_to_p_vs_real_positive=fid_np_vs_real_pos,
+            p_to_n_vs_real_negative=fid_pn_vs_real_neg,
+        ),
         FOP=dict(n_to_p=fop_np, p_to_n=fop_pn, mean=fop),
         IP=dict(n_to_p=ip_np, p_to_n=ip_pn),
+        EditConcentration=dict(n_to_p=ec_np, p_to_n=ec_pn),
         CTR=ctr_results,
         SCP=scp_results,
     )
@@ -946,8 +1250,24 @@ def _print_results(r: dict) -> None:
 
     fid = r["FID"]
     print(f"\n► FID score  (lower = more realistic CFs)")
-    print(f"    Negative group  FID(Xn,  Xc_n→p) : {fid['negative_group']:.2f}")
-    print(f"    Positive group  FID(Xp,  Xc_p→n) : {fid['positive_group']:.2f}")
+    print(f"  vs SOURCE class — ambiguous: high can mean real class change OR artifact")
+    print(f"    FID(Xn,  Xc_n→p) : {fid['negative_group']:.2f}")
+    print(f"    FID(Xp,  Xc_p→n) : {fid['positive_group']:.2f}")
+    if fid.get("n_to_p_vs_real_positive") is not None:
+        print(f"  vs TARGET class — the realism test, LOWER IS BETTER")
+        print(f"    FID(Xp,  Xc_n→p) : {fid['n_to_p_vs_real_positive']:.2f}")
+        print(f"    FID(Xn,  Xc_p→n) : {fid['p_to_n_vs_real_negative']:.2f}")
+        print(f"    (high on BOTH rows = off-manifold edit, not a class change)")
+
+    ec = r.get("EditConcentration")
+    if ec:
+        print(f"\n► Edit concentration  [model-free; top-5% of pixels' share of |Δ|]")
+        for key, label in (("n_to_p", "Xn → Xp"), ("p_to_n", "Xp → Xn")):
+            e = ec[key]
+            print(f"    {label} : {e['concentration']:.3f}  "
+                  f"(uniform baseline {e['uniform_baseline']:.2f}) | "
+                  f"MAE={e['mae']:.4f} | changed={100 * e['frac_changed']:.1f}%")
+        print(f"    >~0.5 = focal edit. Near the baseline = diffuse, i.e. adversarial-shaped.")
 
     # FOP is intentionally not printed — no offline Support-Devices detector
     # exists, so it is always N/A. It is retained (as null) in results.json
@@ -974,14 +1294,28 @@ def _print_results(r: dict) -> None:
 
     s = r["SCP"]
     print(f"\n► SCP — Pleural Effusion clinical metric")
-    print(f"    mean SCP(Xn)     = {s['mean_xn']:.4f} ± {s['std_xn']:.4f}")
-    print(f"    mean SCP(Xp)     = {s['mean_xp']:.4f} ± {s['std_xp']:.4f}")
-    print(f"    mean SCP(Xc_n→p) = {s['mean_xc_np']:.4f} ± {s['std_xc_np']:.4f}")
-    print(f"    mean SCP(Xc_p→n) = {s['mean_xc_pn']:.4f} ± {s['std_xc_pn']:.4f}")
-    print(f"    Δ SCP(Xn − Xc_n→p) = {s['mean_delta_n']:.4f} ± {s['std_delta_n']:.4f}  "
-          f"[t={s['t_n']:.2f}, p={s['p_n']:.4f}]")
-    print(f"    Δ SCP(Xp − Xc_p→n) = {s['mean_delta_p']:.4f} ± {s['std_delta_p']:.4f}  "
-          f"[t={s['t_p']:.2f}, p={s['p_p']:.4f}]")
+    if s.get("degenerate"):
+        # Do NOT print t-tests on a constant. See the degeneracy check in
+        # run_full_evaluation for why this fires and what to do about it.
+        print(f"    ⚠ DEGENERATE — relative spread {s['relative_spread']:.2%} "
+              f"across all four groups (< 2%).")
+        print(f"    The sigmoid(-‖yolo_feat‖/50) proxy is saturated, so SCP is "
+              f"effectively a constant")
+        print(f"    ({s['mean_xn']:.4f} ± {s['std_xn']:.4f}) and its paired "
+              f"t-tests are testing numerical noise.")
+        print(f"    Values are retained in eval_metrics.json for schema "
+              f"compatibility but MUST NOT be")
+        print(f"    reported as a clinical result. Fix the proxy (a real "
+              f"CP-recess detector) or drop SCP.")
+    else:
+        print(f"    mean SCP(Xn)     = {s['mean_xn']:.4f} ± {s['std_xn']:.4f}")
+        print(f"    mean SCP(Xp)     = {s['mean_xp']:.4f} ± {s['std_xp']:.4f}")
+        print(f"    mean SCP(Xc_n→p) = {s['mean_xc_np']:.4f} ± {s['std_xc_np']:.4f}")
+        print(f"    mean SCP(Xc_p→n) = {s['mean_xc_pn']:.4f} ± {s['std_xc_pn']:.4f}")
+        print(f"    Δ SCP(Xn − Xc_n→p) = {s['mean_delta_n']:.4f} ± {s['std_delta_n']:.4f}  "
+              f"[t={s['t_n']:.2f}, p={s['p_n']:.4f}]")
+        print(f"    Δ SCP(Xp − Xc_p→n) = {s['mean_delta_p']:.4f} ± {s['std_delta_p']:.4f}  "
+              f"[t={s['t_p']:.2f}, p={s['p_p']:.4f}]")
     print("─" * 70)
 
 
