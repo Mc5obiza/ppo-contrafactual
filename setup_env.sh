@@ -59,14 +59,36 @@ import domains
 # login-node round trip. Adding a domain to domains/_REGISTRY automatically
 # pulls its weights here. The two literals are needed regardless of domain:
 # rsna backs FID's feature extractor, all backs the FOP detector.
+#
+# GUARD: domains with their own classifier backend (build_guidance is not None,
+# i.e. cbis_ddsm_breast) name models like "resnet18-breast-cbis" that exist in
+# no model zoo. Passing those to xrv.models.DenseNet raises. They are handled
+# by the torchvision-backbone prefetch below instead.
 needed = {"densenet121-res224-rsna", "densenet121-res224-all"}
 for _name in domains.available():
     _d = domains.get(_name)
+    if _d.build_guidance is not None:
+        print(f"[prefetch]   (skipping {_name}: custom backend, no xrv weights)")
+        continue
     needed |= {_d.guidance_weights, *_d.ensemble_weights, *_d.heldout_validators}
 
 for _w in sorted(needed):
     print(f"[prefetch]   -> {_w}")
     xrv.models.DenseNet(weights=_w)
+
+# ImageNet backbones. train_breast_classifier.py and train_lesion_segmenter.py
+# initialise from these, and both run on compute nodes with no internet, so the
+# torch hub cache has to be warm before they start.
+if any(domains.get(n).build_guidance is not None for n in domains.available()):
+    print("[prefetch] torchvision ImageNet backbones (breast classifier / U-Net) ...")
+    import torchvision.models as tvm
+    for _ctor, _w in (
+        (tvm.densenet121,      tvm.DenseNet121_Weights.DEFAULT),
+        (tvm.resnet18,         tvm.ResNet18_Weights.DEFAULT),
+        (tvm.efficientnet_b0,  tvm.EfficientNet_B0_Weights.DEFAULT),
+    ):
+        print(f"[prefetch]   -> {_ctor.__name__}")
+        _ctor(weights=_w)
 
 print("[prefetch] Stable Diffusion v1.5 (VAE + UNet + scheduler) ...")
 from diffusers import AutoencoderKL, UNet2DConditionModel, DDIMScheduler
@@ -107,6 +129,19 @@ import domains
 from src.xrv_classifier import build_xrv_classifier
 for _name in domains.available():
     _d = domains.get(_name)
+    if _d.build_guidance is not None:
+        # Custom backend: f(.) is loaded from checkpoint/breast/*.pt, which
+        # train_breast_classifier.py produces on a COMPUTE node — so it does
+        # not exist yet on a first setup and cannot be part of this offline
+        # check. What IS verifiable now is that the backbone architectures
+        # build offline from the cached ImageNet weights.
+        from src.breast_classifier import build_backbone, SUPPORTED_ARCHS
+        for _a in SUPPORTED_ARCHS:
+            build_backbone(_a, pretrained=True)
+        print(f"[prefetch]   domain {_name}: custom backend, "
+              f"{list(SUPPORTED_ARCHS)} build offline OK "
+              f"(weights come from train_breast_classifier.py)")
+        continue
     for _w in {_d.guidance_weights, *_d.ensemble_weights, *_d.heldout_validators}:
         build_xrv_classifier(device="cpu", weights=_w, pathology=_d.pathology)
     print(f"[prefetch]   domain {_name}: f(.) head {_d.pathology!r} OK on all weight sets")
@@ -170,12 +205,80 @@ MSG
 fi
 
 echo ""
+echo "=== 5b/6  CBIS-DDSM mammography dataset (Kaggle) ==="
+# A PUBLIC dataset, not a competition — so unlike RSNA there are no rules to
+# accept and this normally just works once any Kaggle credential is present.
+if [ -n "${KAGGLE_API_TOKEN:-}" ] || [ -f "$HOME/.kaggle/kaggle.json" ] || { [ -n "${KAGGLE_USERNAME:-}" ] && [ -n "${KAGGLE_KEY:-}" ]; }; then
+    echo "[dataset] Kaggle credentials found, downloading CBIS-DDSM (~6 GB) ..."
+    python - <<'PYEOF' || true
+import kagglehub
+try:
+    path = kagglehub.dataset_download("awsaf49/cbis-ddsm-breast-cancer-image-dataset")
+    print(f"\n[dataset] CBIS-DDSM downloaded to:\n    {path}\n")
+    print("[dataset] ACTION REQUIRED — set this in config.py:")
+    print(f'    CBIS_DDSM_ROOT = "{path}"')
+except Exception as e:
+    print(f"[dataset] CBIS-DDSM download failed: {e}")
+    print("[dataset] It is a public dataset (no rules to accept), so this is "
+          "usually a credential or disk-space problem rather than permissions.")
+PYEOF
+else
+    cat <<'MSG'
+[dataset] SKIPPED — no Kaggle credentials found.
+
+The CBIS-DDSM mammography dataset backs config.DATASET_DOMAIN =
+"cbis_ddsm_breast". It is a PUBLIC dataset, so unlike the RSNA competition
+there are no rules to accept — you only need a token:
+
+    export KAGGLE_API_TOKEN="KGAT_your_token_here"
+
+(older username+key credentials also work, via ~/.kaggle/kaggle.json or
+KAGGLE_USERNAME / KAGGLE_KEY.)
+
+Then re-run: bash setup_env.sh
+  (or: python -c "import kagglehub; print(kagglehub.dataset_download('awsaf49/cbis-ddsm-breast-cancer-image-dataset'))")
+
+and set config.CBIS_DDSM_ROOT to the path it prints.
+
+This step needs internet, so it must be done on the login node.
+MSG
+fi
+
+echo ""
 echo "=== 6/6  Other dataset domains ==="
 python - <<'PYEOF'
 import config, domains, os
 active = config.DATASET_DOMAIN
 print(f"[domains] registered: {domains.available()}")
 print(f"[domains] active (config.DATASET_DOMAIN): {active}")
+
+if "cbis_ddsm_breast" in domains.available():
+    root = getattr(config, "CBIS_DDSM_ROOT", "") or ""
+    if root and os.path.isdir(root):
+        print(f"[domains] cbis_ddsm_breast: CBIS_DDSM_ROOT ok -> {root}")
+    else:
+        print(
+            "[domains] cbis_ddsm_breast: CBIS_DDSM_ROOT is unset or missing.\n"
+            "          Set it to the path the CBIS-DDSM download printed above."
+        )
+    # This domain needs two TRAINED artefacts that no pretrained zoo provides.
+    # Missing ones are the single most likely reason run_ppo.slurm dies in its
+    # first minute, so report them here rather than letting a queued job find out.
+    ckpt_dir = getattr(config, "BREAST_CKPT_DIR", "checkpoint/breast")
+    have = sorted(
+        f for f in (os.listdir(ckpt_dir) if os.path.isdir(ckpt_dir) else [])
+        if f.endswith(".pt")
+    )
+    print(f"[domains] cbis_ddsm_breast: {ckpt_dir}/ contains {have or 'nothing'}")
+    need_clf = [f"{a}.pt" for a in getattr(config, "BREAST_BACKBONES", [])]
+    missing_clf = [f for f in need_clf if f not in have]
+    if missing_clf:
+        print(f"          MISSING f(.) weights {missing_clf} -> "
+              f"sbatch run_breast_classifier.slurm  (REQUIRED before run_ppo.slurm)")
+    if "lesion_unet.pt" not in have:
+        print( "          MISSING lesion_unet.pt -> sbatch run_lesion_segmenter.slurm  "
+               "(REQUIRED for the LLR/MSI metrics; not needed to train)")
+
 if "node21_nodule" in domains.available():
     root = getattr(config, "NODE21_ROOT", "") or ""
     if root and os.path.isdir(root):
@@ -195,4 +298,20 @@ PYEOF
 echo ""
 echo "=== Setup complete ==="
 echo "Environment ready at: $(pwd)/venv"
-echo "Submit the training job with: sbatch run_ppo.slurm"
+echo ""
+# The order matters and is not guessable: unlike the chest domains, the breast
+# domain has no pretrained f(.) to borrow, so run_ppo.slurm cannot be the first
+# job submitted.
+python - <<'PYEOF'
+import config
+if config.DATASET_DOMAIN == "cbis_ddsm_breast":
+    print("Active domain is cbis_ddsm_breast. Submit IN THIS ORDER:")
+    print("  1. sbatch run_breast_classifier.slurm   # trains f(.) — REQUIRED first,")
+    print("                                          #   torchxrayvision has no breast head")
+    print("  2. sbatch run_lesion_segmenter.slurm    # LLR/MSI metrics; may run in parallel with 3")
+    print("  3. sbatch run_ppo.slurm                 # PPO training")
+    print("  4. python check_lesion_localization.py  # gates whether MSI may be reported at all")
+else:
+    print(f"Active domain is {config.DATASET_DOMAIN}.")
+    print("Submit the training job with: sbatch run_ppo.slurm")
+PYEOF

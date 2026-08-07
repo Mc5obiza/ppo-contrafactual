@@ -53,6 +53,28 @@ from src.inference import DirectionalPolicy
 # Shared context
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Set ONLY by the smoke tests, via use_dataset_override(). None in every real
+# run. Module-level rather than a build_common() argument so smoke_test.py can
+# install it without every intermediate caller having to forward a flag.
+_DATASET_OVERRIDE = None
+
+
+def use_dataset_override(factory) -> None:
+    """
+    Install a (img_size) -> Dataset factory that build_common() will use
+    INSTEAD of the active domain's.
+
+    For smoke tests only: they need a handful of images, and DomainProfile is
+    frozen so its build_dataset field cannot be patched in place. Pass None to
+    clear.
+
+    Works for every domain, which the previous `pipeline.build_dataset`
+    monkeypatch did not — see the comment in build_common().
+    """
+    global _DATASET_OVERRIDE
+    _DATASET_OVERRIDE = factory
+
+
 @dataclass
 class PipelineContext:
     """
@@ -70,6 +92,15 @@ class PipelineContext:
     # consumers (metrics, held-out validation) read the domain's bindings
     # instead of re-deriving them from config and drifting apart.
     domain: object = None
+    # Lesion segmenter for the clinical metrics, or None when the domain has
+    # no such thing (both chest domains). Built here rather than inside
+    # run_full_evaluation so training and evaluation cannot end up with
+    # different ones, and so a missing checkpoint fails at construction.
+    #
+    # NOT passed to the generator or the env — it must stay outside the
+    # guidance loop, or the metrics computed from it become circular. See
+    # DomainProfile.build_lesion_net.
+    lesion_net: object = None
 
 
 def build_common() -> PipelineContext:
@@ -89,12 +120,27 @@ def build_common() -> PipelineContext:
     if domain.notes:
         print(f"[domain] {domain.notes}")
 
-    # The rsna_pneumonia profile's build_dataset IS ingestion.build_dataset, so
-    # this stays byte-identical for the baseline domain. It is routed through
-    # the module global rather than the profile attribute because smoke_test.py
-    # and smoke_test_eval.py patch `pipeline.build_dataset` to shrink the
-    # dataset — patching the profile's frozen field is not possible.
-    if domain.name == "rsna_pneumonia":
+    # Dataset construction, in override-first order.
+    #
+    # The smoke tests need to shrink the dataset, and DomainProfile is a frozen
+    # dataclass so its build_dataset field cannot be patched. The old route was
+    # for smoke_test.py to patch the `pipeline.build_dataset` module global —
+    # but that global is only consulted on the rsna_pneumonia branch below, so
+    # patching it did NOTHING for any other domain, and a smoke test on
+    # node21_nodule or cbis_ddsm_breast silently loaded the FULL dataset. That
+    # defeats the point of a smoke test twice over: it is slow, and it fails
+    # for lack of data rather than fast for a shape error.
+    #
+    # _DATASET_OVERRIDE fixes it for every domain at once. See
+    # use_dataset_override() below.
+    if _DATASET_OVERRIDE is not None:
+        print("[pipeline] using the test dataset override "
+              "(smoke test — NOT a real run)")
+        dataset = _DATASET_OVERRIDE(config.IMG_SIZE)
+    elif domain.name == "rsna_pneumonia":
+        # Kept so the baseline stays byte-identical: the rsna_pneumonia
+        # profile's build_dataset IS ingestion.build_dataset, and any existing
+        # caller patching the module global still works.
         dataset = build_dataset(img_size=config.IMG_SIZE)
     else:
         dataset = domain.build_dataset(config.IMG_SIZE)
@@ -109,7 +155,14 @@ def build_common() -> PipelineContext:
     # choice changes all of them at once. See
     # src/xrv_classifier.EnsemblePneumoniaClassifier for why the ensemble exists
     # and what its CV numbers are (not) comparable to.
-    if config.USE_GUIDANCE_ENSEMBLE:
+    #
+    # A domain may bring its OWN classifier backend instead (build_guidance).
+    # cbis_ddsm_breast does: torchxrayvision has no breast head, so f(·) there
+    # is a set of backbones we trained. The branch is on the profile, not on
+    # the domain name, so adding another non-chest domain needs no edit here.
+    if domain.build_guidance is not None:
+        classifier = domain.build_guidance()
+    elif config.USE_GUIDANCE_ENSEMBLE:
         classifier = build_ensemble_classifier(
             weights_list=list(domain.ensemble_weights), pathology=domain.pathology
         )
@@ -117,8 +170,21 @@ def build_common() -> PipelineContext:
         classifier = build_xrv_classifier(
             weights=domain.guidance_weights, pathology=domain.pathology
         )
-    seg_net, lung_channel_idx = build_segmentation_net()
-    obj_det                   = build_object_detector()
+
+    # Same story for S: the xrv PSPNet segments lungs, which a mammogram does
+    # not have. A replacement must match its call contract — see
+    # src/breast_segmentation.BreastAnatomySegmenter.
+    if domain.build_masker is not None:
+        seg_net, lung_channel_idx = domain.build_masker()
+    else:
+        seg_net, lung_channel_idx = build_segmentation_net()
+
+    obj_det = build_object_detector()
+
+    # Optional, and deliberately built AFTER the guidance objects so it is
+    # obvious it is not one of them: the lesion segmenter measures the
+    # counterfactuals, it never steers them.
+    lesion_net = domain.build_lesion_net() if domain.build_lesion_net else None
 
     print("\n" + "=" * 70)
     print("STEP 3 — Building generator with LoRA")
@@ -138,6 +204,7 @@ def build_common() -> PipelineContext:
         obj_det=obj_det,
         generator=generator,
         domain=domain,
+        lesion_net=lesion_net,
     )
 
 

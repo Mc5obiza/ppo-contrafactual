@@ -122,20 +122,44 @@ DEFAULT_VALIDATORS = _default_validators()
 CACHE_NAME = "cf_cache.pt"
 
 
+def _is_custom_backend() -> bool:
+    """
+    True when the active domain brings its own classifier backend rather than
+    using the torchxrayvision zoo (domains/base.py, build_guidance).
+
+    Everything below branches on this rather than on the domain name, so a
+    fourth domain needs no edit here.
+    """
+    import domains
+    return domains.active().build_guidance is not None
+
+
 def _normalize(name: str) -> str:
-    """'chex' -> 'densenet121-res224-chex'; full names pass through."""
+    """
+    'chex' -> 'densenet121-res224-chex'; full names pass through.
+
+    Only meaningful for the xrv zoo. A domain with its own backend names its
+    models whatever it likes (e.g. 'resnet18-breast-cbis'), and prefixing those
+    with 'densenet121-res224-' would invent a weight set that does not exist —
+    so on those domains names are taken verbatim.
+    """
     name = name.strip()
+    if _is_custom_backend():
+        return name
     return name if name.startswith("densenet121") else f"densenet121-res224-{name}"
 
 
 def _parse_spec(spec: str) -> list[str]:
-    """Comma-separated weight spec -> list of full xrv weight names."""
+    """Comma-separated weight spec -> list of full weight names."""
     return [_normalize(p) for p in spec.split(",") if p.strip()]
 
 
 def _spec_label(members: list[str]) -> str:
     """Report/JSON key for a scorer: a bare name, or 'ensemble(a+b)'."""
-    short = [m.replace("densenet121-res224-", "") for m in members]
+    short = [
+        m.replace("densenet121-res224-", "").replace("-breast-cbis", "")
+        for m in members
+    ]
     return short[0] if len(short) == 1 else f"ensemble({'+'.join(short)})"
 
 
@@ -143,16 +167,33 @@ def _build_scorer(members: list[str], device: str):
     """
     Build a scorer for one or more weight sets.
 
-    Single member -> XRVPneumoniaClassifier. Multiple -> the same
-    EnsemblePneumoniaClassifier that guides generation, so the guidance row of
-    this report reflects exactly what the counterfactuals were optimised
-    against rather than one arbitrary member of it.
+    Single member -> the domain's single-model classifier. Multiple -> the same
+    ensemble class that guides generation, so the guidance row of this report
+    reflects exactly what the counterfactuals were optimised against rather
+    than one arbitrary member of it.
     """
     # The head MUST come from the active domain. Scoring nodule counterfactuals
     # with the "Pneumonia" head would report a transfer ratio for a disease the
     # generator never targeted — a wrong number rather than a missing one.
     import domains
     pathology = domains.active().pathology
+
+    # Domains with their own backend (mammography: torchxrayvision has no
+    # breast head at all) build from their own module. The scorer contract is
+    # identical either way — (B,1|3,H,W) in [0,1] -> (B,1) probability — which
+    # is what lets the rest of this file stay backend-agnostic.
+    if _is_custom_backend():
+        from src.breast_classifier import (
+            build_breast_classifier,
+            build_breast_ensemble_classifier,
+        )
+        if len(members) == 1:
+            return build_breast_classifier(
+                device=device, weights=members[0], pathology=pathology
+            )
+        return build_breast_ensemble_classifier(
+            device=device, weights_list=members, pathology=pathology
+        )
 
     if len(members) == 1:
         return build_xrv_classifier(

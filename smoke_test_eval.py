@@ -169,16 +169,15 @@ import eval_main
 # NOTE on patch targets: eval_main.py does `from pipeline import ...`, which
 # binds those functions into eval_main's own namespace at import time. Patching
 # pipeline.load_directional_policy here would therefore NOT affect the call
-# eval_main makes — it must be patched on eval_main. build_dataset is different:
-# build_common() resolves it from pipeline's globals at call time, so it is
-# patched on the shared module.
+# eval_main makes — it must be patched on eval_main. The dataset is different:
+# it goes through pipeline.use_dataset_override, which build_common() consults
+# for EVERY domain (the older pipeline.build_dataset monkeypatch only took
+# effect on the rsna_pneumonia branch).
 
-_real_build_dataset = shared.build_dataset
 
-
-def _small_dataset(*a, **kw):
+def _small_dataset(img_size):
     """
-    Real RSNA dataset truncated in place to a CLASS-BALANCED subset, matching
+    The ACTIVE domain's dataset truncated to a CLASS-BALANCED subset, matching
     smoke_test.py. Truncating `.samples` rather than wrapping in a Subset keeps
     __len__/__getitem__ and the fast label path consistent.
 
@@ -186,14 +185,22 @@ def _small_dataset(*a, **kw):
     "far" pool for their env, and run_full_evaluation needs to find images on
     both sides of its f(x)<0.2 / f(x)>0.8 thresholds.
     """
-    ds = _real_build_dataset(*a, **kw)
+    import domains
+    ds = domains.active().build_dataset(img_size)
+
     half = max(1, SUBSET_N // 2)
     pos = [i for i, s in enumerate(ds.samples) if float(s[-1]) == 1.0][:half]
     neg = [i for i, s in enumerate(ds.samples) if float(s[-1]) == 0.0][:half]
     keep = sorted(pos + neg)
     ds.samples = [ds.samples[i] for i in keep]
+
+    # Keep any parallel per-sample metadata (CBIS-DDSM) in lockstep — see the
+    # same note in smoke_test.py.
+    if hasattr(ds, "_meta") and len(getattr(ds, "_meta", [])) >= len(keep):
+        ds._meta = [ds._meta[i] for i in keep]
+
     print(f"[smoke-eval] dataset truncated to {len(ds.samples)} images "
-          f"({len(pos)} pneumonia / {len(neg)} normal)")
+          f"({len(pos)} positive / {len(neg)} negative)")
     return ds
 
 
@@ -232,7 +239,7 @@ def _small_eval(**kw):
     return _real_eval(**kw)
 
 
-shared.build_dataset             = _small_dataset
+shared.use_dataset_override(_small_dataset)
 eval_main.load_generator_weights = _src_load_gen
 eval_main.load_directional_policy = _src_load_pol
 eval_main.run_full_evaluation    = _small_eval

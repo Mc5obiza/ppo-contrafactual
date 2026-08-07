@@ -150,34 +150,49 @@ import factory.ppo as ppo_mod
 # ─────────────────────────────────────────────────────────────────────────────
 # 3. Shrink the expensive bits by patching the pipeline namespaces
 # ─────────────────────────────────────────────────────────────────────────────
-# NOTE on patch targets: build_dataset is resolved from pipeline's globals at
-# call time (build_common calls it), so it is patched on the shared module, not
-# on main. Names main.py owns directly are patched on main.
+# NOTE on patch targets: the dataset goes through pipeline.use_dataset_override
+# (see below), NOT through a monkeypatch of pipeline.build_dataset — that
+# global is only consulted on the rsna_pneumonia branch, so patching it left
+# every other domain loading its FULL dataset. Names main.py owns directly are
+# still patched on main.
 
-_real_build_dataset = shared.build_dataset
 
-
-def _small_dataset(*a, **kw):
+def _small_dataset(img_size):
     """
-    Real RSNA dataset, truncated in place to a CLASS-BALANCED subset.
+    The ACTIVE domain's real dataset, truncated to a CLASS-BALANCED subset.
 
-    Truncating `dataset.samples` rather than wrapping in torch Subset is
-    deliberate: __len__, __getitem__ and finetuning's fast label-extraction
+    Routed through domains.active() rather than ingestion.build_dataset so a
+    smoke test exercises whichever domain config.DATASET_DOMAIN selects. That
+    is the whole point of the exercise — a smoke test that always loads RSNA
+    cannot catch a breakage in the domain you are about to spend 20 GPU-hours
+    on.
+
+    Truncating `dataset.samples` in place rather than wrapping in torch.Subset
+    is deliberate: __len__, __getitem__ and finetuning's fast label-extraction
     path all derive from `.samples`, so this keeps every consumer consistent
-    and avoids Subset hiding `.samples` (which would force
-    _extract_labels into a full DICOM-decoding scan).
+    and avoids Subset hiding `.samples` (which would force _extract_labels into
+    a full image-decoding scan).
 
     Balance matters: _build_balanced_sampler raises if either class is empty,
     and both PPO directions need a non-empty "far" pool.
     """
-    ds = _real_build_dataset(*a, **kw)
+    import domains
+    ds = domains.active().build_dataset(img_size)
+
     half = max(1, SUBSET_N // 2)
     pos = [i for i, s in enumerate(ds.samples) if float(s[-1]) == 1.0][:half]
     neg = [i for i, s in enumerate(ds.samples) if float(s[-1]) == 0.0][:half]
     keep = sorted(pos + neg)
     ds.samples = [ds.samples[i] for i in keep]
+
+    # Datasets that carry a parallel per-sample metadata list (CBIS-DDSM's
+    # patient ids / ROI paths / margin labels) must be truncated in lockstep,
+    # or every side-channel accessor silently returns another image's row.
+    if hasattr(ds, "_meta") and len(getattr(ds, "_meta", [])) >= len(keep):
+        ds._meta = [ds._meta[i] for i in keep]
+
     print(f"[smoke] dataset truncated to {len(ds.samples)} images "
-          f"({len(pos)} pneumonia / {len(neg)} normal)")
+          f"({len(pos)} positive / {len(neg)} negative)")
     return ds
 
 
@@ -188,7 +203,7 @@ def _small_diag(env, policy, n_episodes=20):
     return _real_diag(env, policy, n_episodes=2)
 
 
-shared.build_dataset                = _small_dataset
+shared.use_dataset_override(_small_dataset)
 train_main.run_guidance_diagnostics = _small_diag
 
 # Capture the trainers and directional policies so the post-run assertions can

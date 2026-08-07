@@ -60,17 +60,57 @@ DIFFUSION_MODEL_ID = "runwayml/stable-diffusion-v1-5"
 # ─────────────────────────────────────────────
 # Dataset domain
 # ─────────────────────────────────────────────
-# Selects the images, the xrv pathology head f(.) targets, the guidance /
-# validator weight sets and which clinical metrics apply — all four move
-# together. See domains/base.py. Registered: "rsna_pneumonia", "node21_nodule".
+# Selects the images, the pathology f(.) targets, the guidance / validator
+# models and which clinical metrics apply — all four move together. See
+# domains/base.py. Registered: "rsna_pneumonia", "node21_nodule",
+# "cbis_ddsm_breast".
 #
 # Adding a dataset is a new module in domains/ plus a line in domains._REGISTRY.
 # It is NOT an edit to ingestion.py, src/xrv_classifier.py or src/metrics.py.
-DATASET_DOMAIN = "rsna_pneumonia"
+DATASET_DOMAIN = "cbis_ddsm_breast"
 
 # Root of an extracted NODE21 release (grand-challenge registration required,
 # so there is no auto-download). Only read by domains/node21_nodule.py.
 NODE21_ROOT = ""
+
+# ─────────────────────────────────────────────
+# Breast / mammography domain (cbis_ddsm_breast)
+# ─────────────────────────────────────────────
+# Root of the extracted CBIS-DDSM Kaggle mirror
+# (awsaf49/cbis-ddsm-breast-cancer-image-dataset). setup_env.sh downloads it on
+# the login node and prints the path to put here. Expected layout:
+#     <root>/csv/{dicom_info,mass_case_description_train_set,...}.csv
+#     <root>/jpeg/<SeriesUID>/<n>.jpg
+CBIS_DDSM_ROOT = ""
+
+# Where train_breast_classifier.py and train_lesion_segmenter.py write, and
+# where src/breast_classifier.py and src/breast_segmentation.py read from.
+# Separate from CKPT_DIR because these are INPUTS to a run (frozen f(.) and the
+# metric segmenter), not outputs of one — they are trained once and reused
+# across every PPO run and ablation arm.
+BREAST_CKPT_DIR = "checkpoint/breast"
+
+# Backbones train_breast_classifier.py trains. The first two become the
+# guidance ensemble and the third the held-out validator; see
+# domains/cbis_ddsm_breast.py, which is the authority on that split. densenet121
+# is deliberately first: GRADCAM_TARGET_LAYER="features" resolves cleanly on it,
+# and it is the ensemble's cam_member.
+BREAST_BACKBONES = ["densenet121", "efficientnet_b0", "resnet18"]
+
+# Which BreastAnatomySegmenter channel bounds the generator's edits when
+# LOCK_BACKGROUND is on.
+#   "breast" -> the whole organ. Direct analogue of the chest domains' lung
+#               field, and the default.
+#   "dense"  -> fibroglandular tissue only. Strictly tighter; lesions live
+#               there, so it should cost little coverage while removing a lot
+#               of editable fat. An ablation, not an assumed improvement.
+BREAST_EDIT_REGION = "breast"
+
+# Subtract the pectoral-muscle triangle from the editable region on MLO views.
+# The detector is geometric and approximate (CBIS-DDSM ships no pectoral ground
+# truth), but it is only ever used to EXCLUDE area — a loose fit costs the
+# policy some editable breast, it can never license an edit outside the organ.
+MASK_EXCLUDE_PECTORAL = True
 
 # The weight sets below are the rsna_pneumonia defaults, kept for backwards
 # compatibility. The ACTIVE values come from the domain profile — see

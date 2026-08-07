@@ -328,6 +328,81 @@ class _XRVFeatureExtractor(nn.Module):
         return feat.cpu()
 
 
+class _BreastFeatureExtractor(nn.Module):
+    """
+    Penultimate features of a trained breast backbone, for the mammography
+    domain's FID.
+
+    WHY NOT THE xrv EXTRACTOR. _XRVFeatureExtractor is a chest DenseNet. Its
+    features encode consolidation, effusion and cardiomegaly — nothing that
+    varies meaningfully across mammograms. FID measured in that space would be
+    dominated by the domain gap between the images and the model's training
+    distribution, and would barely move when the counterfactuals changed.
+
+    WHY THE HELD-OUT BACKBONE AND NOT A GUIDANCE MEMBER. FID is a realism
+    check, and generation descends the gradient of the guidance models. Scoring
+    realism in a guidance member's own feature space would reward exactly the
+    directions generation was already pushing, which is the same circularity
+    that makes CV alone uninformative (see heldout_validation.py). The default
+    is therefore the domain's held-out validator.
+
+    run_full_evaluation also reports Inception FID alongside this, since that
+    is the number comparable to the FID literature.
+    """
+
+    def __init__(self, device: str, weights: str | None = None):
+        super().__init__()
+        from src.breast_classifier import (
+            BreastMalignancyClassifier,
+            _preprocess as _breast_preprocess,
+        )
+
+        if weights is None:
+            import domains
+            d = domains.active()
+            # Prefer a held-out validator; fall back to guidance only if the
+            # profile declares none, and say so rather than silently doing it.
+            if d.heldout_validators:
+                weights = d.heldout_validators[0]
+            else:
+                weights = d.guidance_weights
+                print("[metrics] WARNING: no held-out validator for this domain "
+                      "— FID is being measured in a GUIDANCE model's feature "
+                      "space, which flatters the generator. Treat it as a lower "
+                      "bound, not a realism result.")
+
+        clf = BreastMalignancyClassifier(device=device, weights=weights)
+        self.arch       = clf.arch
+        self.model      = clf.model
+        self.device     = device
+        self.input_size = clf.input_size
+        self._prep      = _breast_preprocess
+        print(f"[metrics] FID feature space: breast {weights} (held-out)")
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        x : (B, 1|3, H, W) in [0, 1]  ->  (B, D) penultimate features.
+
+        Pooled to (B, D) for every architecture so the caller does not need to
+        know which backbone it got — the covariance in
+        _compute_activation_stats only needs a consistent flat vector.
+        """
+        with torch.no_grad():
+            z = self._prep(x.float().to(self.device))
+            m = self.model
+            if self.arch == "densenet121":
+                feat = m.features(z)
+            elif self.arch == "resnet18":
+                feat = nn.Sequential(
+                    m.conv1, m.bn1, m.relu, m.maxpool,
+                    m.layer1, m.layer2, m.layer3, m.layer4,
+                )(z)
+            else:                                    # efficientnet_b0
+                feat = m.features(z)
+            feat = F.adaptive_avg_pool2d(F.relu(feat), (1, 1)).flatten(1)
+        return feat.cpu()
+
+
 def _compute_activation_stats(
     images: list[torch.Tensor],
     extractor: nn.Module,
@@ -919,6 +994,365 @@ def compute_scp(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# 5b. Mammography clinical metrics — LLR / MSI / BDC / MOP
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# CTR and SCP above are the chest set: CTR is cardiomegaly, SCP is pleural
+# effusion. A breast has neither, so domains/cbis_ddsm_breast.py turns both off
+# and switches these on instead. They follow the SAME house pattern as CTR —
+# a compute_*_batch over a list of images, run across all four groups, deltas
+# plus a paired t-test — so nothing in run_full_evaluation's structure changes.
+#
+# WHY THESE ARE SEGMENTER-DERIVED AND NOT GROUND-TRUTH-JOINED
+# -----------------------------------------------------------
+# CBIS-DDSM ships pixel-accurate ROI masks, so the obvious design is to compare
+# each counterfactual against its own ground-truth lesion. It is not available
+# here: scan_groups (top of this file) returns TENSORS ONLY, with no dataset
+# indices, and its determinism contract is depended on by run_full_evaluation,
+# heldout_validation.py and eval_main.py's sharded generate/reduce split alike.
+# Threading indices through would change that contract and the cf_shard_*.pt
+# format for all three.
+#
+# It is also not necessary, because it is not how CTR works either: CTR
+# segments BOTH x and x_cf and compares the two measurements. These do the same
+# with a lesion segmenter. Ground truth is used where it does not fight the
+# contract — training that segmenter (train_lesion_segmenter.py) and the
+# offline diagnostics (check_lesion_localization.py), both of which index the
+# dataset directly.
+
+
+def _flag_if_degenerate(
+    arrays: list[np.ndarray], rel_threshold: float = 0.02
+) -> dict:
+    """
+    Detect a metric that has collapsed to a constant.
+
+    SCP taught this lesson the expensive way: its proxy saturated to a 0.21%
+    relative spread and it went on emitting paired t-tests with p-values, which
+    look exactly like clinical findings until someone checks the standard
+    deviation. A t-test on a constant is testing floating-point noise.
+
+    Returns {"degenerate": bool, "relative_spread": float} to merge into a
+    metric's result dict; _print_results refuses to print statistics when the
+    flag is set.
+
+    THE SPREAD IS POOLED ACROSS ALL FOUR GROUPS, not the max of the per-group
+    standard deviations. That distinction is not cosmetic. "Degenerate" means
+    the metric carries no information — it is the same number everywhere — and
+    only the pooled spread measures that. Taking the max of within-group stds
+    instead reports 0% for a metric that is tight inside each group but well
+    separated BETWEEN them, which is the signature of a metric working
+    perfectly, and would suppress exactly the results worth reporting. (Caught
+    by the synthetic end-to-end run, where LLR was flagged degenerate at "0.00%
+    spread" while reporting a mean delta of -0.081.)
+
+    Deliberately NOT retrofitted onto CTR/SCP. Those two feed the archived RSNA
+    numbers in checkpoints/eval_metrics.json and changing their result schema
+    would make old and new runs non-comparable for no gain. SCP has its own
+    inline check with the max-of-within-group form; that is harmless there
+    because the failure it caught was a genuinely global constant, flat both
+    within and between groups.
+    """
+    pooled = np.concatenate(arrays)
+    spread = float(np.nanstd(pooled))
+    scale  = float(abs(np.nanmean(pooled))) + 1e-8
+    rel    = spread / scale
+    return dict(degenerate=bool(rel < rel_threshold), relative_spread=float(rel))
+
+
+def _seg_channel(seg_net, *names: str) -> Optional[int]:
+    """
+    Index of the first of `names` present in seg_net.targets, or None.
+
+    Same by-name lookup run_full_evaluation already uses for the heart channel,
+    for the same reason: a hardcoded index silently measures the wrong tissue
+    if the segmenter's channel order ever changes.
+    """
+    targets = getattr(seg_net, "targets", None)
+    if not targets:
+        return None
+    for n in names:
+        if n in targets:
+            return targets.index(n)
+    return None
+
+
+def _breast_masks_batch(
+    x_list: list[torch.Tensor],
+    seg_net,
+    lesion_net,
+    device: str = config.DEVICE,
+    batch_size: int = 16,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Run both segmenters once over a list of images.
+
+    Returns (images, breast, dense, lesion) as float32 numpy arrays of shape
+    (N, H, W); `lesion` is all-zero when lesion_net is None.
+
+    Batched and shared across LLR/MSI/BDC on purpose. Computed per metric
+    instead, this would be nine segmenter passes over four groups of up to 200
+    images — the same waste compute_ctr_batch was written to avoid.
+    """
+    imgs, breasts, denses, lesions = [], [], [], []
+
+    b_idx = _seg_channel(seg_net, "Breast")
+    d_idx = _seg_channel(seg_net, "Dense Tissue", "Breast")
+
+    for i in range(0, len(x_list), batch_size):
+        chunk = torch.cat(x_list[i : i + batch_size]).to(device)      # (b,1,H,W)
+        with torch.no_grad():
+            # BreastAnatomySegmenter takes the xrv-scaled input, matching the
+            # PSPNet convention it stands in for.
+            seg = torch.sigmoid(seg_net(chunk * 2048.0 - 1024.0))
+            breast = seg[:, b_idx] if b_idx is not None else torch.ones_like(chunk[:, 0])
+            dense  = seg[:, d_idx] if d_idx is not None else breast
+
+            if lesion_net is not None:
+                # LesionSegmenter takes plain [0,1] image space, NOT xrv scaling.
+                les = torch.sigmoid(lesion_net(chunk))[:, 0]
+            else:
+                les = torch.zeros_like(breast)
+
+        # NOTE >= and not >. The segmenter's channels are sigmoid((u - thr)/tau),
+        # so a pixel sitting exactly ON the threshold scores exactly 0.5, and a
+        # strict > drops it. That is not a rounding curiosity: the dense-tissue
+        # threshold IS a quantile of the image's own values, so on any flat or
+        # coarsely quantised region a large share of pixels land precisely
+        # there and the mask comes back EMPTY — which surfaces as an all-NaN
+        # BDC rather than as an error. Convention here is the usual one: a
+        # pixel at the threshold belongs to the brighter class.
+        imgs.append(chunk[:, 0].cpu().numpy())
+        breasts.append((breast >= 0.5).float().cpu().numpy())
+        denses.append((dense >= 0.5).float().cpu().numpy())
+        lesions.append((les >= 0.5).float().cpu().numpy())
+
+    return (
+        np.concatenate(imgs), np.concatenate(breasts),
+        np.concatenate(denses), np.concatenate(lesions),
+    )
+
+
+def compute_llr_batch(
+    x_list: list[torch.Tensor],
+    seg_net,
+    lesion_net,
+    device: str = config.DEVICE,
+    batch_size: int = 16,
+    _masks=None,
+) -> list[float]:
+    """
+    LLR — Lesion Load Ratio = area(lesion) / area(breast). NaN where the breast
+    mask came out empty.
+
+    The structural analogue of CTR, which is likewise a ratio of two segmented
+    extents. Normalising by breast area is what makes it comparable across
+    images: breast size varies enormously between patients and between CC and
+    MLO views, so a raw lesion area would mostly measure who was imaged. Same
+    reason CTR divides cardiac by thoracic diameter rather than reporting the
+    heart's width.
+
+    Expected direction: benign->malignant should RAISE it, malignant->benign
+    lower it. Malignant lesions are larger and more infiltrative on average —
+    a real but modest effect, so read the paired t-test, not the raw means.
+
+    `_masks` lets run_full_evaluation share one segmentation pass across the
+    three metrics; leave it None for standalone use.
+    """
+    _, breast, _, lesion = (
+        _masks if _masks is not None
+        else _breast_masks_batch(x_list, seg_net, lesion_net, device, batch_size)
+    )
+    out = []
+    for b, l in zip(breast, lesion):
+        a = float(b.sum())
+        out.append(float(l.sum()) / a if a > 0 else float("nan"))
+    return out
+
+
+def compute_msi_batch(
+    x_list: list[torch.Tensor],
+    seg_net,
+    lesion_net,
+    device: str = config.DEVICE,
+    batch_size: int = 16,
+    _masks=None,
+) -> list[float]:
+    """
+    MSI — Margin Spiculation Index = perimeter^2 / (4*pi*area) of the largest
+    lesion component. NaN where no lesion was segmented.
+
+    1.0 for a perfect circle and larger for anything more convoluted, this is
+    normalised boundary complexity (the inverse of isoperimetric compactness).
+
+    WHY THIS IS THE RIGHT REPLACEMENT FOR SCP. Margin morphology is the single
+    most load-bearing malignancy sign in mammography: a circumscribed, smoothly
+    bounded mass reads benign, a spiculated or ill-defined one reads malignant.
+    CBIS-DDSM encodes exactly this in its `mass margins` and `mass shape`
+    columns (SPICULATED / ILL_DEFINED vs CIRCUMSCRIBED). So unlike SCP's
+    yolo-feature-norm proxy, MSI is measuring a quantity the dataset itself
+    treats as the diagnostic feature.
+
+    IT MUST BE CALIBRATED BEFORE IT IS REPORTED. Run check_lesion_localization.py
+    and confirm MSI separates SPICULATED from CIRCUMSCRIBED on REAL images. If
+    it cannot tell the two apart on ground truth, it cannot be evidence about
+    counterfactuals, and any p-value it produces is an artefact of the
+    segmenter rather than a finding. This is the check SCP never had, and the
+    reason SCP shipped a degenerate constant for several evaluation runs.
+
+    Expected direction: benign->malignant should RAISE it.
+    """
+    from skimage.measure import label as _label, regionprops
+
+    _, _, _, lesion = (
+        _masks if _masks is not None
+        else _breast_masks_batch(x_list, seg_net, lesion_net, device, batch_size)
+    )
+
+    out = []
+    for l in lesion:
+        m = l > 0.5
+        if not m.any():
+            out.append(float("nan"))
+            continue
+        lab = _label(m, connectivity=2)
+        props = regionprops(lab)
+        if not props:
+            out.append(float("nan"))
+            continue
+        # Largest component only. A segmenter firing on several regions would
+        # otherwise mix a compact lesion with speckle and report the average of
+        # two unrelated shapes.
+        p = max(props, key=lambda r: r.area)
+        area, per = float(p.area), float(p.perimeter)
+        # A handful of pixels has a perimeter dominated by its own staircase
+        # quantisation; the "shape" of a 20-pixel blob is not a measurement.
+        if area < 25.0 or per <= 0.0:
+            out.append(float("nan"))
+            continue
+        out.append((per * per) / (4.0 * math.pi * area))
+    return out
+
+
+def compute_bdc_batch(
+    x_list: list[torch.Tensor],
+    seg_net,
+    lesion_net,
+    device: str = config.DEVICE,
+    batch_size: int = 16,
+    _masks=None,
+) -> list[float]:
+    """
+    BDC — mean intensity of the fibroglandular (dense) tissue. NaN where the
+    dense mask is empty.
+
+    This one is a DIAGNOSTIC, not a success criterion, and it has no chest
+    analogue. Its job is to catch the specific failure this project already hit
+    once on RSNA: job 17648985 reported CV=0.975 while changing 73.6% of pixels
+    at MAE 0.036 — a diffuse, low-amplitude wash that moved the classifier
+    without editing any anatomy.
+
+    The mammography signature of that failure is a large BDC shift with a flat
+    LLR and an EditConcentration near its uniform baseline: the generator
+    globally brightened or darkened the breast, which a density-sensitive
+    classifier reads as a class change, instead of altering a lesion.
+
+    So do not read "BDC moved a lot" as success. Read it TOGETHER with LLR and
+    EditConcentration — see the interpretation note printed by _print_results.
+    """
+    imgs, _, dense, _ = (
+        _masks if _masks is not None
+        else _breast_masks_batch(x_list, seg_net, lesion_net, device, batch_size)
+    )
+    out = []
+    for img, d in zip(imgs, dense):
+        m = d > 0.5
+        out.append(float(img[m].mean()) if m.any() else float("nan"))
+    return out
+
+
+def _detect_markers(img: np.ndarray, breast: np.ndarray) -> bool:
+    """
+    True if a biopsy clip / skin marker is present.
+
+    Model-free by design. FOP's history in this file is three successive
+    attempts to borrow a detector — a YOLO feature norm, then a YOLO detection
+    head, then an xrv "Support Devices" head that turns out not to exist in any
+    released weight set — and it is still permanently N/A. Mammography markers
+    do not need a model: surgical clips and skin markers are metal, so they
+    saturate the detector while breast tissue does not, and they are small and
+    compact where dense tissue is large and diffuse.
+
+    Criteria, all three required:
+      * intensity in the top 0.5% of the frame AND near-saturated,
+      * component area between 4 and 400 px (a clip, not a dense region),
+      * high local contrast against the surrounding tissue.
+    """
+    from skimage.measure import label as _label, regionprops
+
+    if not breast.any():
+        return False
+    thr = max(float(np.quantile(img[breast > 0.5], 0.995)), 0.90)
+    cand = (img >= thr) & (breast > 0.5)
+    if not cand.any():
+        return False
+
+    lab = _label(cand, connectivity=2)
+    for p in regionprops(lab):
+        if not (4 <= p.area <= 400):
+            continue
+        r0, c0, r1, c1 = p.bbox
+        pad = 6
+        ring = img[max(0, r0 - pad): r1 + pad, max(0, c0 - pad): c1 + pad]
+        if ring.size == 0:
+            continue
+        if float(img[lab == p.label].mean()) - float(ring.mean()) > 0.15:
+            return True
+    return False
+
+
+def marker_preservation(
+    X_real: list[torch.Tensor],
+    X_cf:   list[torch.Tensor],
+    seg_net,
+    device: str = config.DEVICE,
+    batch_size: int = 16,
+) -> Optional[float]:
+    """
+    MOP(X, Xc) = fraction of images with a marker in the real image whose
+    marker SURVIVES in the counterfactual.
+
+    The mammography counterpart of FOP (Eq. 12) and the same test of the same
+    property: a counterfactual is supposed to change the pathology and leave
+    everything else alone. A biopsy clip is the cleanest possible probe for
+    that, because no amount of malignancy reasoning justifies deleting a piece
+    of metal from the image.
+
+    Returns None — reported as N/A rather than as a score — when no image in
+    the group carries a marker, since a ratio over an empty denominator is not
+    a zero.
+    """
+    assert len(X_real) == len(X_cf)
+    if not X_real:
+        return None
+
+    imgs_r, breast_r, _, _ = _breast_masks_batch(X_real, seg_net, None, device, batch_size)
+    imgs_c, breast_c, _, _ = _breast_masks_batch(X_cf,   seg_net, None, device, batch_size)
+
+    preserved = total = 0
+    for ir, br, ic, bc in zip(imgs_r, breast_r, imgs_c, breast_c):
+        if not _detect_markers(ir, br):
+            continue
+        total += 1
+        # Marker looked for in the COUNTERFACTUAL's own breast mask: an edit
+        # that shifts the breast boundary should not count as deleting a clip.
+        if _detect_markers(ic, bc):
+            preserved += 1
+
+    return (preserved / total) if total else None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 6. Full evaluation suite  —  mirrors Table 1 of the paper
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -943,6 +1377,7 @@ def run_full_evaluation(
     xc_np: Optional[list[torch.Tensor]] = None,
     xc_pn: Optional[list[torch.Tensor]] = None,
     clinical_metrics: tuple[str, ...] = ("CTR", "SCP"),
+    lesion_net=None,
 ) -> dict:
     """
     Run the complete evaluation protocol from Singla et al. (2022).
@@ -1098,10 +1533,18 @@ def run_full_evaluation(
 
     # ── FID ───────────────────────────────────────────────────────────────────
     print("[metrics] computing FID ...")
-    fid_extractor = (
-        _XRVFeatureExtractor(device) if fid_backbone == "xrv"
-        else _InceptionFeatureExtractor(device)
-    )
+    if fid_backbone == "xrv":
+        fid_extractor = _XRVFeatureExtractor(device)
+    elif fid_backbone == "breast":
+        fid_extractor = _BreastFeatureExtractor(device)
+    elif fid_backbone == "inception":
+        fid_extractor = _InceptionFeatureExtractor(device)
+    else:
+        raise ValueError(
+            f"unknown fid_backbone {fid_backbone!r}; expected 'xrv', 'breast' "
+            f"or 'inception'. It comes from the active DomainProfile — see "
+            f"domains/base.py."
+        )
     # SAME-group FID: counterfactual vs its SOURCE class. A large value here is
     # ambiguous — it could mean the class genuinely changed, or that the
     # counterfactual is off-manifold. Kept for continuity with earlier runs.
@@ -1224,6 +1667,95 @@ def run_full_evaluation(
             relative_spread=float(scp_spread / scp_scale),
         )
 
+    # ── Mammography clinical metrics: LLR / MSI / BDC ─────────────────────────
+    # All three read the same two segmenters, so segment the four groups ONCE
+    # and share the masks — nine passes over 800 images otherwise.
+    breast_results: dict[str, dict] = {}
+    wants_breast = {"LLR", "MSI", "BDC"} & set(clinical_metrics)
+    if wants_breast:
+        if lesion_net is None and {"LLR", "MSI"} & wants_breast:
+            print("[metrics] WARNING: LLR/MSI requested but lesion_net is None "
+                  "— both are computed FROM the lesion segmenter, so they are "
+                  "skipped. Train it (sbatch run_lesion_segmenter.slurm) and "
+                  "re-run the reduce stage.")
+
+        print(f"[metrics] segmenting four groups for {sorted(wants_breast)} ...")
+        masks = {
+            "xn":    _breast_masks_batch(xn_list, seg_net, lesion_net, device),
+            "xp":    _breast_masks_batch(xp_list, seg_net, lesion_net, device),
+            "xc_np": _breast_masks_batch(xc_np,   seg_net, lesion_net, device),
+            "xc_pn": _breast_masks_batch(xc_pn,   seg_net, lesion_net, device),
+        }
+        groups = {"xn": xn_list, "xp": xp_list, "xc_np": xc_np, "xc_pn": xc_pn}
+
+        _BREAST_METRICS = {
+            "LLR": (compute_llr_batch, True),   # (fn, needs_lesion_net)
+            "MSI": (compute_msi_batch, True),
+            "BDC": (compute_bdc_batch, False),
+        }
+        for name, (fn, needs_lesion) in _BREAST_METRICS.items():
+            if name not in clinical_metrics:
+                continue
+            if needs_lesion and lesion_net is None:
+                continue
+            print(f"[metrics] computing {name} ...")
+            vals = {
+                k: np.array(fn(groups[k], seg_net, lesion_net, device,
+                               _masks=masks[k]), dtype=float)
+                for k in groups
+            }
+
+            # Pair-wise NaN filtering, as CTR does: an image whose mask came
+            # out empty in either member of a pair cannot contribute a delta.
+            mask_n = ~np.isnan(vals["xn"]) & ~np.isnan(vals["xc_np"])
+            mask_p = ~np.isnan(vals["xp"]) & ~np.isnan(vals["xc_pn"])
+            delta_n = vals["xn"][mask_n] - vals["xc_np"][mask_n]
+            delta_p = vals["xp"][mask_p] - vals["xc_pn"][mask_p]
+
+            # ttest_rel needs >=2 pairs; a group can fall below that when the
+            # segmenter finds nothing, and scipy returns NaN with a warning
+            # rather than saying so.
+            if mask_n.sum() >= 2:
+                t_n, p_n = scipy_stats.ttest_rel(vals["xn"][mask_n], vals["xc_np"][mask_n])
+            else:
+                t_n = p_n = float("nan")
+            if mask_p.sum() >= 2:
+                t_p, p_p = scipy_stats.ttest_rel(vals["xp"][mask_p], vals["xc_pn"][mask_p])
+            else:
+                t_p = p_p = float("nan")
+
+            entry = dict(
+                mean_xn=float(np.nanmean(vals["xn"])),       std_xn=float(np.nanstd(vals["xn"])),
+                mean_xp=float(np.nanmean(vals["xp"])),       std_xp=float(np.nanstd(vals["xp"])),
+                mean_xc_np=float(np.nanmean(vals["xc_np"])), std_xc_np=float(np.nanstd(vals["xc_np"])),
+                mean_xc_pn=float(np.nanmean(vals["xc_pn"])), std_xc_pn=float(np.nanstd(vals["xc_pn"])),
+                mean_delta_n=float(delta_n.mean()) if delta_n.size else float("nan"),
+                std_delta_n=float(delta_n.std()) if delta_n.size else float("nan"),
+                t_n=float(t_n), p_n=float(p_n), n_pairs_n=int(mask_n.sum()),
+                mean_delta_p=float(delta_p.mean()) if delta_p.size else float("nan"),
+                std_delta_p=float(delta_p.std()) if delta_p.size else float("nan"),
+                t_p=float(t_p), p_p=float(p_p), n_pairs_p=int(mask_p.sum()),
+                # Fraction of images the metric could not be computed on at
+                # all. A high value means the segmenter is failing, and the
+                # surviving statistics are then a biased subsample rather than
+                # a measurement of the group.
+                nan_frac=float(np.mean([np.isnan(v).mean() for v in vals.values()])),
+            )
+            entry.update(_flag_if_degenerate(list(vals.values())))
+            breast_results[name] = entry
+
+    # ── MOP (marker preservation — the mammography FOP) ───────────────────────
+    mop_results: dict = {}
+    if "MOP" in clinical_metrics:
+        print("[metrics] computing MOP (biopsy clip / skin marker preservation) ...")
+        mop_np = marker_preservation(xn_list, xc_np, seg_net, device)
+        mop_pn = marker_preservation(xp_list, xc_pn, seg_net, device)
+        both = [v for v in (mop_np, mop_pn) if v is not None]
+        mop_results = dict(
+            n_to_p=mop_np, p_to_n=mop_pn,
+            mean=(sum(both) / len(both)) if both else None,
+        )
+
     # ── assemble results dict ─────────────────────────────────────────────────
     results = dict(
         CV=dict(n_to_p=cv_np, p_to_n=cv_pn, mean=cv),
@@ -1239,6 +1771,12 @@ def run_full_evaluation(
         EditConcentration=dict(n_to_p=ec_np, p_to_n=ec_pn),
         CTR=ctr_results,
         SCP=scp_results,
+        # Mammography set. Empty dicts on the chest domains, which opt out via
+        # DomainProfile.clinical_metrics — same convention CTR/SCP already use.
+        LLR=breast_results.get("LLR", {}),
+        MSI=breast_results.get("MSI", {}),
+        BDC=breast_results.get("BDC", {}),
+        MOP=mop_results,
     )
 
     _print_results(results)
@@ -1333,6 +1871,66 @@ def _print_results(r: dict) -> None:
               f"[t={s['t_n']:.2f}, p={s['p_n']:.4f}]")
         print(f"    Δ SCP(Xp − Xc_p→n) = {s['mean_delta_p']:.4f} ± {s['std_delta_p']:.4f}  "
               f"[t={s['t_p']:.2f}, p={s['p_p']:.4f}]")
+
+    # ── Mammography clinical metrics ─────────────────────────────────────────
+    _BREAST_LABELS = {
+        "LLR": ("Lesion Load Ratio", "area(lesion)/area(breast); ↑ = more lesion"),
+        "MSI": ("Margin Spiculation Index", "P²/4πA of the lesion; 1.0 = circle, ↑ = spiculated"),
+        "BDC": ("Breast Density", "mean intensity of fibroglandular tissue — DIAGNOSTIC, see below"),
+    }
+    for key, (title, gloss) in _BREAST_LABELS.items():
+        m = r.get(key) or {}
+        if not m:
+            continue
+        print(f"\n► {key} — {title}")
+        print(f"    [{gloss}]")
+        if m.get("degenerate"):
+            # Same refusal SCP earned: no t-tests on a constant.
+            print(f"    ⚠ DEGENERATE — relative spread {m['relative_spread']:.2%} "
+                  f"across all four groups (< 2%).")
+            print(f"    The metric is effectively a constant "
+                  f"({m['mean_xn']:.4f} ± {m['std_xn']:.4f}); its paired t-tests")
+            print(f"    would be testing numerical noise. Retained in "
+                  f"eval_metrics.json but MUST NOT be reported.")
+            continue
+        if m.get("nan_frac", 0.0) > 0.3:
+            print(f"    ⚠ {100 * m['nan_frac']:.0f}% of images had no computable "
+                  f"value (empty mask). The statistics below")
+            print(f"      are a biased subsample — check the segmenter before "
+                  f"quoting them.")
+        print(f"    mean {key}(Xn)     = {m['mean_xn']:.4f} ± {m['std_xn']:.4f}")
+        print(f"    mean {key}(Xp)     = {m['mean_xp']:.4f} ± {m['std_xp']:.4f}")
+        print(f"    mean {key}(Xc_n→p) = {m['mean_xc_np']:.4f} ± {m['std_xc_np']:.4f}")
+        print(f"    mean {key}(Xc_p→n) = {m['mean_xc_pn']:.4f} ± {m['std_xc_pn']:.4f}")
+        print(f"    Δ {key}(Xn − Xc_n→p) = {m['mean_delta_n']:.4f} ± {m['std_delta_n']:.4f}  "
+              f"[t={m['t_n']:.2f}, p={m['p_n']:.4f}, n={m['n_pairs_n']}]")
+        print(f"    Δ {key}(Xp − Xc_p→n) = {m['mean_delta_p']:.4f} ± {m['std_delta_p']:.4f}  "
+              f"[t={m['t_p']:.2f}, p={m['p_p']:.4f}, n={m['n_pairs_p']}]")
+
+    mop = r.get("MOP") or {}
+    if mop:
+        _f = lambda v: "N/A (no markers in group)" if v is None else f"{v:.4f}"
+        print(f"\n► MOP — Marker Preservation  [mammography FOP; higher = better]")
+        print(f"    Xn → Xp : {_f(mop['n_to_p'])}")
+        print(f"    Xp → Xn : {_f(mop['p_to_n'])}")
+        print(f"    Fraction of biopsy clips / skin markers surviving the edit. "
+              f"A counterfactual has")
+        print(f"    no business deleting metal, so a low value is an artefact "
+              f"signal, not a class change.")
+
+    # The joint reading is the point. Any one of these is easy to satisfy
+    # accidentally; the COMBINATION is what separates a lesion edit from the
+    # diffuse wash that produced CV=0.975 on RSNA while changing 73.6% of
+    # pixels at MAE 0.036.
+    if (r.get("LLR") or r.get("BDC")):
+        print(f"\n► How to read these together")
+        print(f"    lesion edit      : LLR moves, EditConcentration ≫ baseline, "
+              f"BDC roughly flat.")
+        print(f"    density wash     : BDC moves a lot, LLR flat, "
+              f"EditConcentration near baseline")
+        print(f"                       → adversarial, regardless of how good CV looks.")
+        print(f"    Quote CV only alongside the held-out transfer ratio "
+              f"(heldout_validation.py).")
     print("─" * 70)
 
 

@@ -26,6 +26,13 @@ SimpleITK>=2.3.0          # MetaImage (.mha) reader — NODE21 ships its chest
                           # radiographs in that format. Only imported by
                           # domains/node21_nodule.py, and only for .mha/.mhd/
                           # .nii inputs, so the RSNA domain never touches it.
+scikit-image>=0.22.0      # Otsu, connected components and region properties.
+                          # Used by src/breast_segmentation.py (breast mask
+                          # largest-component gate) and by the mammography
+                          # clinical metrics in src/metrics.py — MSI is
+                          # perimeter^2/4*pi*area from regionprops, and the MOP
+                          # marker detector needs component labelling. Only the
+                          # cbis_ddsm_breast domain imports it.
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Object detection

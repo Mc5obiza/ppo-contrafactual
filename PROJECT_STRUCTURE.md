@@ -11,10 +11,14 @@ A research pipeline that generates **medical counterfactual chest X-rays** (e.g.
 | `pipeline.py` | Shared construction code (`build_common()`) used by both `main.py` and `eval_main.py` so they build identical objects (dataset, models, generator). |
 | `config.py` | Central config: hyperparameters, device/dtype, model paths, constants. Imported everywhere instead of hardcoding values. |
 | `ingestion.py` | Downloads the RSNA Pneumonia dataset via Kaggle and defines `RSNACXRDataset`. |
+| `domains/` | Dataset-domain registry. A `DomainProfile` (`domains/base.py`) binds the images, what `f(·)` targets, the guidance/validator models, the segmenters, the FID feature space and which clinical metrics apply — so switching datasets is one new module plus one `config.DATASET_DOMAIN` line. Registered: `rsna_pneumonia`, `node21_nodule`, `cbis_ddsm_breast`. The first two use the torchxrayvision backend; the breast domain overrides every backend through the profile's `build_*` hooks, because torchxrayvision is chest-only. |
 | `heldout_validation.py` | Diagnostic: re-scores generated counterfactuals with classifiers that were **never** part of the guidance loop, to check if edits are genuine disease signal vs. adversarial perturbations against the guidance classifier. |
 | `check_classifier_localization.py` | Grad-CAM diagnostic to see whether the classifier looks at real lung pathology or a "shortcut" (brightness/contrast) when predicting pneumonia. |
 | `smoke_test.py` | Cheap end-to-end smoke test of the **training** path (tiny budgets) to catch crashes/shape errors before spending real GPU time. |
 | `smoke_test_eval.py` | Smoke test of the **evaluation** path specifically — tests cold-process checkpoint reload, which training+eval-in-one-process would hide. |
+| `train_breast_classifier.py` | Trains `f(·)` for the mammography domain (3 backbones: 2 guidance + 1 held-out validator). **Required before `run_ppo.slurm` on that domain** — torchxrayvision has no breast head to borrow. Patient-level splits; refuses to pass below 0.65 val AUC. |
+| `train_lesion_segmenter.py` | Trains the lesion U-Net the `LLR`/`MSI` clinical metrics are computed from, on CBIS-DDSM's shipped ROI masks. Deliberately kept **out** of the guidance loop so those metrics stay independent of the edits they measure. |
+| `check_lesion_localization.py` | Gate for the mammography metric stack: breast-mask sanity, lesion Dice vs ground truth, **MSI calibration against the `mass margins` labels**, and Grad-CAM∩lesion overlap. MSI must separate SPICULATED from CIRCUMSCRIBED on *real* images before it may be reported at all. |
 
 ## `factory/` — core ML components
 
@@ -31,6 +35,8 @@ A research pipeline that generates **medical counterfactual chest X-rays** (e.g.
 |---|---|
 | `src/models.py` | Loads all frozen pretrained models: ResNet-18 classifier, TorchXRayVision segmenter, YOLOv8 feature extractor, diffusion generator, eval dataset. |
 | `src/xrv_classifier.py` | Alternate classifier: TorchXRayVision's pretrained multi-pathology DenseNet-121, used instead of the custom ResNet-18 to avoid shortcut-learning issues. |
+| `src/breast_classifier.py` | `f(·)` for mammography — the torchxrayvision-free counterpart of `xrv_classifier.py`, class-for-class mirrored so `pipeline.build_common` can swap one for the other with nothing downstream noticing. |
+| `src/breast_segmentation.py` | The PSPNet replacement, which plays **two** roles the chest segmenter conflated: `BreastAnatomySegmenter` (analytic organ/pectoral/dense-tissue masks → `LOCK_BACKGROUND`) and `LesionSegmenter` (trained U-Net → the clinical metrics). |
 | `src/generator.py` | The Stable Diffusion 1.5 + LoRA generator: encode/decode latents, gradient-guided DDIM denoising to produce counterfactuals. |
 | `src/gradcam.py` | Shared Grad-CAM implementation, used both to constrain the PPO action space and for the standalone diagnostic script. |
 | `src/inference.py` | `DirectionalPolicy` wrapper bundling an env + trained PPO policy per direction, for evaluation-time generation. |

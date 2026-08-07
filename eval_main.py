@@ -415,6 +415,12 @@ def stage_reduce(args) -> None:
         deterministic_policy=True,
         xn_list=xn_list, xp_list=xp_list, xc_np=xc_np, xc_pn=xc_pn,
         clinical_metrics=ctx.domain.clinical_metrics,
+        # Both come from the active DomainProfile. fid_backbone was
+        # previously never passed, so FID silently used the chest
+        # DenseNet for every domain; lesion_net is None on the chest
+        # domains, where LLR/MSI are not in clinical_metrics anyway.
+        fid_backbone=ctx.domain.fid_backbone,
+        lesion_net=ctx.lesion_net,
     )
     _print_metric_summary(eval_results)
 
@@ -459,6 +465,12 @@ def stage_all(args) -> None:
         policy_p_to_n=policy_p_to_n,
         deterministic_policy=True,
         clinical_metrics=ctx.domain.clinical_metrics,
+        # Both come from the active DomainProfile. fid_backbone was
+        # previously never passed, so FID silently used the chest
+        # DenseNet for every domain; lesion_net is None on the chest
+        # domains, where LLR/MSI are not in clinical_metrics anyway.
+        fid_backbone=ctx.domain.fid_backbone,
+        lesion_net=ctx.lesion_net,
     )
     _print_metric_summary(eval_results)
 
