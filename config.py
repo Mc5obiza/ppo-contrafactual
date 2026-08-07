@@ -66,11 +66,11 @@ DIFFUSION_MODEL_ID = "runwayml/stable-diffusion-v1-5"
 #
 # Adding a dataset is a new module in domains/ plus a line in domains._REGISTRY.
 # It is NOT an edit to ingestion.py, src/xrv_classifier.py or src/metrics.py.
-DATASET_DOMAIN = "rsna_pneumonia"
+DATASET_DOMAIN = "node21_nodule"
 
 # Root of an extracted NODE21 release (grand-challenge registration required,
 # so there is no auto-download). Only read by domains/node21_nodule.py.
-NODE21_ROOT = ""
+NODE21_ROOT = "/home2020/home/insa/arbaoui/Jobs/Ayoub/data/node21/extracted/cxr_images/proccessed_data"
 
 # The weight sets below are the rsna_pneumonia defaults, kept for backwards
 # compatibility. The ACTIVE values come from the domain profile — see
