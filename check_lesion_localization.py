@@ -156,17 +156,35 @@ def check_msi_calibration(dataset, seg_net, lesion_net, idxs, device) -> bool:
     SPIC = ("SPICULATED", "ILL_DEFINED", "ILL-DEFINED")
     CIRC = ("CIRCUMSCRIBED",)
 
+    # CBIS-DDSM margin labels are COMPOUND: a radiologist may record
+    # "CIRCUMSCRIBED-ILL_DEFINED" or even "CIRCUMSCRIBED-SPICULATED" for a mass
+    # with mixed borders. 37 such rows exist. Assigning those to a group on
+    # first-match order would silently file every one of them as spiculated
+    # (SPIC is tested first) even though the radiologist also called them
+    # circumscribed — contaminating the exact comparison this gate rests on.
+    #
+    # They are EXCLUDED instead. A label that means both things is not evidence
+    # about either, and there are 805 unambiguously spiculated and 418
+    # unambiguously circumscribed masses to work with, so nothing is lost.
     groups: dict[str, list[int]] = {"spiculated": [], "circumscribed": []}
+    n_ambiguous = 0
     for i in idxs:
         m = (dataset.margin_label(i) or "").upper()
-        if any(s in m for s in SPIC):
+        if not m:
+            continue                      # calcification case: no mass margin
+        is_s = any(s in m for s in SPIC)
+        is_c = any(s in m for s in CIRC)
+        if is_s and is_c:
+            n_ambiguous += 1
+        elif is_s:
             groups["spiculated"].append(i)
-        elif any(s in m for s in CIRC):
+        elif is_c:
             groups["circumscribed"].append(i)
 
     print(f"\n[3] MSI CALIBRATION against ground-truth `mass margins`")
     print(f"    spiculated/ill-defined: {len(groups['spiculated'])}  |  "
-          f"circumscribed: {len(groups['circumscribed'])}")
+          f"circumscribed: {len(groups['circumscribed'])}  |  "
+          f"excluded as ambiguous: {n_ambiguous}")
 
     if len(groups["spiculated"]) < 5 or len(groups["circumscribed"]) < 5:
         print("    ✗ too few labelled lesions in one group to calibrate. MSI "

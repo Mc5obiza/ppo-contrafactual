@@ -339,19 +339,35 @@ class CBISDDSMDataset(Dataset):
         # One row per IMAGE. A mammogram can carry several annotated lesions,
         # and the image is malignant if ANY of them is — the same collapse
         # ingestion.RSNACXRDataset does over RSNA's per-box rows.
+        def _cell(g, col: str) -> str:
+            """
+            First value of `col` in this image's rows, as a clean string.
+
+            Missing values must come back as "" and not as the string "nan".
+            Calcification cases legitimately have no `mass margins`, and
+            str(float('nan')) == 'nan' is a TRUTHY string — so the MSI
+            calibration in check_lesion_localization.py, which tests
+            `margin_label(i) or ""`, would treat those as a present-but-
+            unrecognised label rather than as absent.
+            """
+            if col not in g:
+                return ""
+            v = g[col].iloc[0]
+            return "" if pd.isna(v) else str(v).strip()
+
         grouped = df.groupby("_path", sort=True)
         self.samples: list[tuple[str, float]] = []
         self._meta: list[dict] = []
         for path, g in grouped:
             self.samples.append((path, float(g["_label"].max())))
             self._meta.append({
-                "patient_id": str(g[COL_PATIENT].iloc[0]),
+                "patient_id": _cell(g, COL_PATIENT),
                 "roi":        next((r for r in g["_roi"] if isinstance(r, str)), None)
                               if "_roi" in g else None,
-                "margins":    str(g[COL_MARGINS].iloc[0]) if COL_MARGINS in g else "",
-                "shape":      str(g[COL_SHAPE].iloc[0]) if COL_SHAPE in g else "",
-                "view":       str(g[COL_VIEW].iloc[0]) if COL_VIEW in g else "",
-                "side":       str(g[COL_SIDE].iloc[0]) if COL_SIDE in g else "",
+                "margins":    _cell(g, COL_MARGINS),
+                "shape":      _cell(g, COL_SHAPE),
+                "view":       _cell(g, COL_VIEW),
+                "side":       _cell(g, COL_SIDE),
             })
 
         if not self.samples:

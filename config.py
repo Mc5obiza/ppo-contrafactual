@@ -81,7 +81,10 @@ NODE21_ROOT = ""
 # the login node and prints the path to put here. Expected layout:
 #     <root>/csv/{dicom_info,mass_case_description_train_set,...}.csv
 #     <root>/jpeg/<SeriesUID>/<n>.jpg
-CBIS_DDSM_ROOT = ""
+CBIS_DDSM_ROOT = (
+    "/home2020/home/insa/arbaoui/.cache/kagglehub/datasets/awsaf49/"
+    "cbis-ddsm-breast-cancer-image-dataset/versions/1"
+)
 
 # Where train_breast_classifier.py and train_lesion_segmenter.py write, and
 # where src/breast_classifier.py and src/breast_segmentation.py read from.
