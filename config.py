@@ -5,6 +5,8 @@ Central configuration: all hyperparameters, paths, and constants.
 Import this module everywhere instead of scattering magic numbers.
 """
 
+import os
+
 import torch
 
 # ─────────────────────────────────────────────
@@ -12,6 +14,21 @@ import torch
 # ─────────────────────────────────────────────
 DEVICE = "cuda"
 DTYPE  = torch.float16
+
+# Worker processes for every dataset-scanning DataLoader (the env far-pool
+# scan, metrics.scan_groups, eval_main._pick_query_images).
+#
+# WHY THIS IS A KNOB. torch DataLoader workers allocate POSIX semaphores in
+# /dev/shm. SLURM cgroups cap /dev/shm per node, and on a small-cap node the
+# worker spawn dies with a bare "OSError: [Errno 28] No space left on device"
+# out of multiprocessing.synchronize.SemLock — which reads like a full disk
+# and has nothing to do with disk. Job 17669486 hit exactly this on hpc-n868
+# while the identical code passed on the V100 nodes.
+#
+# Override per submission without touching code:
+#     PPO_NUM_WORKERS=0 sbatch run_smoke_test_eval.slurm
+# 0 loads in-process: slower DICOM decode, no shared memory needed at all.
+DATALOADER_NUM_WORKERS = int(os.environ.get("PPO_NUM_WORKERS", "2"))
 
 # ─────────────────────────────────────────────
 # Model paths / IDs
@@ -40,10 +57,45 @@ DIFFUSION_MODEL_ID = "runwayml/stable-diffusion-v1-5"
 #   chex -> 11 heads; multi-task training resists the global-brightness
 #           shortcut this module's docstring warns about
 # Cost is ~1 extra classifier fwd+bwd per guided step per additional member.
+# ─────────────────────────────────────────────
+# Dataset domain
+# ─────────────────────────────────────────────
+# Selects the images, the xrv pathology head f(.) targets, the guidance /
+# validator weight sets and which clinical metrics apply — all four move
+# together. See domains/base.py. Registered: "rsna_pneumonia", "node21_nodule".
+#
+# Adding a dataset is a new module in domains/ plus a line in domains._REGISTRY.
+# It is NOT an edit to ingestion.py, src/xrv_classifier.py or src/metrics.py.
+DATASET_DOMAIN = "rsna_pneumonia"
+
+# Root of an extracted NODE21 release (grand-challenge registration required,
+# so there is no auto-download). Only read by domains/node21_nodule.py.
+NODE21_ROOT = ""
+
+# The weight sets below are the rsna_pneumonia defaults, kept for backwards
+# compatibility. The ACTIVE values come from the domain profile — see
+# pipeline.build_common — so switching DATASET_DOMAIN switches them too.
 GUIDANCE_ENSEMBLE_WEIGHTS = [
     "densenet121-res224-rsna",
     "densenet121-res224-chex",
 ]
+
+# REVERTED 2026-08-07 to False, i.e. back to v1's single-model f(·).
+#
+# True  -> f(·) is the mean-probability ensemble over GUIDANCE_ENSEMBLE_WEIGHTS.
+# False -> f(·) is the single GUIDANCE_SINGLE_WEIGHTS model, which is what the
+#          archived checkpoints/archive_v1_rank8/ policies were trained against
+#          and what produced the CV=0.975 numbers in checkpoints/eval_metrics.json.
+#
+# READ THIS BEFORE QUOTING CV. The ensemble exists because held-out validation
+# (checkpoints/heldout/heldout_validation.json, job 17649721) showed the
+# single-rsna counterfactuals do NOT transfer: strict CV 0.0 on nih and 0.0-0.08
+# on chex, transfer ratio 0.13-0.20, with the original-image agreement control
+# passing. So with this False, CV measures gradient descent against rsna
+# succeeding against rsna, and is NOT evidence the counterfactuals are
+# explanatory. Run heldout_validation.py alongside any CV reported from here.
+USE_GUIDANCE_ENSEMBLE  = False
+GUIDANCE_SINGLE_WEIGHTS = "densenet121-res224-rsna"
 
 # Default root for CXRDataset (src/models.py) — an ImageFolder-style
 # {NORMAL,PNEUMONIA}/ layout, unused by the current main.py pipeline.
@@ -97,7 +149,7 @@ BG_MASK_FEATHER  = 1.0    # Gaussian sigma (latent cells) for seam feathering
 # named_modules() and silently returns members.0's `features`, producing an
 # rsna-only CAM labelled as the ensemble's. Verified behaviour, not a guess.
 # Watch the degenerate-CAM rate PPOTrainer.train reports at the end of a run.
-USE_GRADCAM_MASK = True
+USE_GRADCAM_MASK = False   # REVERTED 2026-08-07 (was ARM 2)
 
 # Grad-CAM hook target inside the FROZEN classifier. Spatial resolution of the
 # xrv DenseNet-121 at its 224 input (cell size quoted for IMG_SIZE=256):
@@ -168,7 +220,7 @@ ANCHOR_TO_EPISODE_ORIGIN = True
 # genuine multi-step MDP at ~3-5x v1 cost.
 # If avg_ep_len pins at exactly this value in the PPO log, the fix is to LOOSEN
 # EDIT_BUDGET_L1 — raising BUDGET_T back just buys more diffuse editing.
-BUDGET_T            = 8
+BUDGET_T            = 25   # REVERTED 2026-08-07 from 8 back to the v1 value
 
 # Episodes run EXACTLY BUDGET_T steps and never terminate early on validity.
 #
@@ -192,7 +244,8 @@ BUDGET_T            = 8
 # instead, not avg_return, when reading against job 17653310 and earlier.
 #
 # Set False to restore `done = is_valid or step >= T` exactly.
-FIXED_EPISODE_LENGTH = True
+FIXED_EPISODE_LENGTH = False   # REVERTED 2026-08-07: restores v1's
+                               # `done = is_valid or step >= T`
 
 EPSILON_STOP        = 0.08
 ETA_OBJ             = 0.5
@@ -213,7 +266,11 @@ ENV_SCAN_BATCH_SIZE = 64
 # 200 images each, so 0.02 is deliberately below what the old policy produced —
 # reachable, but not by the v1 strategy. Loosen toward 0.03 if episodes never
 # terminate early (see the BUDGET_T note above).
-EDIT_BUDGET_L1      = 0.02
+EDIT_BUDGET_L1      = float("inf")   # REVERTED 2026-08-07 from 0.02. v1 had no
+                                     # L1 gate on validity at all; inf makes
+                                     # budget_ok always True in
+                                     # environment._compute_reward, so validity
+                                     # keys off |f(x_cf) - c| alone as it did.
 
 # ─────────────────────────────────────────────
 # Reward weights
@@ -267,7 +324,7 @@ ENV_REFINEMENT_PASSES = 2
 # uniform baseline (top-5% of pixels' share of |Δ|), i.e. mostly diffuse.
 # PPOTrainer used to log "the annealing schedule is inert" at startup; that
 # line should stop firing now.
-USE_SPARSITY_REWARD    = True
+USE_SPARSITY_REWARD    = False   # REVERTED 2026-08-07 (was ARM 3)
 USE_SPARSITY_ANNEALING = True
 
 # Target weight. Same scale as LAM_FID, which is worth noting: R_fid is already
@@ -410,7 +467,8 @@ LAM_ACT_SAT       = 1e-2
 # Keep "mlp" available: the archived rank-8 policies under
 # checkpoints/archive_v1_rank8/ have that trunk and will not load into a conv
 # policy.
-POLICY_TRUNK = "conv"
+POLICY_TRUNK = "mlp"   # REVERTED 2026-08-07: the archived v1 policies carry the
+                       # Linear(73731, 512) trunk. "conv" cannot load them.
 
 # ─────────────────────────────────────────────
 # Experiment
@@ -499,19 +557,41 @@ LOG_EVERY_N_STEPS  = 20
 # finetuning.py resumes via set_peft_model_state_dict and pipeline.py loads
 # unet_finetuned.pt — both fail on shape mismatch. The rank-8 artefacts are
 # archived under checkpoints/archive_v1_rank8/.
-LORA_R       = 16
+LORA_R       = 8
 LORA_ALPHA   = 16
 LORA_DROPOUT = 0.05
-LORA_TARGETS = [
-    "to_q", "to_k", "to_v", "to_out.0",
-    "ff.net.0.proj", "ff.net.2",
-    "proj_in", "proj_out",
-]
+LORA_TARGETS = ["to_q", "to_k", "to_v", "to_out.0"]
+
+# REVERTED 2026-08-07 from rank 16 / widened targets back to the rank-8 v1
+# settings, so checkpoints/archive_v1_rank8/ loads. The rank-16 artefacts are
+# archived under checkpoints/archive_v2_rank16/ — restoring them means putting
+# these four lines back to:
+#     LORA_R       = 16
+#     LORA_TARGETS = ["to_q", "to_k", "to_v", "to_out.0",
+#                     "ff.net.0.proj", "ff.net.2", "proj_in", "proj_out"]
 
 # ─────────────────────────────────────────────
 # Checkpoint output
 # ─────────────────────────────────────────────
-CKPT_DIR          = "checkpoints"
-CKPT_POLICY       = "checkpoints/ppo_policy.pt"
-CKPT_UNET         = "checkpoints/unet_finetuned.pt"
-CKPT_COND_PROJ    = "checkpoints/cond_proj.pt"
+# PER-DOMAIN, and this is a correctness requirement rather than tidiness.
+# main.py resumes LoRA fine-tuning from CKPT_DIR/finetuning_latest.pt and PPO
+# from CKPT_DIR/<label>/ppo_latest.pt whenever those files exist. With one
+# shared directory, training a second dataset would (a) silently resume from
+# the FIRST dataset's weights and (b) overwrite its policies — losing them,
+# since the generator artefacts are gitignored.
+#
+# rsna_pneumonia keeps the bare "checkpoints" path so every existing artefact
+# and every run_*.slurm script keeps working unchanged. Any other domain gets
+# its own subdirectory. Override explicitly with PPO_CKPT_DIR when needed
+# (e.g. to run an ablation arm without touching the baseline).
+#
+# Resolved from the DATASET_DOMAIN string rather than by importing `domains`,
+# because domains/ imports config and that would be circular.
+CKPT_DIR = os.environ.get("PPO_CKPT_DIR") or (
+    "checkpoints"
+    if DATASET_DOMAIN == "rsna_pneumonia"
+    else os.path.join("checkpoints", DATASET_DOMAIN)
+)
+CKPT_POLICY       = os.path.join(CKPT_DIR, "ppo_policy.pt")
+CKPT_UNET         = os.path.join(CKPT_DIR, "unet_finetuned.pt")
+CKPT_COND_PROJ    = os.path.join(CKPT_DIR, "cond_proj.pt")

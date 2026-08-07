@@ -22,6 +22,10 @@ peft>=0.10.0
 torchxrayvision>=1.0.0
 pydicom>=2.4.0
 pylibjpeg>=2.0.0          # JPEG-compressed DICOM support
+SimpleITK>=2.3.0          # MetaImage (.mha) reader — NODE21 ships its chest
+                          # radiographs in that format. Only imported by
+                          # domains/node21_nodule.py, and only for .mha/.mhd/
+                          # .nii inputs, so the RSNA domain never touches it.
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Object detection

@@ -39,10 +39,11 @@ from dataclasses import dataclass
 import torch
 
 import config
-from ingestion import build_dataset
+import domains
+from ingestion import build_dataset          # re-exported: smoke tests patch this
 from src.models import build_segmentation_net, build_object_detector
 from src.generator import build_generator
-from src.xrv_classifier import build_ensemble_classifier
+from src.xrv_classifier import build_ensemble_classifier, build_xrv_classifier
 from factory.environment import MedicalCounterfactualEnv
 from factory.ppo import PPOActorCritic
 from src.inference import DirectionalPolicy
@@ -65,6 +66,10 @@ class PipelineContext:
     lung_channel_idx: list
     obj_det: object
     generator: object
+    # The DomainProfile everything above was built from. Carried so downstream
+    # consumers (metrics, held-out validation) read the domain's bindings
+    # instead of re-deriving them from config and drifting apart.
+    domain: object = None
 
 
 def build_common() -> PipelineContext:
@@ -79,17 +84,39 @@ def build_common() -> PipelineContext:
     print("=" * 70)
     print("STEP 1 — Dataset ingestion")
     print("=" * 70)
-    dataset = build_dataset(img_size=config.IMG_SIZE)
+    domain = domains.active()
+    print(domain.summary())
+    if domain.notes:
+        print(f"[domain] {domain.notes}")
+
+    # The rsna_pneumonia profile's build_dataset IS ingestion.build_dataset, so
+    # this stays byte-identical for the baseline domain. It is routed through
+    # the module global rather than the profile attribute because smoke_test.py
+    # and smoke_test_eval.py patch `pipeline.build_dataset` to shrink the
+    # dataset — patching the profile's frozen field is not possible.
+    if domain.name == "rsna_pneumonia":
+        dataset = build_dataset(img_size=config.IMG_SIZE)
+    else:
+        dataset = domain.build_dataset(config.IMG_SIZE)
 
     print("\n" + "=" * 70)
     print("STEP 2 — Loading pretrained models")
     print("=" * 70)
-    # f(·) is an ENSEMBLE (config.GUIDANCE_ENSEMBLE_WEIGHTS), not a single
-    # model. This one object flows to the generator (guidance gradient), the
-    # env (termination + reward), the far-pool scan, the Xn/Xp split and CV —
-    # so consensus is required everywhere at once. See
-    # src/xrv_classifier.EnsemblePneumoniaClassifier for why.
-    classifier                = build_ensemble_classifier()
+    # f(·) is either an ENSEMBLE (config.GUIDANCE_ENSEMBLE_WEIGHTS) or the
+    # single v1 model, per config.USE_GUIDANCE_ENSEMBLE. Whichever it is, this
+    # ONE object flows to the generator (guidance gradient), the env
+    # (termination + reward), the far-pool scan, the Xn/Xp split and CV — so the
+    # choice changes all of them at once. See
+    # src/xrv_classifier.EnsemblePneumoniaClassifier for why the ensemble exists
+    # and what its CV numbers are (not) comparable to.
+    if config.USE_GUIDANCE_ENSEMBLE:
+        classifier = build_ensemble_classifier(
+            weights_list=list(domain.ensemble_weights), pathology=domain.pathology
+        )
+    else:
+        classifier = build_xrv_classifier(
+            weights=domain.guidance_weights, pathology=domain.pathology
+        )
     seg_net, lung_channel_idx = build_segmentation_net()
     obj_det                   = build_object_detector()
 
@@ -110,6 +137,7 @@ def build_common() -> PipelineContext:
         lung_channel_idx=lung_channel_idx,
         obj_det=obj_det,
         generator=generator,
+        domain=domain,
     )
 
 

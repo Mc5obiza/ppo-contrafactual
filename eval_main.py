@@ -133,7 +133,10 @@ def _pick_query_images(
     """
     from torch.utils.data import DataLoader
 
-    loader = DataLoader(dataset, batch_size=scan_batch_size, shuffle=True, num_workers=2)
+    loader = DataLoader(
+        dataset, batch_size=scan_batch_size, shuffle=True,
+        num_workers=config.DATALOADER_NUM_WORKERS,
+    )
     to_rgb = lambda t: t.repeat(1, 3, 1, 1) if t.shape[1] == 1 else t
 
     x_neg = x_pos = None
@@ -411,6 +414,7 @@ def stage_reduce(args) -> None:
         policy_p_to_n=policy_p_to_n,
         deterministic_policy=True,
         xn_list=xn_list, xp_list=xp_list, xc_np=xc_np, xc_pn=xc_pn,
+        clinical_metrics=ctx.domain.clinical_metrics,
     )
     _print_metric_summary(eval_results)
 
@@ -454,6 +458,7 @@ def stage_all(args) -> None:
         policy_n_to_p=policy_n_to_p,
         policy_p_to_n=policy_p_to_n,
         deterministic_policy=True,
+        clinical_metrics=ctx.domain.clinical_metrics,
     )
     _print_metric_summary(eval_results)
 

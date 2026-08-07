@@ -45,19 +45,40 @@ class XRVPneumoniaClassifier(nn.Module):
     L_cls / grad_cls computation.
     """
 
-    def __init__(self, device: str = config.DEVICE, weights: str = "densenet121-res224-rsna"):
+    def __init__(
+        self,
+        device: str = config.DEVICE,
+        weights: str = "densenet121-res224-rsna",
+        pathology: str = "Pneumonia",
+    ):
         super().__init__()
         model = xrv.models.DenseNet(weights=weights)
         self.model      = model.to(device).eval()
         self.device     = device
         self.input_size = 224
+        self.pathology  = pathology
 
-        if "Pneumonia" not in model.pathologies:
+        if pathology not in model.pathologies:
             raise ValueError(
-                f"'Pneumonia' not found in pathologies for weights='{weights}': "
+                f"{pathology!r} not found in pathologies for weights={weights!r}: "
                 f"{model.pathologies}. Try 'densenet121-res224-all' instead."
             )
-        self.pna_idx = model.pathologies.index("Pneumonia")
+        self.pna_idx = model.pathologies.index(pathology)
+
+        # A head can be PRESENT but DEAD: torchxrayvision's op_norm returns a
+        # constant 0.5 with zero gradient wherever op_threshs is NaN, so f(.)
+        # silently stops being a function of the image. domains.base validates
+        # this up front, but the check is repeated here because this class is
+        # also constructed directly (heldout_validation.py, diagnostics).
+        ot = getattr(model, "op_threshs", None)
+        if ot is not None and bool(torch.isnan(ot[self.pna_idx])):
+            raise ValueError(
+                f"weights={weights!r} expose {pathology!r} but its op_threshs "
+                f"entry is NaN, so torchxrayvision.models.op_norm returns a "
+                f"constant 0.5 for it and every gradient through f(.) is "
+                f"exactly zero. Pick a weight set with a finite threshold for "
+                f"{pathology!r} (see domains/node21_nodule.py for the table)."
+            )
 
         # NOTE: frozen, same as the original classifier — this is used for
         # guidance gradients (d L_cls / d image), not trained itself.
@@ -95,10 +116,11 @@ class XRVPneumoniaClassifier(nn.Module):
 def build_xrv_classifier(
     device: str = config.DEVICE,
     weights: str = "densenet121-res224-rsna",
+    pathology: str = "Pneumonia",
 ) -> XRVPneumoniaClassifier:
     """Convenience wrapper matching build_classifier()'s call signature/logging style."""
-    clf = XRVPneumoniaClassifier(device=device, weights=weights)
-    print(f"[models] loaded XRV pneumonia classifier ({weights}) as f(·) replacement")
+    clf = XRVPneumoniaClassifier(device=device, weights=weights, pathology=pathology)
+    print(f"[models] loaded XRV classifier ({weights}, head={pathology!r}) as f(·)")
     return clf
 
 
@@ -148,14 +170,23 @@ class EnsemblePneumoniaClassifier(nn.Module):
     codebase treats submodules.
     """
 
-    def __init__(self, device: str = config.DEVICE, weights_list: list[str] | None = None):
+    def __init__(
+        self,
+        device: str = config.DEVICE,
+        weights_list: list[str] | None = None,
+        pathology: str = "Pneumonia",
+    ):
         super().__init__()
         weights_list = list(weights_list or config.GUIDANCE_ENSEMBLE_WEIGHTS)
         if not weights_list:
             raise ValueError("weights_list must name at least one weight set")
 
+        self.pathology = pathology
         self.members = nn.ModuleList(
-            [XRVPneumoniaClassifier(device=device, weights=w) for w in weights_list]
+            [
+                XRVPneumoniaClassifier(device=device, weights=w, pathology=pathology)
+                for w in weights_list
+            ]
         )
         self.weights_list = weights_list
         self.device = device
@@ -196,11 +227,14 @@ class EnsemblePneumoniaClassifier(nn.Module):
 def build_ensemble_classifier(
     device: str = config.DEVICE,
     weights_list: list[str] | None = None,
+    pathology: str = "Pneumonia",
 ) -> EnsemblePneumoniaClassifier:
     """Convenience wrapper matching build_xrv_classifier's signature/logging style."""
-    clf = EnsemblePneumoniaClassifier(device=device, weights_list=weights_list)
+    clf = EnsemblePneumoniaClassifier(
+        device=device, weights_list=weights_list, pathology=pathology
+    )
     names = ", ".join(w.replace("densenet121-res224-", "") for w in clf.weights_list)
-    print(f"[models] loaded ENSEMBLE pneumonia classifier as f(·): [{names}] "
+    print(f"[models] loaded ENSEMBLE classifier as f(·), head={pathology!r}: [{names}] "
           f"({len(clf.members)} members, mean probability)")
     print(f"[models]   NOTE: f(·) is an ensemble — CV, far-pool sizes and the "
           f"Xn/Xp group split are NOT comparable to single-classifier runs.")

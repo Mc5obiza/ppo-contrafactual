@@ -91,7 +91,10 @@ def scan_groups(
     Returns (xn_list, xp_list), each a list of (1, 1, H, W) CPU tensors.
     """
     print(f"[{tag}] scanning dataset for Xn / Xp (n_eval={n_eval}) ...")
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=2)
+    loader = DataLoader(
+        dataset, batch_size=batch_size, shuffle=False,
+        num_workers=config.DATALOADER_NUM_WORKERS,
+    )
 
     xn_list, xp_list = [], []
     with torch.no_grad():
@@ -939,6 +942,7 @@ def run_full_evaluation(
     xp_list: Optional[list[torch.Tensor]] = None,
     xc_np: Optional[list[torch.Tensor]] = None,
     xc_pn: Optional[list[torch.Tensor]] = None,
+    clinical_metrics: tuple[str, ...] = ("CTR", "SCP"),
 ) -> dict:
     """
     Run the complete evaluation protocol from Singla et al. (2022).
@@ -1138,8 +1142,13 @@ def run_full_evaluation(
     ec_pn = edit_concentration(xp_list, xc_pn)
 
     # ── CTR ───────────────────────────────────────────────────────────────────
+    # CTR is a CARDIOMEGALY measure and SCP a PLEURAL EFFUSION one; neither says
+    # anything about, say, a lung nodule. `clinical_metrics` comes from the
+    # active DomainProfile (domains/base.py) so a domain that has no use for
+    # them omits them entirely instead of publishing numbers that look like
+    # findings. Default keeps the pneumonia domain's behaviour unchanged.
     ctr_results = {}
-    if heart_channel_idx is not None:
+    if "CTR" in clinical_metrics and heart_channel_idx is not None:
         print("[metrics] computing CTR ...")
         def _ctr_batch(x_list):
             return compute_ctr_batch(
@@ -1171,45 +1180,49 @@ def run_full_evaluation(
         )
 
     # ── SCP ───────────────────────────────────────────────────────────────────
-    print("[metrics] computing SCP ...")
-    def _scp_batch(x_list):
-        return compute_scp_batch(x_list, obj_det, device)
+    scp_results = {}
+    if "SCP" in clinical_metrics:
+        print("[metrics] computing SCP ...")
 
-    scp_xn    = np.array(_scp_batch(xn_list))
-    scp_xp    = np.array(_scp_batch(xp_list))
-    scp_xc_np = np.array(_scp_batch(xc_np))
-    scp_xc_pn = np.array(_scp_batch(xc_pn))
+        def _scp_batch(x_list):
+            return compute_scp_batch(x_list, obj_det, device)
 
-    delta_sn = scp_xn - scp_xc_np
-    delta_sp = scp_xp - scp_xc_pn
-    t_sn, p_sn = scipy_stats.ttest_rel(scp_xn, scp_xc_np)
-    t_sp, p_sp = scipy_stats.ttest_rel(scp_xp, scp_xc_pn)
+        scp_xn    = np.array(_scp_batch(xn_list))
+        scp_xp    = np.array(_scp_batch(xp_list))
+        scp_xc_np = np.array(_scp_batch(xc_np))
+        scp_xc_pn = np.array(_scp_batch(xc_pn))
 
-    # DEGENERACY CHECK. compute_scp is a proxy — sigmoid(-‖yolo_feat‖ / 50) on
-    # the lower third of the image — and in practice it saturates: the previous
-    # run measured std 0.0008 on a mean of 0.479 across all four groups, i.e.
-    # the metric is a constant and its t-tests are testing numerical noise.
-    # Flagged rather than silently reported, so a p-value from a constant is
-    # never mistaken for a clinical finding. If this fires, either fix the
-    # proxy (a real CP-recess detector) or drop SCP from the writeup.
-    scp_spread = float(
-        max(scp_xn.std(), scp_xp.std(), scp_xc_np.std(), scp_xc_pn.std())
-    )
-    scp_scale = float(abs(np.mean([scp_xn.mean(), scp_xp.mean()])) + 1e-8)
-    scp_degenerate = bool(scp_spread / scp_scale < 0.02)   # <2% relative spread
+        delta_sn = scp_xn - scp_xc_np
+        delta_sp = scp_xp - scp_xc_pn
+        t_sn, p_sn = scipy_stats.ttest_rel(scp_xn, scp_xc_np)
+        t_sp, p_sp = scipy_stats.ttest_rel(scp_xp, scp_xc_pn)
 
-    scp_results = dict(
-        mean_xn=float(scp_xn.mean()),       std_xn=float(scp_xn.std()),
-        mean_xp=float(scp_xp.mean()),       std_xp=float(scp_xp.std()),
-        mean_xc_np=float(scp_xc_np.mean()), std_xc_np=float(scp_xc_np.std()),
-        mean_xc_pn=float(scp_xc_pn.mean()), std_xc_pn=float(scp_xc_pn.std()),
-        mean_delta_n=float(delta_sn.mean()), std_delta_n=float(delta_sn.std()),
-        t_n=float(t_sn), p_n=float(p_sn),
-        mean_delta_p=float(delta_sp.mean()), std_delta_p=float(delta_sp.std()),
-        t_p=float(t_sp), p_p=float(p_sp),
-        degenerate=scp_degenerate,
-        relative_spread=float(scp_spread / scp_scale),
-    )
+        # DEGENERACY CHECK. compute_scp is a proxy — sigmoid(-‖yolo_feat‖ / 50)
+        # on the lower third of the image — and in practice it saturates: the
+        # previous run measured std 0.0008 on a mean of 0.479 across all four
+        # groups, i.e. the metric is a constant and its t-tests are testing
+        # numerical noise. Flagged rather than silently reported, so a p-value
+        # from a constant is never mistaken for a clinical finding. If this
+        # fires, either fix the proxy (a real CP-recess detector) or drop SCP
+        # from the writeup — a domain can drop it via DomainProfile.
+        scp_spread = float(
+            max(scp_xn.std(), scp_xp.std(), scp_xc_np.std(), scp_xc_pn.std())
+        )
+        scp_scale = float(abs(np.mean([scp_xn.mean(), scp_xp.mean()])) + 1e-8)
+        scp_degenerate = bool(scp_spread / scp_scale < 0.02)  # <2% rel. spread
+
+        scp_results = dict(
+            mean_xn=float(scp_xn.mean()),       std_xn=float(scp_xn.std()),
+            mean_xp=float(scp_xp.mean()),       std_xp=float(scp_xp.std()),
+            mean_xc_np=float(scp_xc_np.mean()), std_xc_np=float(scp_xc_np.std()),
+            mean_xc_pn=float(scp_xc_pn.mean()), std_xc_pn=float(scp_xc_pn.std()),
+            mean_delta_n=float(delta_sn.mean()), std_delta_n=float(delta_sn.std()),
+            t_n=float(t_sn), p_n=float(p_sn),
+            mean_delta_p=float(delta_sp.mean()), std_delta_p=float(delta_sp.std()),
+            t_p=float(t_sp), p_p=float(p_sp),
+            degenerate=scp_degenerate,
+            relative_spread=float(scp_spread / scp_scale),
+        )
 
     # ── assemble results dict ─────────────────────────────────────────────────
     results = dict(
@@ -1292,9 +1305,12 @@ def _print_results(r: dict) -> None:
         print(f"    Δ CTR(Xp − Xc_p→n) = {c['mean_delta_p']:.4f} ± {c['std_delta_p']:.4f}  "
               f"[t={c['t_p']:.2f}, p={c['p_p']:.4f}]")
 
-    s = r["SCP"]
-    print(f"\n► SCP — Pleural Effusion clinical metric")
-    if s.get("degenerate"):
+    # Empty when the active domain opted out via DomainProfile.clinical_metrics
+    # — print nothing rather than an empty section that reads like a failed
+    # computation.
+    s = r.get("SCP") or {}
+    if s and s.get("degenerate"):
+        print(f"\n► SCP — Pleural Effusion clinical metric")
         # Do NOT print t-tests on a constant. See the degeneracy check in
         # run_full_evaluation for why this fires and what to do about it.
         print(f"    ⚠ DEGENERATE — relative spread {s['relative_spread']:.2%} "
@@ -1307,7 +1323,8 @@ def _print_results(r: dict) -> None:
               f"compatibility but MUST NOT be")
         print(f"    reported as a clinical result. Fix the proxy (a real "
               f"CP-recess detector) or drop SCP.")
-    else:
+    elif s:
+        print(f"\n► SCP — Pleural Effusion clinical metric")
         print(f"    mean SCP(Xn)     = {s['mean_xn']:.4f} ± {s['std_xn']:.4f}")
         print(f"    mean SCP(Xp)     = {s['mean_xp']:.4f} ± {s['std_xp']:.4f}")
         print(f"    mean SCP(Xc_n→p) = {s['mean_xc_np']:.4f} ± {s['std_xc_np']:.4f}")

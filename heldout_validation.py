@@ -101,7 +101,24 @@ from src.xrv_classifier import build_xrv_classifier, build_ensemble_classifier
 # measures nothing. Head counts: mimic_ch 11, pc 15, nih 14.
 # nih is retained for continuity with the pre-v2 run despite being the weakest
 # of the three (NLP-mined Pneumonia label, ~1% prevalence).
-DEFAULT_VALIDATORS = ["mimic_ch", "pc", "nih"]
+def _default_validators() -> list[str]:
+    """
+    Held-out validators for the ACTIVE domain (domains/base.py), which already
+    guarantees they are disjoint from that domain's guidance weights and that
+    the pathology head is live in each. Falls back to the pneumonia defaults if
+    the domain registry is unavailable, so this script keeps working standalone.
+    """
+    try:
+        import domains
+        v = domains.active().heldout_validators
+        if v:
+            return [w.replace("densenet121-res224-", "") for w in v]
+    except Exception as e:                      # noqa: BLE001 — advisory only
+        print(f"[heldout] could not read domain validators ({e}); using defaults")
+    return ["mimic_ch", "pc", "nih"]
+
+
+DEFAULT_VALIDATORS = _default_validators()
 CACHE_NAME = "cf_cache.pt"
 
 
@@ -131,9 +148,19 @@ def _build_scorer(members: list[str], device: str):
     this report reflects exactly what the counterfactuals were optimised
     against rather than one arbitrary member of it.
     """
+    # The head MUST come from the active domain. Scoring nodule counterfactuals
+    # with the "Pneumonia" head would report a transfer ratio for a disease the
+    # generator never targeted — a wrong number rather than a missing one.
+    import domains
+    pathology = domains.active().pathology
+
     if len(members) == 1:
-        return build_xrv_classifier(device=device, weights=members[0])
-    return build_ensemble_classifier(device=device, weights_list=members)
+        return build_xrv_classifier(
+            device=device, weights=members[0], pathology=pathology
+        )
+    return build_ensemble_classifier(
+        device=device, weights_list=members, pathology=pathology
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

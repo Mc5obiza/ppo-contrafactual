@@ -124,9 +124,25 @@ print()
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _snapshot(root: str) -> dict:
-    """(path -> (size, mtime)) for every file under root."""
+    """
+    (path -> (size, mtime)) for every file under root, EXCLUDING this test's
+    own write directory.
+
+    The exclusion matters in the documented "point at the real checkpoints"
+    mode: SMOKE_EVAL_SRC=checkpoints makes the write target
+    checkpoints/smoke_eval a CHILD of the source tree, so the test's own
+    eval_metrics.json and diff PNGs land inside the directory it is asserting
+    is untouched — reporting a failure whose entire evidence is files this
+    process was supposed to create. With the default
+    SMOKE_EVAL_SRC=checkpoints/smoke_all the two are siblings and this never
+    fires, which is why it went unnoticed.
+    """
+    write_dir = os.path.abspath(config.CKPT_DIR)
     out = {}
-    for dirpath, _dirnames, filenames in os.walk(root):
+    for dirpath, dirnames, filenames in os.walk(root):
+        if os.path.abspath(dirpath) == write_dir:
+            dirnames[:] = []          # do not descend into the write target
+            continue
         for fn in filenames:
             p = os.path.join(dirpath, fn)
             try:

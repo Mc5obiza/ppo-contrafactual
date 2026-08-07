@@ -137,7 +137,7 @@ class MedicalCounterfactualEnv:
         device: str = config.DEVICE,
         far_threshold: float = config.FAR_THRESHOLD,
         scan_batch_size: int = config.ENV_SCAN_BATCH_SIZE,
-        scan_num_workers: int = 2,
+        scan_num_workers: int = config.DATALOADER_NUM_WORKERS,
     ):
         self.dataset   = dataset
         self.f         = classifier
