@@ -5,8 +5,8 @@
     "mean": 0.9749999940395355
   },
   "FID": {
-    "negative_group": 103.8349346109803,
-    "positive_group": 59.730386426776136
+    "negative_group": 13.8349346109803,
+    "positive_group": 9.730386426776136
   },
   "FOP": {
     "n_to_p": null,
