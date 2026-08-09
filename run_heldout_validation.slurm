@@ -53,9 +53,15 @@ export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 export YOLO_OFFLINE=1
 
+# CKPT_DIR is per-domain (and PPO_CKPT_DIR-overridable), so ask config for it
+# instead of hardcoding "checkpoints" — see config.py's Checkpoint output
+# section.
+CKPT_DIR=$(python -c 'import config; print(config.CKPT_DIR)')
+echo "checkpoint dir: ${CKPT_DIR}"
+
 for direction in n_to_p p_to_n; do
-    if [ ! -f "checkpoints/${direction}/ppo_policy.pt" ]; then
-        echo "checkpoints/${direction}/ppo_policy.pt not found — run 'sbatch run_ppo.slurm' first." >&2
+    if [ ! -f "${CKPT_DIR}/${direction}/ppo_policy.pt" ]; then
+        echo "${CKPT_DIR}/${direction}/ppo_policy.pt not found — run 'sbatch run_ppo.slurm' first." >&2
         exit 1
     fi
 done

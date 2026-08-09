@@ -212,7 +212,84 @@ def build_common() -> PipelineContext:
 # Checkpoint loading (evaluation side)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def load_generator_weights(generator, ckpt_dir: str = config.CKPT_DIR) -> str:
+# Hashing two 1.7 GB files off a network filesystem is not something to repeat:
+# load_generator_weights asks once per generator it loads and _build_pipeline
+# asks again to decide whether a second generator is needed. Keyed by ckpt_dir.
+_GENERATOR_DIGESTS: dict[str, tuple[str | None, str | None]] = {}
+
+
+def _generator_digests(ckpt_dir: str) -> tuple[str | None, str | None]:
+    """
+    (n_to_p, p_to_n) content hashes of the saved generators, None where absent.
+
+    Every direction's UNet has the same architecture and therefore the same
+    file size, so size cannot distinguish them and the bytes have to be read.
+    """
+    if ckpt_dir in _GENERATOR_DIGESTS:
+        return _GENERATOR_DIGESTS[ckpt_dir]
+
+    import hashlib
+
+    digests: list[str | None] = []
+    for label in ("n_to_p", "p_to_n"):
+        path = os.path.join(ckpt_dir, label, "unet_finetuned.pt")
+        if not os.path.exists(path):
+            digests.append(None)
+            continue
+        h = hashlib.blake2b(digest_size=16)
+        with open(path, "rb") as fh:
+            while chunk := fh.read(1 << 24):
+                h.update(chunk)
+        digests.append(h.hexdigest())
+
+    result = (digests[0], digests[1])
+    _GENERATOR_DIGESTS[ckpt_dir] = result
+    return result
+
+
+def generators_differ(ckpt_dir: str = config.CKPT_DIR) -> bool:
+    """
+    True when the two directions hold DIFFERENT fine-tuned generators.
+
+    They are supposed to be identical copies of one shared LoRA generator.
+    They stop being that as soon as the two run_ppo.slurm array tasks both run
+    Step 4 — neither finds a checkpoint, each trains its own, and nothing in
+    the PPO path is seeded to make them agree. eval_main._build_pipeline uses
+    this to decide whether one generator is enough or each policy needs its
+    own.
+
+    False when either file is missing: nothing to contradict yet.
+    """
+    a, b = _generator_digests(ckpt_dir)
+    return a is not None and b is not None and a != b
+
+
+def _warn_if_generators_differ(ckpt_dir: str) -> None:
+    """Say so, loudly, when the two directions disagree — see generators_differ."""
+    if not generators_differ(ckpt_dir):
+        return
+    a, b = _generator_digests(ckpt_dir)
+    print(
+        f"\n⚠ [pipeline] n_to_p/ and p_to_n/ hold DIFFERENT fine-tuned "
+        f"generators\n"
+        f"    n_to_p: {a}\n"
+        f"    p_to_n: {b}\n"
+        f"  They are meant to be identical copies of one shared generator; two "
+        f"run_ppo.slurm\n"
+        f"  array tasks that both ran Step 4 produce this. Each policy is "
+        f"paired with its own\n"
+        f"  generator below, so the metrics stay honest — but the two "
+        f"directions are then no\n"
+        f"  longer sharing a generator, which is worth knowing when you "
+        f"compare them.\n"
+    )
+
+
+def load_generator_weights(
+    generator,
+    ckpt_dir: str = config.CKPT_DIR,
+    prefer_label: str = "n_to_p",
+) -> str:
     """
     Restore the fine-tuned UNet + cond_proj weights into a freshly built
     generator.
@@ -229,14 +306,20 @@ def load_generator_weights(generator, ckpt_dir: str = config.CKPT_DIR) -> str:
     means that stays true by construction if anyone later makes PPO touch
     the generator, instead of silently loading stale adapters.
 
-    Both direction subdirectories hold byte-identical copies (one shared
-    LoRA generator, two policies), so whichever exists first is fine.
+    `prefer_label` decides which direction's copy wins. When the two are the
+    identical copies they are meant to be, it changes nothing. When they are
+    not — see _warn_if_generators_differ — it at least makes the choice
+    explicit and reproducible instead of "whichever directory got written
+    first".
 
     Returns
     -------
     str : the path actually loaded from, for logging.
     """
-    for label in ("n_to_p", "p_to_n"):
+    _warn_if_generators_differ(ckpt_dir)
+
+    others = [l for l in ("n_to_p", "p_to_n") if l != prefer_label]
+    for label in [prefer_label, *others]:
         unet_path = os.path.join(ckpt_dir, label, "unet_finetuned.pt")
         cond_path = os.path.join(ckpt_dir, label, "cond_proj.pt")
         if os.path.exists(unet_path) and os.path.exists(cond_path):
@@ -295,6 +378,7 @@ def load_directional_policy(
     label: str,
     ctx: PipelineContext,
     ckpt_dir: str = config.CKPT_DIR,
+    generator=None,
 ) -> DirectionalPolicy:
     """
     Rebuild one direction's environment and reload its trained policy from
@@ -314,6 +398,15 @@ def load_directional_policy(
     ----------
     target_c : 1.0 for n→p, 0.0 for p→n
     label    : "n_to_p" / "p_to_n" — also the checkpoint subdirectory name
+    generator : the generator this direction's policy was trained against.
+             Defaults to ctx.generator, which is correct whenever both
+             directions share one Step 4 generator. They do NOT share one when
+             the two run_ppo.slurm array tasks each ran Step 4 (each writes
+             CKPT_DIR/<label>/finetuning_latest.pt now, see main.py), and a
+             policy driven by the wrong generator is being scored on dynamics
+             it never saw. Every PPO-guided path in evaluation reaches the
+             generator through this env, so passing it here is what makes the
+             pairing hold end to end.
     """
     print("\n" + "-" * 70)
     print(f"Loading trained policy  [{label}, target_c={target_c}]")
@@ -330,7 +423,7 @@ def load_directional_policy(
         dataset=ctx.dataset,
         classifier=ctx.classifier,
         target_c=target_c,
-        generator=ctx.generator,
+        generator=ctx.generator if generator is None else generator,
         seg_net=ctx.seg_net,
         obj_det=ctx.obj_det,
         budget_T=config.BUDGET_T,

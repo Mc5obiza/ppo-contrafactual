@@ -40,8 +40,8 @@
 # metric suite (CV/FID/FOP/IP/CTR/SCP) and the two counterfactual diff plots.
 #
 # PREREQUISITE: run_ppo.slurm must have completed and written
-#   checkpoints/n_to_p/ppo_policy.pt
-#   checkpoints/p_to_n/ppo_policy.pt
+#   <config.CKPT_DIR>/n_to_p/ppo_policy.pt
+#   <config.CKPT_DIR>/p_to_n/ppo_policy.pt
 # eval_main.py fails fast with a clear message if they are missing.
 #
 # WHY THIS IS A SEPARATE JOB FROM TRAINING: PPO training measured ~20h on a
@@ -106,6 +106,12 @@ export YOLO_OFFLINE=1
 
 # Fail before loading ~2GB of model weights if training never ran.
 #
+# ASK CONFIG FOR THE DIRECTORY, never hardcode "checkpoints" — CKPT_DIR is
+# per-domain and PPO_CKPT_DIR overrides it. See run_eval_cf.slurm's copy of
+# this guard for the failure a hardcoded path caused.
+CKPT_DIR=$(python -c 'import config; print(config.CKPT_DIR)')
+echo "checkpoint dir: ${CKPT_DIR}"
+#
 # ppo_policy.pt is written ONLY when a direction finishes all N_EPISODES. A
 # direction that stopped on the wall-clock budget leaves ppo_latest.pt (the
 # resumable state) and no ppo_policy.pt — deliberately, because the two are
@@ -114,13 +120,13 @@ export YOLO_OFFLINE=1
 # and name the exact command that finishes it.
 for i in 0 1; do
     direction=$([ "$i" = 0 ] && echo n_to_p || echo p_to_n)
-    if [ ! -f "checkpoints/${direction}/ppo_policy.pt" ]; then
-        if [ -f "checkpoints/${direction}/ppo_latest.pt" ]; then
-            echo "${direction} is PAUSED, not finished: checkpoints/${direction}/ppo_latest.pt" >&2
+    if [ ! -f "${CKPT_DIR}/${direction}/ppo_policy.pt" ]; then
+        if [ -f "${CKPT_DIR}/${direction}/ppo_latest.pt" ]; then
+            echo "${direction} is PAUSED, not finished: ${CKPT_DIR}/${direction}/ppo_latest.pt" >&2
             echo "exists but ppo_policy.pt does not. Resume it with:" >&2
             echo "    sbatch --array=${i} run_ppo.slurm" >&2
         else
-            echo "checkpoints/${direction}/ppo_policy.pt not found and no ppo_latest.pt" >&2
+            echo "${CKPT_DIR}/${direction}/ppo_policy.pt not found and no ppo_latest.pt" >&2
             echo "either — training never ran for this direction. Start it with:" >&2
             echo "    sbatch --array=${i} run_ppo.slurm" >&2
         fi

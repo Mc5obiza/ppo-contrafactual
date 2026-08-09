@@ -63,7 +63,10 @@ export YOLO_OFFLINE=1
 # written with, and eval_main.py errors if the two disagree.
 NUM_SHARDS=8
 
-SHARD_DIR=checkpoints/eval_shards
+# Must be the same directory eval_main.py defaults --shard-dir to, which is
+# config.CKPT_DIR/eval_shards — per-domain, so hardcoding "checkpoints" here
+# would report "the generate stage has not run" for every non-rsna domain.
+SHARD_DIR=$(python -c 'import os, config; print(os.path.join(config.CKPT_DIR, "eval_shards"))')
 if [ ! -d "${SHARD_DIR}" ]; then
     echo "${SHARD_DIR} does not exist — the generate stage has not run." >&2
     echo "    sbatch run_eval_cf.slurm" >&2

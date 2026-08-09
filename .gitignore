@@ -8,5 +8,7 @@ checkpoint/
 yolov8n.pt
 
 checkpoints/*
-!checkpoints/eval_metrics.json
-!checkpoints/*.png
+!checkpoints/cbis_ddsm_breast/
+checkpoints/cbis_ddsm_breast/*
+!checkpoints/cbis_ddsm_breast/eval_metrics.json
+!checkpoints/cbis_ddsm_breast/*.png

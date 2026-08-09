@@ -45,8 +45,8 @@
 # partition and lose less work when one dies.
 #
 # PREREQUISITE: run_ppo.slurm must have completed and written
-#   checkpoints/n_to_p/ppo_policy.pt
-#   checkpoints/p_to_n/ppo_policy.pt
+#   <config.CKPT_DIR>/n_to_p/ppo_policy.pt
+#   <config.CKPT_DIR>/p_to_n/ppo_policy.pt
 # The check below fails fast with the exact command to finish a paused one.
 #
 # GPU CONSTRAINT — must match run_ppo.slurm, and for the same two reasons.
@@ -98,6 +98,15 @@ NUM_SHARDS=8
 
 # Fail before loading ~2GB of model weights if training never ran.
 #
+# ASK CONFIG FOR THE DIRECTORY, never hardcode "checkpoints". CKPT_DIR is
+# per-domain ("checkpoints" only for rsna_pneumonia, "checkpoints/<domain>"
+# for everything else, and PPO_CKPT_DIR overrides both) — see the long comment
+# in config.py. This guard used to hardcode checkpoints/<direction>/ and so
+# aborted job 17678229 with "training never ran for this direction" while the
+# cbis_ddsm_breast policies sat in checkpoints/cbis_ddsm_breast/<direction>/.
+CKPT_DIR=$(python -c 'import config; print(config.CKPT_DIR)')
+echo "checkpoint dir: ${CKPT_DIR}"
+#
 # ppo_policy.pt is written ONLY when a direction finishes all N_EPISODES. A
 # direction that stopped on the wall-clock budget leaves ppo_latest.pt (the
 # resumable state) and no ppo_policy.pt — deliberately, because the two are
@@ -106,13 +115,13 @@ NUM_SHARDS=8
 # and name the exact command that finishes it.
 for i in 0 1; do
     direction=$([ "$i" = 0 ] && echo n_to_p || echo p_to_n)
-    if [ ! -f "checkpoints/${direction}/ppo_policy.pt" ]; then
-        if [ -f "checkpoints/${direction}/ppo_latest.pt" ]; then
-            echo "${direction} is PAUSED, not finished: checkpoints/${direction}/ppo_latest.pt" >&2
+    if [ ! -f "${CKPT_DIR}/${direction}/ppo_policy.pt" ]; then
+        if [ -f "${CKPT_DIR}/${direction}/ppo_latest.pt" ]; then
+            echo "${direction} is PAUSED, not finished: ${CKPT_DIR}/${direction}/ppo_latest.pt" >&2
             echo "exists but ppo_policy.pt does not. Resume it with:" >&2
             echo "    sbatch --array=${i} run_ppo.slurm" >&2
         else
-            echo "checkpoints/${direction}/ppo_policy.pt not found and no ppo_latest.pt" >&2
+            echo "${CKPT_DIR}/${direction}/ppo_policy.pt not found and no ppo_latest.pt" >&2
             echo "either — training never ran for this direction. Start it with:" >&2
             echo "    sbatch --array=${i} run_ppo.slurm" >&2
         fi

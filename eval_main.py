@@ -73,7 +73,13 @@ import re
 import torch
 
 import config
-from pipeline import build_common, load_generator_weights, load_directional_policy
+from pipeline import (
+    build_common,
+    generators_differ,
+    load_directional_policy,
+    load_generator_weights,
+)
+from src.generator import build_generator
 from src.diff_viz import generate_and_plot_diff_bidirectional
 from src.inference import EVAL_PN_SEED_OFFSET, generate_batch_with_policy
 from src.metrics import current_cfg_stamp, run_full_evaluation, scan_groups
@@ -169,19 +175,54 @@ def _pick_query_images(
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _build_pipeline():
-    """build_common + restore the fine-tuned generator and both policies."""
+    """
+    build_common + restore the fine-tuned generator(s) and both policies.
+
+    EACH POLICY IS PAIRED WITH THE GENERATOR IT WAS TRAINED AGAINST.
+    ----------------------------------------------------------------
+    One shared Step 4 generator is the intended arrangement, and when that is
+    what is on disk this function loads exactly one and both directions use
+    it, as before.
+
+    run_ppo.slurm submits one array task per direction, though, and two tasks
+    that both reach Step 4 before either has finished it each fine-tune their
+    own generator (nothing in the PPO path is seeded, so the two differ).
+    Scoring p_to_n's policy against n_to_p's generator measures a pairing that
+    never existed in training. So when the two saved generators actually
+    differ, a second one is built and each policy gets its own.
+
+    The cost of that case is one extra generator resident on the GPU. It is
+    only paid when the checkpoints really are different — _generators_differ
+    hashes them rather than guessing from how the jobs were launched.
+    """
     ctx = build_common()
 
     print("\n" + "=" * 70)
     print("STEP 4 — Restoring trained checkpoints")
     print("=" * 70)
-    load_generator_weights(ctx.generator, ckpt_dir=config.CKPT_DIR)
+    load_generator_weights(ctx.generator, ckpt_dir=config.CKPT_DIR,
+                           prefer_label="n_to_p")
+
+    gen_p_to_n = ctx.generator
+    if generators_differ(config.CKPT_DIR):
+        print("[eval] the two directions have different Step 4 generators — "
+              "building a second one so each policy keeps its own")
+        gen_p_to_n = build_generator(
+            classifier=ctx.classifier,
+            seg_net=ctx.seg_net,
+            lung_channel_idx=ctx.lung_channel_idx,
+            obj_det=ctx.obj_det,
+        )
+        load_generator_weights(gen_p_to_n, ckpt_dir=config.CKPT_DIR,
+                               prefer_label="p_to_n")
 
     policy_n_to_p = load_directional_policy(
-        target_c=1.0, label="n_to_p", ctx=ctx, ckpt_dir=config.CKPT_DIR
+        target_c=1.0, label="n_to_p", ctx=ctx, ckpt_dir=config.CKPT_DIR,
+        generator=ctx.generator,
     )
     policy_p_to_n = load_directional_policy(
-        target_c=0.0, label="p_to_n", ctx=ctx, ckpt_dir=config.CKPT_DIR
+        target_c=0.0, label="p_to_n", ctx=ctx, ckpt_dir=config.CKPT_DIR,
+        generator=gen_p_to_n,
     )
     return ctx, policy_n_to_p, policy_p_to_n
 

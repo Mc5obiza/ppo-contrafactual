@@ -317,11 +317,30 @@ def main():
     # ── 1-3. Dataset, pretrained models, generator ───────────────────────────
     ctx = build_common()
 
-    # ── 4. LoRA fine-tuning (shared generator, both directions) ──────────────
+    # ── 4. LoRA fine-tuning ──────────────────────────────────────────────────
+    # WHERE THE RESUME FILE GOES DEPENDS ON WHO ELSE IS RUNNING.
+    #
+    # One process training both directions is the case this step was written
+    # for: the generator is direction-agnostic (no target_c anywhere in
+    # run_lora_finetuning), so it is trained once and both policies share it,
+    # and CKPT_DIR/finetuning_latest.pt is the natural home for that.
+    #
+    # run_ppo.slurm submits one array task PER DIRECTION, though, and when
+    # both start before either has finished Step 4, neither finds a checkpoint
+    # and each trains its own generator. They are then two different generators
+    # sharing one filename: whoever saves last wins, and a task resubmitted
+    # after the 22h pause resumes from the OTHER direction's weights without
+    # saying so. Giving each direction its own resume file is what makes that
+    # impossible — the pairing of a policy to the generator it was trained
+    # against then holds by construction.
+    ft_ckpt_dir = (
+        config.CKPT_DIR if args.direction == "both"
+        else os.path.join(config.CKPT_DIR, args.direction)
+    )
     print("\n" + "=" * 70)
-    print("STEP 4 — LoRA denoising fine-tuning")
+    print(f"STEP 4 — LoRA denoising fine-tuning  [ckpt_dir={ft_ckpt_dir}]")
     print("=" * 70)
-    run_lora_finetuning(ctx.generator, ctx.dataset)
+    run_lora_finetuning(ctx.generator, ctx.dataset, ckpt_dir=ft_ckpt_dir)
 
     # ── 5. Train one policy per requested direction ───────────────────────────
     # MedicalCounterfactualEnv is built around a single fixed target_c per
