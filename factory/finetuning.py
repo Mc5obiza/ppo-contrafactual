@@ -143,8 +143,17 @@ def _save_checkpoint(
         "scaler_state_dict": scaler.state_dict(),
     }
     # atomic-ish write: save to a temp file then rename, so a crash mid-save
-    # doesn't corrupt the checkpoint you'd resume from
-    tmp_path = path + ".tmp"
+    # doesn't corrupt the checkpoint you'd resume from.
+    #
+    # The temp name carries the pid because CKPT_DIR is shared across the two
+    # run_ppo.slurm array tasks, and when neither finds an existing checkpoint
+    # both run this phase at once. With a fixed "<path>.tmp" the two torch.save
+    # calls interleave inside ONE file and the rename publishes the wreckage —
+    # atomicity against a crash is not atomicity against a second writer. With
+    # a per-process temp, each rename publishes one complete checkpoint and the
+    # loser is simply overwritten; neither process re-reads this file after
+    # startup, so last-writer-wins costs nothing.
+    tmp_path = f"{path}.{os.getpid()}.tmp"
     torch.save(checkpoint, tmp_path)
     os.replace(tmp_path, path)
     print(f"[finetuning] checkpoint saved: {path} (epoch {epoch})")

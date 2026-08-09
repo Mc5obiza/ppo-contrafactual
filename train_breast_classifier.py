@@ -36,12 +36,27 @@ per lesion. A random image-level split therefore puts the SAME BREAST in train
 and validation, and the reported AUC measures memorisation. Patients are
 grouped here before any split is taken.
 
+ONE BACKBONE PER JOB
+--------------------
+Training all three in a single process is what the 4h wall clock keeps running
+out on: the third backbone starts three hours in and gets killed mid-run.
+run_breast_classifier.slurm is therefore a job array — one array task per entry
+of BREAST_BACKBONES, each with its own --arch and its own full time budget.
+They share nothing but the dataset and the seed, and the split is a pure
+function of (seed, val_frac), so the folds are identical across tasks.
+
+The AUC floor that used to be checked at the end of the combined run cannot be
+checked by any single array task — none of them sees the others' results. It
+moved to `--summary`, which reads the saved checkpoints and gates on all of
+them; the array's dependent cleanup task runs it.
+
 Usage
 -----
     python train_breast_classifier.py                 # all of BREAST_BACKBONES
     python train_breast_classifier.py --arch resnet18 # just one
     python train_breast_classifier.py --epochs 30
-or  sbatch run_breast_classifier.slurm
+    python train_breast_classifier.py --summary       # gate on saved ckpts
+or  sbatch run_breast_classifier.slurm                # array, one task per arch
 """
 
 from __future__ import annotations
@@ -249,11 +264,72 @@ def train_one(
     return best_auc
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Summary / gate
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _saved_auc(arch: str) -> float:
+    """Best val AUC recorded in `arch`'s checkpoint, or nan if there isn't one."""
+    path = os.path.join(config.BREAST_CKPT_DIR, f"{arch}.pt")
+    if not os.path.exists(path):
+        return float("nan")
+    ckpt = torch.load(path, map_location="cpu", weights_only=False)
+    return float(ckpt.get("val_auc", float("nan")))
+
+
+def report_and_gate(results: dict[str, float]) -> int:
+    """
+    Print the per-backbone table and apply the AUC floor. Returns an exit code.
+
+    Split out of main() because with one backbone per array task no single
+    training process can apply this gate — it only ever sees its own result.
+    `--summary` calls it with the AUCs read back off the checkpoints.
+    """
+    print("\n" + "=" * 70)
+    print("SUMMARY — best validation AUC per backbone")
+    print("=" * 70)
+    for a, auc in results.items():
+        print(f"  {a:18s} {auc:.4f}")
+
+    # The gate. A classifier at chance makes CV, the Xn/Xp split and every
+    # clinical metric meaningless, and none of them will say so — they will
+    # just produce numbers. Refuse here, where it costs an hour instead of a
+    # 20-hour PPO run plus an evaluation.
+    #
+    # A missing checkpoint reads back as nan and fails the same test as a weak
+    # one: an array task that died silently must not look like a pass.
+    weak = {a: v for a, v in results.items()
+            if not (v == v) or v < MIN_ACCEPTABLE_AUC}
+    if weak:
+        print(f"\n✗ FAILED: {list(weak)} scored below the "
+              f"{MIN_ACCEPTABLE_AUC:.2f} AUC floor ({weak}).")
+        print("  (nan = no checkpoint on disk — that array task never "
+              "finished; check logs/ and resubmit just that --arch.)")
+        print("  Do NOT start PPO training against these. f(.) at chance means "
+              "CV measures nothing,")
+        print("  the Xn/Xp split is arbitrary, and every clinical metric is "
+              "computed over noise.")
+        print("  Try: more epochs, a lower LR, or check the label mapping in "
+              "domains/cbis_ddsm_breast.py.")
+        return 1
+
+    print(f"\n✓ All backbones cleared the {MIN_ACCEPTABLE_AUC:.2f} AUC floor.")
+    print(f"  Next: python check_classifier_localization.py   "
+          f"(is f(.) looking at lesions or at the pectoral edge?)")
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[2])
     ap.add_argument("--arch", type=str, default=None,
                     help="train just this backbone (default: all of "
                          "config.BREAST_BACKBONES)")
+    ap.add_argument("--summary", action="store_true",
+                    help="train nothing; read the saved checkpoints and apply "
+                         "the AUC floor across all of BREAST_BACKBONES")
+    ap.add_argument("--skip-existing", action="store_true",
+                    help="leave a backbone alone if its checkpoint already "
+                         "exists (makes resubmitting the array cheap)")
     ap.add_argument("--epochs", type=int, default=20)
     ap.add_argument("--batch-size", type=int, default=32)
     ap.add_argument("--lr", type=float, default=1e-4)
@@ -261,6 +337,11 @@ def main(argv=None) -> int:
     ap.add_argument("--patience", type=int, default=5)
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args(argv)
+
+    if args.summary:
+        return report_and_gate(
+            {a: _saved_auc(a) for a in config.BREAST_BACKBONES}
+        )
 
     set_seed(args.seed)
     device = config.DEVICE if torch.cuda.is_available() else "cpu"
@@ -275,43 +356,29 @@ def main(argv=None) -> int:
             f"for domains that bring their own f(.), i.e. cbis_ddsm_breast."
         )
 
+    archs = [args.arch] if args.arch else list(config.BREAST_BACKBONES)
+    if args.skip_existing:
+        done = [a for a in archs
+                if os.path.exists(os.path.join(config.BREAST_CKPT_DIR, f"{a}.pt"))]
+        for a in done:
+            print(f"[train-clf] {a}: checkpoint already exists "
+                  f"(val_AUC={_saved_auc(a):.4f}) — skipping")
+        archs = [a for a in archs if a not in done]
+    if not archs:
+        print("[train-clf] nothing left to train.")
+        return 0
+
+    # Built after the skip check so a no-op array task does not spend minutes
+    # scanning the mirror just to exit.
     dataset = domain.build_dataset(config.IMG_SIZE)
     train_idx, val_idx = patient_level_split(dataset, args.val_frac, args.seed)
 
-    archs = [args.arch] if args.arch else list(config.BREAST_BACKBONES)
     results = {
         a: train_one(a, dataset, train_idx, val_idx, args.epochs,
                      args.batch_size, args.lr, device, args.patience)
         for a in archs
     }
-
-    print("\n" + "=" * 70)
-    print("SUMMARY — best validation AUC per backbone")
-    print("=" * 70)
-    for a, auc in results.items():
-        print(f"  {a:18s} {auc:.4f}")
-
-    # The gate. A classifier at chance makes CV, the Xn/Xp split and every
-    # clinical metric meaningless, and none of them will say so — they will
-    # just produce numbers. Refuse here, where it costs an hour instead of a
-    # 20-hour PPO run plus an evaluation.
-    weak = {a: v for a, v in results.items()
-            if not (v == v) or v < MIN_ACCEPTABLE_AUC}
-    if weak:
-        print(f"\n✗ FAILED: {list(weak)} scored below the "
-              f"{MIN_ACCEPTABLE_AUC:.2f} AUC floor ({weak}).")
-        print("  Do NOT start PPO training against these. f(.) at chance means "
-              "CV measures nothing,")
-        print("  the Xn/Xp split is arbitrary, and every clinical metric is "
-              "computed over noise.")
-        print("  Try: more epochs, a lower LR, or check the label mapping in "
-              "domains/cbis_ddsm_breast.py.")
-        return 1
-
-    print(f"\n✓ All backbones cleared the {MIN_ACCEPTABLE_AUC:.2f} AUC floor.")
-    print(f"  Next: python check_classifier_localization.py   "
-          f"(is f(.) looking at lesions or at the pectoral edge?)")
-    return 0
+    return report_and_gate(results)
 
 
 if __name__ == "__main__":
