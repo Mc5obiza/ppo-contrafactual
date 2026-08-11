@@ -3,6 +3,8 @@
 #SBATCH --partition=publicgpu
 #SBATCH --account=insa
 #SBATCH --gres=gpu:1
+#SBATCH --constraint="gpuh200|gpuh100|gpua100|gpul40s|gpua40|gpurtx6000"
+#SBATCH --exclude=hpc-n983
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=01:00:00
@@ -49,7 +51,12 @@ cd "${SLURM_SUBMIT_DIR:-$(dirname "${BASH_SOURCE[0]}")}"
 mkdir -p logs
 
 module load python/3.12.8
-module load cuda/13.0
+# torch is built for cu121 (torch.version.cuda == "12.1") and the driver is
+# CUDA 12.6. cuda/13.0 (the module system default) prepends its lib64 to
+# LD_LIBRARY_PATH ahead of torch's own RUNPATH and only fails to break things
+# because CUDA 13 sonames are .so.13 while torch links .so.12. Load the
+# matching toolkit instead of relying on that.
+module load cuda/cuda-12.1
 
 if [ ! -d venv ]; then
     echo "venv/ not found — run 'bash setup_env.sh' on the login node first." >&2
@@ -67,17 +74,28 @@ export YOLO_OFFLINE=1
 # re-export with defaults. Override at submit time, e.g.
 #   SMOKE_EVAL_SRC=checkpoints sbatch run_smoke_test_eval.slurm
 export SMOKE_EVAL_SRC="${SMOKE_EVAL_SRC:-checkpoints/smoke_all}"
-export SMOKE_SUBSET_N="${SMOKE_SUBSET_N:-96}"
+# Must match run_smoke_test.slurm's subset — this job reloads the checkpoints
+# that one wrote, and a different subset means a different split, which
+# splits.load() will (correctly) refuse as a dataset-fingerprint mismatch.
+# See that file for why 96 became 400.
+export SMOKE_SUBSET_N="${SMOKE_SUBSET_N:-400}"
 export SMOKE_N_EVAL="${SMOKE_N_EVAL:-12}"
 
 echo "=== Eval smoke test started on $(hostname) at $(date) ==="
 echo "    SMOKE_EVAL_SRC=${SMOKE_EVAL_SRC}  SUBSET_N=${SMOKE_SUBSET_N}  N_EVAL=${SMOKE_N_EVAL}"
 nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv
 
+# Same hardware check as run_ppo.slurm — see preflight_gpu.py. A smoke test
+# that dies on an unsupported GPU reports a hardware problem as a code
+# problem, which is the opposite of what it exists to do.
+python -u preflight_gpu.py
+
 # Unbuffered so the log is useful while the job is still running (and if it
 # hangs, you can see exactly which stage it stopped in).
-python -u smoke_test_eval.py
-status=$?
+# See the note in run_smoke_test.slurm: `set -euo pipefail` makes a bare
+# `status=$?` after a failing command unreachable.
+status=0
+python -u smoke_test_eval.py || status=$?
 
 echo "=== Eval smoke test finished at $(date) with exit status ${status} ==="
 exit ${status}

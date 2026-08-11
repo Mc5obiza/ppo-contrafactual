@@ -1,0 +1,79 @@
+run manifest
+================================================================
+written        : 2026-08-11T18:37:23+02:00
+job            : ppo-eval-cf-17689480_4
+node           : hpc-n981
+slurm partition: publicgpu
+
+-- git ---------------------------------------------------------
+commit         : cf5204fb36c459871d95429720da70c47f333e8c
+branch         : master
+tree           : DIRTY — the commit above does not describe this run
+                  M .gitignore
+                  M PROJECT_STRUCTURE.md
+                  M checkpoints/eval_metrics.json
+                  M config.py
+                  M eval_main.py
+                  M factory/environment.py
+                  M factory/finetuning.py
+                  M heldout_validation.py
+                  M ingestion.py
+                  M main.py
+                  M pipeline.py
+                  M report/report.tex
+                  M requirements.lock.txt
+                  M run_classifier.slurm
+                  M run_eval_cf.slurm
+                  M run_eval_ppo.slurm
+                  M run_eval_reduce.slurm
+                  M run_heldout_validation.slurm
+                  M run_ppo.slurm
+                  M run_smoke_test.slurm
+                  M run_smoke_test_eval.slurm
+                  M setup_env.sh
+                  M src/metrics.py
+                 ?? benchmark_episode_cost.py
+                 ?? checkpoints/n_to_p/
+                 ?? checkpoints/p_to_n/
+                 ?? checkpoints/run_manifest.txt
+                 ?? logs/
+                 ?? record_run_manifest.sh
+                 ?? report/report.pdf
+                 ?? run_benchmark.slurm
+                 ?? seeding.py
+                 ?? splits.py
+                 ?? test_invariants.py
+
+-- environment -------------------------------------------------
+python         : Python 3.12.8
+torch          : 2.5.1+cu121 cuda 12.1
+gpu            : NVIDIA H200, 143771 MiB
+n/a
+
+-- config.py ---------------------------------------------------
+sha256         : ff168a23901dfc7aec81e6db9a2905e554631f03630ed2066796d5d375a4ee95
+  DATASET_DOMAIN          = rsna_pneumonia
+  CKPT_DIR                = checkpoints
+  DEVICE                  = cuda
+  DTYPE                   = torch.float16
+  IMG_SIZE                = 256
+  USE_SPLIT               = True
+  SPLIT_SEED              = 0
+  TEST_FRAC               = 0.2
+  EVAL_GROUP_SOURCE       = classifier
+  TRAIN_SEED              = 0
+  STRICT_DETERMINISM      = False
+  USE_GUIDANCE_ENSEMBLE   = False
+  USE_GRADCAM_MASK        = False
+  USE_SPARSITY_REWARD     = False
+  USE_SPARSITY_ANNEALING  = True
+  FIXED_EPISODE_LENGTH    = False
+  EDIT_BUDGET_L1          = inf
+  BUDGET_T                = 25
+  N_EPISODES              = 800
+  N_DENOISE_EPOCHS        = 30
+  T_DIFF                  = 50
+  POLICY_TRUNK            = mlp
+  LORA_R                  = 8
+  ALPHA_CLS               = 4.0
+  ALPHA_PRES              = 0.05

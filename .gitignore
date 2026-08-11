@@ -3,10 +3,24 @@ __pycache__/
 /src/__pycache__
 /factory/__pycache__
 *.pyc
-logs
 checkpoint/
 yolov8n.pt
+
+# Job logs are large and disposable, but the run manifests inside them are the
+# forensic trail (commit, dirty state, config values a run actually used) and
+# must survive. See record_run_manifest.sh.
+logs/*
+!logs/*.manifest
 
 checkpoints/*
 !checkpoints/eval_metrics.json
 !checkpoints/*.png
+!checkpoints/run_manifest.txt
+# Git does not descend into an excluded directory, so a per-domain subdirectory
+# has to be re-included before its manifest can be. The second line re-excludes
+# the weights inside it; the third rescues just the manifest.
+!checkpoints/*/
+checkpoints/*/*
+!checkpoints/*/run_manifest.txt
+
+internship-report
