@@ -168,14 +168,140 @@ def _pick_query_images(
 # Shared setup
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _build_pipeline():
-    """build_common + restore the fine-tuned generator and both policies."""
+def _generate_shard(x_shard, policy, target_c: float, ctx,
+                    index_offset: int, label: str) -> list:
+    """
+    Generate one shard's counterfactuals, with or without a policy.
+
+    run_full_evaluation has always had a `policy is None` fallback to the
+    generator's default schedule, but the SHARDED path called
+    generate_batch_with_policy directly and would have raised on None — so
+    `--arm none` worked for --stage all and crashed for the array job that is
+    the only way to run it at full n_eval. This closes that.
+
+    The seeding must match generate_batch_with_policy's exactly
+    (`base_seed + index_offset + i`, per image, from the GLOBAL index). Anything
+    else and the no-policy arm's counterfactuals would differ from the trained
+    arm's by noise as well as by treatment, which is the one thing a control
+    must not do.
+    """
+    if policy is not None:
+        return generate_batch_with_policy(
+            x_shard, policy, deterministic=True,
+            index_offset=index_offset, label=label,
+        )
+
+    import time
+    cfs, t0, n = [], time.time(), len(x_shard)
+    for i, x in enumerate(x_shard):
+        torch.manual_seed(index_offset + i)          # base_seed=0, as above
+        x_dev = x.to(config.DEVICE)
+
+        # The Grad-CAM edit-budget mask, when that countermeasure arm is on.
+        # generate_counterfactual has always taken cam_scale (generator.py:384),
+        # but only the ENV ever computed and passed it — so this path silently
+        # ignored USE_GRADCAM_MASK and the arm would have been a no-op on the
+        # very control it is cheapest to run it on. Mirrors
+        # MedicalCounterfactualEnv._init_episode_state: anchored to the ORIGINAL
+        # image, computed once, None on a degenerate CAM (which degrades to the
+        # lung-only mask). The generator counts degeneracies itself, so
+        # cam_degeneracy_summary() below reports an accurate rate — an arm where
+        # this fires often is not a clean "+gradcam_mask" run and must not be
+        # reported as one.
+        cam_scale = (
+            ctx.generator.compute_gradcam_latent_mask(x_dev)
+            if config.USE_GRADCAM_MASK else None
+        )
+
+        xc, _ = ctx.generator.generate_counterfactual(
+            x_dev, target_c, M=1, cam_scale=cam_scale
+        )
+        cfs.append(xc.detach().cpu())
+        if (i + 1) % 10 == 0 or i + 1 == n:
+            el = time.time() - t0
+            print(f"[{label}] [{i + 1}/{n}] global_idx={index_offset + i}  "
+                  f"{el / (i + 1) / 60:.2f} min/img  elapsed {el / 60:.1f} min",
+                  flush=True)
+    if config.USE_GRADCAM_MASK:
+        print(f"[{label}] {ctx.generator.cam_degeneracy_summary()}", flush=True)
+    return cfs
+
+
+def _build_untrained_policy(target_c: float, label: str, ctx):
+    """
+    The `random` control arm: the same env and the same network at the same
+    action bounds, with its weights left at initialisation.
+
+    Built here rather than by reusing pipeline.load_directional_policy because
+    that function's whole job is to load a checkpoint and fail loudly when there
+    isn't one — which is precisely what this arm must not do.
+
+    Seeded so the arm is reproducible: an unseeded control is not a control, it
+    is one draw from a distribution nobody recorded.
+    """
+    from factory.environment import MedicalCounterfactualEnv
+    from factory.ppo import PPOActorCritic
+    from src.inference import DirectionalPolicy
+
+    env = MedicalCounterfactualEnv(
+        dataset=ctx.dataset,
+        classifier=ctx.classifier,
+        target_c=target_c,
+        generator=ctx.generator,
+        seg_net=ctx.seg_net,
+        obj_det=ctx.obj_det,
+        budget_T=config.BUDGET_T,
+        device=config.DEVICE,
+        allowed_indices=ctx.eval_indices(),
+    )
+    obs_dim = env.reset().shape[0]
+
+    torch.manual_seed(config.SPLIT_SEED)
+    policy = PPOActorCritic(
+        obs_dim=obs_dim, action_dim=config.ACTION_DIM
+    ).to(config.DEVICE)
+    policy.eval()
+    print(f"[{label}] UNTRAINED policy at init "
+          f"({sum(p.numel() for p in policy.parameters()):,} params, "
+          f"seed={config.SPLIT_SEED})")
+
+    return DirectionalPolicy(env=env, policy=policy, target_c=target_c)
+
+
+def _build_pipeline(arm: str = "trained"):
+    """
+    build_common + restore the fine-tuned generator and, depending on the arm,
+    the trained policies.
+
+    The generator (and its fine-tuned LoRA) is restored for EVERY arm. The arms
+    differ only in what drives the sampling schedule, so holding the generator
+    fixed is what makes them comparable — an arm with an untuned generator would
+    be measuring domain adaptation, not the policy.
+    """
     ctx = build_common()
 
     print("\n" + "=" * 70)
     print("STEP 4 — Restoring trained checkpoints")
     print("=" * 70)
     load_generator_weights(ctx.generator, ckpt_dir=config.CKPT_DIR)
+
+    if arm == "none":
+        # metrics.run_full_evaluation and generate_batch_with_policy both treat
+        # a None policy as "call generator.generate_counterfactual with its
+        # default schedule" — the fallback has always existed and has never
+        # been run. This is the arm that tells you whether PPO earns its place.
+        print("\n[eval] ARM = none — no policy; gradient guidance with the "
+              "generator's default fixed schedule.")
+        return ctx, None, None
+
+    if arm == "random":
+        print("\n[eval] ARM = random — UNTRAINED policies at the same action "
+              "bounds (separates a learned schedule from any schedule).")
+        return (
+            ctx,
+            _build_untrained_policy(1.0, "n_to_p", ctx),
+            _build_untrained_policy(0.0, "p_to_n", ctx),
+        )
 
     policy_n_to_p = load_directional_policy(
         target_c=1.0, label="n_to_p", ctx=ctx, ckpt_dir=config.CKPT_DIR
@@ -204,25 +330,27 @@ def _print_metric_summary(eval_results: dict) -> None:
         )
 
 
-def _plot_diffs(x_neg, x_pos, ctx, policy_n_to_p, policy_p_to_n) -> None:
+def _plot_diffs(x_neg, x_pos, ctx, policy_n_to_p, policy_p_to_n,
+                out_dir: str | None = None) -> None:
     print("\n" + "=" * 70)
     print("STEP 6B — Counterfactual diff plots (n→p and p→n, PPO-guided)")
     print("=" * 70)
-    os.makedirs(config.CKPT_DIR, exist_ok=True)
+    out_dir = out_dir or config.CKPT_DIR
+    os.makedirs(out_dir, exist_ok=True)
     generate_and_plot_diff_bidirectional(
         x_neg=x_neg,
         x_pos=x_pos,
         generator=ctx.generator,
         classifier=ctx.classifier,
-        save_dir=config.CKPT_DIR,
+        save_dir=out_dir,
         directional_policy_n_to_p=policy_n_to_p,
         directional_policy_p_to_n=policy_p_to_n,
         deterministic_policy=True,
     )
     print(
         f"[eval] saved: "
-        f"{os.path.join(config.CKPT_DIR, 'counterfactual_diff_n_to_p.png')}, "
-        f"{os.path.join(config.CKPT_DIR, 'counterfactual_diff_p_to_n.png')}"
+        f"{os.path.join(out_dir, 'counterfactual_diff_n_to_p.png')}, "
+        f"{os.path.join(out_dir, 'counterfactual_diff_p_to_n.png')}"
     )
 
 
@@ -231,7 +359,7 @@ def _plot_diffs(x_neg, x_pos, ctx, policy_n_to_p, policy_p_to_n) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def stage_generate(args) -> None:
-    ctx, policy_n_to_p, policy_p_to_n = _build_pipeline()
+    ctx, policy_n_to_p, policy_p_to_n = _build_pipeline(args.arm)
 
     print("\n" + "=" * 70)
     print(f"STAGE GENERATE — shard {args.shard}/{args.num_shards}")
@@ -242,13 +370,16 @@ def stage_generate(args) -> None:
     # derive the split itself (rather than one task computing it and the
     # others trusting a file) means there is no ordering dependency between
     # array tasks — any subset can run, in any order, on any node.
-    xn_list, xp_list = scan_groups(
-        ctx.dataset, ctx.classifier, args.n_eval, config.DEVICE, tag="eval"
+    xn_list, xn_idx, xp_list, xp_idx = scan_groups(
+        ctx.dataset, ctx.classifier, args.n_eval, config.DEVICE, tag="eval",
+        allowed_indices=ctx.eval_indices(),
     )
 
     n_lo, n_hi = _shard_slice(len(xn_list), args.shard, args.num_shards)
     p_lo, p_hi = _shard_slice(len(xp_list), args.shard, args.num_shards)
     xn_shard, xp_shard = xn_list[n_lo:n_hi], xp_list[p_lo:p_hi]
+    # Sliced identically to the tensors so index[k] still describes image[k].
+    xn_idx_shard, xp_idx_shard = xn_idx[n_lo:n_hi], xp_idx[p_lo:p_hi]
     print(f"[eval] shard slice: Xn[{n_lo}:{n_hi}] ({len(xn_shard)} imgs), "
           f"Xp[{p_lo}:{p_hi}] ({len(xp_shard)} imgs)")
 
@@ -257,13 +388,13 @@ def stage_generate(args) -> None:
     # produced for the same images. EVAL_PN_SEED_OFFSET keeps the two
     # directions in disjoint seed space.
     print("[eval] generating Xc (n→p) — this is the expensive part ...")
-    xc_np = generate_batch_with_policy(
-        xn_shard, policy_n_to_p, deterministic=True,
+    xc_np = _generate_shard(
+        xn_shard, policy_n_to_p, target_c=1.0, ctx=ctx,
         index_offset=n_lo, label=f"shard{args.shard} n_to_p",
     )
     print("[eval] generating Xc (p→n) ...")
-    xc_pn = generate_batch_with_policy(
-        xp_shard, policy_p_to_n, deterministic=True,
+    xc_pn = _generate_shard(
+        xp_shard, policy_p_to_n, target_c=0.0, ctx=ctx,
         index_offset=EVAL_PN_SEED_OFFSET + p_lo, label=f"shard{args.shard} p_to_n",
     )
     print(ctx.generator.cam_degeneracy_summary())
@@ -281,6 +412,12 @@ def stage_generate(args) -> None:
             "xp": torch.cat(xp_shard) if xp_shard else torch.empty(0),
             "xc_np": torch.cat(xc_np) if xc_np else torch.empty(0),
             "xc_pn": torch.cat(xc_pn) if xc_pn else torch.empty(0),
+            # Dataset indices, aligned element-wise with xn/xp above. Carried so
+            # the reduce stage can reach each image's lesion annotation — a
+            # tensor alone has no way back to the patient it came from, which is
+            # what made "did the edit land on the pathology" unmeasurable.
+            "xn_idx": list(map(int, xn_idx_shard)),
+            "xp_idx": list(map(int, xp_idx_shard)),
             "config": current_cfg_stamp(),
         },
         path,
@@ -384,18 +521,35 @@ def _load_shards(shard_dir: str, num_shards: int | None):
     for key in ("xn", "xp", "xc_np", "xc_pn"):
         out[key] = [img for k in order for img in unstack(blobs[k][key])]
 
+    # Dataset indices, concatenated in the SAME shard order as the tensors so
+    # idx[k] still names the patient behind image[k]. Absent from shards written
+    # before indices were threaded through: those degrade to no annotation
+    # metrics rather than failing, since every other metric is still valid.
+    if all("xn_idx" in blobs[k] for k in order):
+        for key in ("xn_idx", "xp_idx"):
+            out[key] = [i for k in order for i in blobs[k][key]]
+    else:
+        out["xn_idx"] = out["xp_idx"] = None
+        print(
+            "[eval] WARNING: shards predate index threading — annotation-based "
+            "metrics (LHR) will be skipped. Regenerate to enable them."
+        )
+
     print(f"[eval] loaded {total} shards from '{shard_dir}' — "
           f"Xn={len(out['xn'])} Xp={len(out['xp'])} "
           f"Xc_n→p={len(out['xc_np'])} Xc_p→n={len(out['xc_pn'])}")
-    return out["xn"], out["xp"], out["xc_np"], out["xc_pn"], n_evals.pop()
+    return (
+        out["xn"], out["xp"], out["xc_np"], out["xc_pn"], n_evals.pop(),
+        out["xn_idx"], out["xp_idx"],
+    )
 
 
 def stage_reduce(args) -> None:
-    xn_list, xp_list, xc_np, xc_pn, n_eval = _load_shards(
+    xn_list, xp_list, xc_np, xc_pn, n_eval, xn_idx, xp_idx = _load_shards(
         args.shard_dir, args.num_shards
     )
 
-    ctx, policy_n_to_p, policy_p_to_n = _build_pipeline()
+    ctx, policy_n_to_p, policy_p_to_n = _build_pipeline(args.arm)
 
     print("\n" + "=" * 70)
     print("STEP 6 — Evaluation (metrics over precomputed counterfactuals)")
@@ -408,12 +562,13 @@ def stage_reduce(args) -> None:
         lung_channel_idx=ctx.lung_channel_idx,
         obj_det=ctx.obj_det,
         n_eval=n_eval,
-        ckpt_dir=config.CKPT_DIR,
+        ckpt_dir=args.out_dir,
         device=config.DEVICE,
         policy_n_to_p=policy_n_to_p,
         policy_p_to_n=policy_p_to_n,
         deterministic_policy=True,
         xn_list=xn_list, xp_list=xp_list, xc_np=xc_np, xc_pn=xc_pn,
+        xn_idx=xn_idx, xp_idx=xp_idx,
         clinical_metrics=ctx.domain.clinical_metrics,
     )
     _print_metric_summary(eval_results)
@@ -423,7 +578,7 @@ def stage_reduce(args) -> None:
     # whole dataset a second time.
     _plot_diffs(
         xn_list[0].to(config.DEVICE), xp_list[0].to(config.DEVICE),
-        ctx, policy_n_to_p, policy_p_to_n,
+        ctx, policy_n_to_p, policy_p_to_n, out_dir=args.out_dir,
     )
     print("\n✓ Evaluation complete.")
 
@@ -440,7 +595,7 @@ def stage_all(args) -> None:
               f"{2 * args.n_eval * 4.4 / 60:.1f}h, and publicgpu caps jobs at "
               f"24h. Use --stage generate as a SLURM array instead.\n")
 
-    ctx, policy_n_to_p, policy_p_to_n = _build_pipeline()
+    ctx, policy_n_to_p, policy_p_to_n = _build_pipeline(args.arm)
 
     print("\n" + "=" * 70)
     print("STEP 6 — Evaluation (PPO-guided generation)")
@@ -453,19 +608,20 @@ def stage_all(args) -> None:
         lung_channel_idx=ctx.lung_channel_idx,
         obj_det=ctx.obj_det,
         n_eval=min(args.n_eval, len(ctx.dataset)),
-        ckpt_dir=config.CKPT_DIR,
+        ckpt_dir=args.out_dir,
         device=config.DEVICE,
         policy_n_to_p=policy_n_to_p,
         policy_p_to_n=policy_p_to_n,
         deterministic_policy=True,
         clinical_metrics=ctx.domain.clinical_metrics,
+        allowed_indices=ctx.eval_indices(),
     )
     _print_metric_summary(eval_results)
 
     x_neg, x_pos = _pick_query_images(
         ctx.dataset, ctx.classifier, device=config.DEVICE, low=0.2, high=0.8
     )
-    _plot_diffs(x_neg, x_pos, ctx, policy_n_to_p, policy_p_to_n)
+    _plot_diffs(x_neg, x_pos, ctx, policy_n_to_p, policy_p_to_n, out_dir=args.out_dir)
     print("\n✓ Evaluation complete.")
 
 
@@ -494,16 +650,127 @@ def parse_args(argv=None):
                          "optional cross-check for --stage reduce")
     ap.add_argument("--n-eval", dest="n_eval", type=int, default=200,
                     help="images per group (default 200; FID is unstable below this)")
-    ap.add_argument("--shard-dir", type=str,
-                    default=os.path.join(config.CKPT_DIR, "eval_shards"),
-                    help="where cf_shard_*.pt live")
+    # Default None so it can be resolved from --arm AND --tag after parsing;
+    # argparse would otherwise bake in the baseline path before either is known.
+    ap.add_argument("--shard-dir", type=str, default=None,
+                    help="where cf_shard_*.pt live. Defaults to "
+                         "CKPT_DIR/eval_shards[_<arm>][_<tag>].")
+
+    # ── control arms ──────────────────────────────────────────────────────────
+    # Nothing in this project has ever been measured against a control, so no
+    # number in it can support the claim that the PPO policy contributes
+    # anything. These two arms are that control, and they are cheap: the policy
+    # makes ONE 9-dim decision per image and its whole effect is to scale a
+    # classifier gradient by at most ~7x, so "does it beat no policy at all" is
+    # a live question rather than a formality.
+    ap.add_argument("--arm", choices=("trained", "none", "random"), default="trained",
+                    help="trained: the learned policies (default). "
+                         "none: no policy — fixed default sampling schedule, "
+                         "gradient guidance only. "
+                         "random: an UNTRAINED policy at the same action bounds, "
+                         "separating 'the schedule is learned' from 'a schedule "
+                         "exists'. Write each arm to its own --shard-dir.")
+    ap.add_argument("--out-dir", dest="out_dir", type=str, default=None,
+                    help="where eval_metrics.json and the diff PNGs are written. "
+                         "Defaults to CKPT_DIR for --arm trained and to "
+                         "CKPT_DIR/eval_<arm> otherwise, so the three arms do "
+                         "not overwrite each other's results.")
+
+    # ── countermeasure arms (Phase 3a) ────────────────────────────────────────
+    # Set as flags rather than by editing config.py, because run_eval_cf.slurm
+    # warns — correctly — that config.py must not change between an array and
+    # its reduce job. smoke_test.py:121-131 already assigns these at runtime;
+    # every read site reads config.X inside a function, so assigning before
+    # _build_pipeline is sufficient.
+    #
+    # Phase 2 showed the PPO policy is inert, so these are meant to be run on
+    # --arm none: both act on the GENERATION path (guidance gradient / edit
+    # budget), not on the policy, which makes them testable with no retraining.
+    ap.add_argument("--guidance-ensemble", dest="guidance_ensemble",
+                    action="store_true",
+                    help="ARM 1: guide on the ensemble f(.) instead of a single "
+                         "classifier. An edit must then fool several models.")
+    ap.add_argument("--gradcam-mask", dest="gradcam_mask", action="store_true",
+                    help="ARM 2: confine the edit budget to the Grad-CAM region "
+                         "via generate_counterfactual(cam_scale=...).")
+    ap.add_argument("--tag", type=str, default=None,
+                    help="suffix for --shard-dir and --out-dir, e.g. 'cm1'. "
+                         "REQUIRED when a countermeasure flag is set, so an arm "
+                         "can never write over the baseline's shards.")
+    # ARM 1 changes f(.), and scan_groups selects Xn/Xp by f(x)<0.2 / f(x)>0.8 —
+    # so with the default 'classifier' source the ensemble arm would evaluate a
+    # DIFFERENT set of images than the baseline, and the paired comparison would
+    # silently stop being paired. 'label' selects by the radiologist's Target,
+    # which is independent of f, so every arm sees the same images.
+    # current_cfg_stamp already records this ("a different image set is exactly
+    # as wrong as pooling two ablation arms"), so arms cannot be mixed.
+    ap.add_argument("--group-source", dest="group_source",
+                    choices=("classifier", "label"), default=None,
+                    help="how Xn/Xp are chosen: 'classifier' (f(x) thresholds, "
+                         "the default) or 'label' (ground truth). Use 'label' "
+                         "when comparing arms that change f(.).")
     args = ap.parse_args(argv)
+
+    if args.group_source:
+        config.EVAL_GROUP_SOURCE = args.group_source
+
+    # Apply before anything builds a model. current_cfg_stamp() records both
+    # flags, so shards from different arms cannot be pooled by the reduce stage.
+    if args.guidance_ensemble:
+        config.USE_GUIDANCE_ENSEMBLE = True
+    if args.gradcam_mask:
+        config.USE_GRADCAM_MASK = True
+    if (args.guidance_ensemble or args.gradcam_mask) and not args.tag:
+        ap.error(
+            "--guidance-ensemble/--gradcam-mask require --tag, otherwise this "
+            "arm's counterfactuals land in the baseline's shard directory and "
+            "the two get pooled into a metric describing neither."
+        )
 
     if args.stage == "generate":
         if args.shard is None or args.num_shards is None:
             ap.error("--stage generate requires both --shard and --num-shards")
         if args.num_shards < 1:
             ap.error("--num-shards must be >= 1")
+
+    # Arms must not share a shard directory: the reduce stage pools everything
+    # matching cf_shard_*.pt. The config stamp now distinguishes countermeasure
+    # arms (it carries USE_GUIDANCE_ENSEMBLE and USE_GRADCAM_MASK), but it still
+    # cannot tell --arm apart, since that is a CLI flag and not a config value —
+    # so the directory has to.
+    _base = "eval_shards" if args.arm == "trained" else f"eval_shards_{args.arm}"
+    if args.tag:
+        _base = f"{_base}_{args.tag}"
+    if args.shard_dir is None:
+        args.shard_dir = os.path.join(config.CKPT_DIR, _base)
+    if args.arm != "trained" and args.shard_dir == os.path.join(config.CKPT_DIR, "eval_shards"):
+        ap.error(
+            f"--arm {args.arm} must write to its own --shard-dir, e.g.\n"
+            f"    --shard-dir {os.path.join(config.CKPT_DIR, f'eval_shards_{args.arm}')}\n"
+            f"Sharing the default directory would pool this arm's "
+            f"counterfactuals with the trained arm's and report the mixture."
+        )
+
+    # Same reasoning one step downstream. run_full_evaluation writes
+    # eval_metrics.json (and _plot_diffs the two PNGs) into a single directory,
+    # so with all three arms pointed at CKPT_DIR each reduce job would overwrite
+    # the previous arm's results and only the last one submitted would survive —
+    # making the three-arm comparison, the entire point of Phase 2, impossible
+    # to assemble after the fact. The trained arm keeps CKPT_DIR so existing
+    # paths are unchanged.
+    if args.out_dir is None:
+        if args.arm == "trained" and not args.tag:
+            args.out_dir = config.CKPT_DIR
+        else:
+            _out = f"eval_{args.arm}" if args.arm != "trained" else "eval_trained"
+            if args.tag:
+                _out = f"{_out}_{args.tag}"
+            args.out_dir = os.path.join(config.CKPT_DIR, _out)
+    if args.arm != "trained" and os.path.abspath(args.out_dir) == os.path.abspath(config.CKPT_DIR):
+        ap.error(
+            f"--arm {args.arm} must write to its own --out-dir, not {config.CKPT_DIR} "
+            f"— that is where the trained arm's eval_metrics.json lives."
+        )
     return args
 
 

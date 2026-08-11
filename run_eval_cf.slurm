@@ -77,7 +77,12 @@ cd "${SLURM_SUBMIT_DIR:-$(dirname "${BASH_SOURCE[0]}")}"
 mkdir -p logs
 
 module load python/3.12.8
-module load cuda/13.0
+# torch is built for cu121 (torch.version.cuda == "12.1") and the driver is
+# CUDA 12.6. cuda/13.0 (the module system default) prepends its lib64 to
+# LD_LIBRARY_PATH ahead of torch's own RUNPATH and only fails to break things
+# because CUDA 13 sonames are .so.13 while torch links .so.12. Load the
+# matching toolkit instead of relying on that.
+module load cuda/cuda-12.1
 
 if [ ! -d venv ]; then
     echo "venv/ not found — run 'bash setup_env.sh' on the login node first." >&2
@@ -96,6 +101,79 @@ export YOLO_OFFLINE=1
 # reduce stage detect a missing one instead of quietly averaging over fewer.
 NUM_SHARDS=8
 
+# Checkpoints live under a PER-DOMAIN directory, not under checkpoints/.
+# config.CKPT_DIR resolves to "checkpoints" for rsna_pneumonia and to
+# "checkpoints/<domain>" for every other domain (config.py, CKPT_DIR). Ask
+# config rather than hardcoding, or this guard reports "training never ran"
+# for a domain whose policies are sitting right there under another name.
+CKPT_DIR=$(python -c 'import config; print(config.CKPT_DIR)')
+echo "[slurm] domain checkpoint dir: ${CKPT_DIR}"
+
+# ── control arm ───────────────────────────────────────────────────────────────
+# EVAL_ARM selects which system generates the counterfactuals:
+#   trained (default) — the learned policies
+#   none              — no policy; gradient guidance on the generator's fixed
+#                       default schedule. THE control: it says whether PPO
+#                       contributes anything at all.
+#   random            — an untrained policy at the same action bounds.
+#
+# Each arm gets its own shard directory. eval_main.py refuses to run a non-
+# trained arm into the default one, because the reduce stage pools by glob and
+# the config stamp cannot tell arms apart (--arm is a CLI flag, not config), so
+# sharing a directory would report a blend of two systems as one result.
+#
+#   EVAL_ARM=none sbatch run_eval_cf.slurm
+#   sbatch --dependency=afterok:<jobid> --export=ALL,EVAL_ARM=none run_eval_reduce.slurm
+EVAL_ARM="${EVAL_ARM:-trained}"
+if [ "${EVAL_ARM}" = "trained" ]; then
+    SHARD_DIR="${CKPT_DIR}/eval_shards"
+else
+    SHARD_DIR="${CKPT_DIR}/eval_shards_${EVAL_ARM}"
+fi
+
+# ── countermeasure arm (Phase 3a) ─────────────────────────────────────────────
+# EVAL_CM selects an anti-adversarial countermeasure, and EVAL_TAG names the
+# directory it writes to. Both act on the GENERATION path, so they are run with
+# EVAL_ARM=none: Phase 2 showed the PPO policy contributes nothing measurable,
+# and the no-policy arm is ~11x cheaper (0.02 vs 0.23 min/img).
+#
+#   EVAL_ARM=none EVAL_CM=ensemble EVAL_TAG=cm1 sbatch run_eval_cf.slurm
+#   EVAL_ARM=none EVAL_CM=gradcam  EVAL_TAG=cm2 sbatch run_eval_cf.slurm
+#   EVAL_ARM=none EVAL_CM=both     EVAL_TAG=cm3 sbatch run_eval_cf.slurm
+#
+# The flags go on the command line rather than into config.py because the header
+# above forbids editing config.py between this array and its reduce job.
+EVAL_CM="${EVAL_CM:-}"
+EVAL_TAG="${EVAL_TAG:-}"
+# Ground-truth Xn/Xp groups. Required for the countermeasure arms: ARM 1 changes
+# f(.), and f-thresholded groups would hand each arm a DIFFERENT image set,
+# quietly destroying the paired comparison the whole sweep depends on.
+EVAL_GROUP_SOURCE="${EVAL_GROUP_SOURCE:-}"
+CM_FLAGS=""
+case "${EVAL_CM}" in
+    "")        ;;
+    ensemble)  CM_FLAGS="--guidance-ensemble" ;;
+    gradcam)   CM_FLAGS="--gradcam-mask" ;;
+    both)      CM_FLAGS="--guidance-ensemble --gradcam-mask" ;;
+    *) echo "Unknown EVAL_CM='${EVAL_CM}' — expected ensemble|gradcam|both." >&2
+       exit 1 ;;
+esac
+if [ -n "${EVAL_CM}" ] && [ -z "${EVAL_TAG}" ]; then
+    echo "EVAL_CM=${EVAL_CM} requires EVAL_TAG (e.g. EVAL_TAG=cm1) so this arm" >&2
+    echo "does not write into the baseline's shard directory." >&2
+    exit 1
+fi
+if [ -n "${EVAL_TAG}" ]; then
+    SHARD_DIR="${SHARD_DIR}_${EVAL_TAG}"
+fi
+echo "[slurm] arm=${EVAL_ARM}  cm=${EVAL_CM:-none}  tag=${EVAL_TAG:-none}  shard_dir=${SHARD_DIR}"
+
+# Record commit + dirty state + the config values that drive behaviour. This is
+# the enforceable version of the "Do NOT edit config.py between submitting this
+# array and the reduce job" note above: it cannot stop an edit, but it makes one
+# visible afterwards instead of silently mixing two configs into one result.
+bash record_run_manifest.sh "${CKPT_DIR}"
+
 # Fail before loading ~2GB of model weights if training never ran.
 #
 # ppo_policy.pt is written ONLY when a direction finishes all N_EPISODES. A
@@ -104,15 +182,19 @@ NUM_SHARDS=8
 # indistinguishable once loaded and eval would silently report a half-trained
 # policy as a finished one. So distinguish "never started" from "paused" here
 # and name the exact command that finishes it.
+# Only the trained arm needs policies on disk. The `none` arm has no policy by
+# definition and `random` builds one at init, so requiring a checkpoint there
+# would block the two arms that exist precisely to be run without one.
 for i in 0 1; do
+    [ "${EVAL_ARM}" = "trained" ] || break
     direction=$([ "$i" = 0 ] && echo n_to_p || echo p_to_n)
-    if [ ! -f "checkpoints/${direction}/ppo_policy.pt" ]; then
-        if [ -f "checkpoints/${direction}/ppo_latest.pt" ]; then
-            echo "${direction} is PAUSED, not finished: checkpoints/${direction}/ppo_latest.pt" >&2
+    if [ ! -f "${CKPT_DIR}/${direction}/ppo_policy.pt" ]; then
+        if [ -f "${CKPT_DIR}/${direction}/ppo_latest.pt" ]; then
+            echo "${direction} is PAUSED, not finished: ${CKPT_DIR}/${direction}/ppo_latest.pt" >&2
             echo "exists but ppo_policy.pt does not. Resume it with:" >&2
             echo "    sbatch --array=${i} run_ppo.slurm" >&2
         else
-            echo "checkpoints/${direction}/ppo_policy.pt not found and no ppo_latest.pt" >&2
+            echo "${CKPT_DIR}/${direction}/ppo_policy.pt not found and no ppo_latest.pt" >&2
             echo "either — training never ran for this direction. Start it with:" >&2
             echo "    sbatch --array=${i} run_ppo.slurm" >&2
         fi
@@ -132,6 +214,11 @@ python -u preflight_gpu.py
 python -u eval_main.py \
     --stage generate \
     --shard "${SLURM_ARRAY_TASK_ID}" \
-    --num-shards "${NUM_SHARDS}"
+    --num-shards "${NUM_SHARDS}" \
+    --arm "${EVAL_ARM}" \
+    --shard-dir "${SHARD_DIR}" \
+    ${EVAL_TAG:+--tag "${EVAL_TAG}"} \
+    ${EVAL_GROUP_SOURCE:+--group-source "${EVAL_GROUP_SOURCE}"} \
+    ${CM_FLAGS}
 
 echo "=== Eval shard ${SLURM_ARRAY_TASK_ID} finished at $(date) ==="
