@@ -1,0 +1,84 @@
+run manifest
+================================================================
+written        : 2026-08-11T22:51:45+02:00
+job            : ppo-eval-cf-17689943_4
+node           : hpc-n872
+slurm partition: publicgpu
+
+-- git ---------------------------------------------------------
+commit         : fb268c665a901b310a1893d86d8229dcc04a556e
+branch         : evaluation-integrity
+tree           : DIRTY — the commit above does not describe this run
+                  M checkpoints/run_manifest.txt
+                  M eval_main.py
+                  M run_eval_cf.slurm
+                  M run_eval_reduce.slurm
+                 ?? logs/ppo-eval-cf-17689879_0.manifest
+                 ?? logs/ppo-eval-cf-17689879_1.manifest
+                 ?? logs/ppo-eval-cf-17689879_2.manifest
+                 ?? logs/ppo-eval-cf-17689879_3.manifest
+                 ?? logs/ppo-eval-cf-17689879_4.manifest
+                 ?? logs/ppo-eval-cf-17689879_5.manifest
+                 ?? logs/ppo-eval-cf-17689879_6.manifest
+                 ?? logs/ppo-eval-cf-17689879_7.manifest
+                 ?? logs/ppo-eval-cf-17689881_0.manifest
+                 ?? logs/ppo-eval-cf-17689881_1.manifest
+                 ?? logs/ppo-eval-cf-17689881_2.manifest
+                 ?? logs/ppo-eval-cf-17689881_3.manifest
+                 ?? logs/ppo-eval-cf-17689881_4.manifest
+                 ?? logs/ppo-eval-cf-17689881_5.manifest
+                 ?? logs/ppo-eval-cf-17689881_6.manifest
+                 ?? logs/ppo-eval-cf-17689881_7.manifest
+                 ?? logs/ppo-eval-cf-17689883_0.manifest
+                 ?? logs/ppo-eval-cf-17689883_1.manifest
+                 ?? logs/ppo-eval-cf-17689883_2.manifest
+                 ?? logs/ppo-eval-cf-17689883_3.manifest
+                 ?? logs/ppo-eval-cf-17689883_4.manifest
+                 ?? logs/ppo-eval-cf-17689883_5.manifest
+                 ?? logs/ppo-eval-cf-17689883_6.manifest
+                 ?? logs/ppo-eval-cf-17689883_7.manifest
+                 ?? logs/ppo-eval-cf-17689885_0.manifest
+                 ?? logs/ppo-eval-cf-17689885_1.manifest
+                 ?? logs/ppo-eval-cf-17689885_2.manifest
+                 ?? logs/ppo-eval-cf-17689885_3.manifest
+                 ?? logs/ppo-eval-cf-17689885_4.manifest
+                 ?? logs/ppo-eval-cf-17689885_5.manifest
+                 ?? logs/ppo-eval-cf-17689885_6.manifest
+                 ?? logs/ppo-eval-cf-17689885_7.manifest
+                 ?? logs/ppo-eval-reduce-17689880.manifest
+                 ?? logs/ppo-eval-reduce-17689882.manifest
+                 ?? logs/ppo-eval-reduce-17689884.manifest
+                 ?? report/report.pdf
+
+-- environment -------------------------------------------------
+python         : Python 3.12.8
+torch          : 2.5.1+cu121 cuda 12.1
+gpu            : Quadro RTX 6000, 23040 MiB
+
+-- config.py ---------------------------------------------------
+sha256         : ff168a23901dfc7aec81e6db9a2905e554631f03630ed2066796d5d375a4ee95
+  DATASET_DOMAIN          = rsna_pneumonia
+  CKPT_DIR                = checkpoints
+  DEVICE                  = cuda
+  DTYPE                   = torch.float16
+  IMG_SIZE                = 256
+  USE_SPLIT               = True
+  SPLIT_SEED              = 0
+  TEST_FRAC               = 0.2
+  EVAL_GROUP_SOURCE       = classifier
+  TRAIN_SEED              = 0
+  STRICT_DETERMINISM      = False
+  USE_GUIDANCE_ENSEMBLE   = False
+  USE_GRADCAM_MASK        = False
+  USE_SPARSITY_REWARD     = False
+  USE_SPARSITY_ANNEALING  = True
+  FIXED_EPISODE_LENGTH    = False
+  EDIT_BUDGET_L1          = inf
+  BUDGET_T                = 25
+  N_EPISODES              = 800
+  N_DENOISE_EPOCHS        = 30
+  T_DIFF                  = 50
+  POLICY_TRUNK            = mlp
+  LORA_R                  = 8
+  ALPHA_CLS               = 4.0
+  ALPHA_PRES              = 0.05

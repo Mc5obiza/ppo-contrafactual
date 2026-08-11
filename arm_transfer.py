@@ -67,21 +67,58 @@ def _load_shards(shard_dir: str):
 
 
 def _guidance_members(stamp: dict) -> list[str]:
-    """What actually guided this arm, from its own stamp."""
+    """
+    What actually guided this arm — taken from the shard's OWN stamp, never from
+    the live domain or config.
+
+    The stamp records the roster that was in force at generation time. Reading
+    the domain's list instead looks equivalent and is not: an arm run with an
+    overridden --ensemble-weights, or one whose roster was truncated in transit,
+    guides on a roster the domain knows nothing about. That mistake produced a
+    fake result here — a 3-member arm whose export was silently cut to [rsna]
+    still had its denominator computed as the domain's 2-member ensemble, which
+    inflated every ratio and made the arm look like the best in the sweep. Same
+    bug class as heldout_validation's ensemble denominator; the stamp exists
+    precisely so it cannot recur, so use it.
+    """
     use_ens = stamp.get("USE_GUIDANCE_ENSEMBLE")
+    members = list(stamp.get("GUIDANCE_ENSEMBLE_WEIGHTS", []))
+    if use_ens is None:                         # pre-stamp shards
+        print("  [warn] shards predate the USE_GUIDANCE_ENSEMBLE stamp; "
+              "assuming the single guidance model")
+        use_ens = False
+    if use_ens:
+        if not members:
+            raise ValueError(
+                "shards claim ensemble guidance but carry no "
+                "GUIDANCE_ENSEMBLE_WEIGHTS — cannot determine the denominator."
+            )
+        return members
     try:
         import domains
-        d = domains.active()
-        if use_ens is None:                     # pre-stamp shards
-            print("  [warn] shards predate the USE_GUIDANCE_ENSEMBLE stamp; "
-                  "assuming the single guidance model")
-            use_ens = False
-        return list(d.ensemble_weights) if use_ens else [d.guidance_weights]
+        return [domains.active().guidance_weights]
     except Exception:
-        return list(stamp.get("GUIDANCE_ENSEMBLE_WEIGHTS", []))[: 2 if use_ens else 1]
+        return members[:1]
 
 
-def _validators() -> list[str]:
+def _validators(override: str | None = None) -> list[str]:
+    """
+    The domain's held-out set by default; an explicit override when an arm moves
+    one of them into guidance.
+
+    Scaling the ensemble runs out of clean members fast: every remaining weight
+    set shares TRAINING DATA with a validator (mimic_nb with mimic_ch, 'all'
+    with all three). A member that saw a validator's data can lift transfer for
+    a reason that is not "the edit carries real disease signal", so the honest
+    move is to drop the overlapping validator and compare EVERY arm on the
+    reduced set — which is what this override is for. Comparing one arm on
+    {nih, pc} against another on {nih, pc, mimic_ch} would not be a comparison.
+    """
+    if override:
+        return [
+            w if w.startswith("densenet121-") else f"densenet121-res224-{w}"
+            for w in (s.strip() for s in override.split(",")) if w
+        ]
     try:
         import domains
         return list(domains.active().heldout_validators)
@@ -110,7 +147,7 @@ def _verdict(r: float) -> str:
     return "ADVERSARIAL" if r < 0.15 else ("partial" if r < 0.5 else "TRANSFERS")
 
 
-def main(dirs: list[str]) -> int:
+def main(dirs: list[str], validators_override: str | None = None) -> int:
     from src.xrv_classifier import build_xrv_classifier, build_ensemble_classifier
 
     try:
@@ -131,7 +168,7 @@ def main(dirs: list[str]) -> int:
             )
         return cache[key]
 
-    vals = _validators()
+    vals = _validators(validators_override)
     summary = {}
 
     for d in dirs:
@@ -177,8 +214,13 @@ def main(dirs: list[str]) -> int:
 
 
 if __name__ == "__main__":
-    args = sys.argv[1:]
-    if not args:
+    argv = sys.argv[1:]
+    override = None
+    if "--validators" in argv:
+        i = argv.index("--validators")
+        override = argv[i + 1]
+        del argv[i : i + 2]
+    if not argv:
         print(__doc__)
         raise SystemExit(2)
-    raise SystemExit(main(args))
+    raise SystemExit(main(argv, override))

@@ -169,7 +169,7 @@ def _pick_query_images(
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _generate_shard(x_shard, policy, target_c: float, ctx,
-                    index_offset: int, label: str) -> list:
+                    index_offset: int, label: str, base_seed: int = 0) -> list:
     """
     Generate one shard's counterfactuals, with or without a policy.
 
@@ -188,13 +188,13 @@ def _generate_shard(x_shard, policy, target_c: float, ctx,
     if policy is not None:
         return generate_batch_with_policy(
             x_shard, policy, deterministic=True,
-            index_offset=index_offset, label=label,
+            index_offset=index_offset, label=label, base_seed=base_seed,
         )
 
     import time
     cfs, t0, n = [], time.time(), len(x_shard)
     for i, x in enumerate(x_shard):
-        torch.manual_seed(index_offset + i)          # base_seed=0, as above
+        torch.manual_seed(base_seed + index_offset + i)   # matches the policy path
         x_dev = x.to(config.DEVICE)
 
         # The Grad-CAM edit-budget mask, when that countermeasure arm is on.
@@ -391,11 +391,13 @@ def stage_generate(args) -> None:
     xc_np = _generate_shard(
         xn_shard, policy_n_to_p, target_c=1.0, ctx=ctx,
         index_offset=n_lo, label=f"shard{args.shard} n_to_p",
+        base_seed=args.base_seed,
     )
     print("[eval] generating Xc (p→n) ...")
     xc_pn = _generate_shard(
         xp_shard, policy_p_to_n, target_c=0.0, ctx=ctx,
         index_offset=EVAL_PN_SEED_OFFSET + p_lo, label=f"shard{args.shard} p_to_n",
+        base_seed=args.base_seed,
     )
     print(ctx.generator.cam_degeneracy_summary())
 
@@ -406,6 +408,10 @@ def stage_generate(args) -> None:
             "shard": args.shard,
             "num_shards": args.num_shards,
             "n_eval": args.n_eval,
+            # Not a config value, so current_cfg_stamp cannot carry it — but two
+            # seeds are as un-poolable as two ablation arms, so _load_shards
+            # checks it the same way it checks n_eval.
+            "base_seed": args.base_seed,
             "n_slice": [n_lo, n_hi],
             "p_slice": [p_lo, p_hi],
             "xn": torch.cat(xn_shard) if xn_shard else torch.empty(0),
@@ -486,6 +492,16 @@ def _load_shards(shard_dir: str, num_shards: int | None):
     n_evals = {b["n_eval"] for b in blobs.values()}
     if len(n_evals) != 1:
         raise ValueError(f"shards disagree on n_eval: {sorted(n_evals)}")
+
+    # Same rule for the noise draw. Shards written before --base-seed existed
+    # carry no key and were all seed 0, so default rather than reject them.
+    seeds = {b.get("base_seed", 0) for b in blobs.values()}
+    if len(seeds) != 1:
+        raise ValueError(
+            f"shards disagree on base_seed: {sorted(seeds)}. Each seed is a "
+            f"separate replicate — pooling them reports the mean of two runs as "
+            f"if it were one. Give each seed its own --shard-dir (e.g. --tag)."
+        )
 
     reference = blobs[0]["config"]
     for k in sorted(blobs):
@@ -704,6 +720,32 @@ def parse_args(argv=None):
     # which is independent of f, so every arm sees the same images.
     # current_cfg_stamp already records this ("a different image set is exactly
     # as wrong as pooling two ablation arms"), so arms cannot be mixed.
+    # Seed replication. Every result in this project has been single-seed, and
+    # the one countermeasure that helped (ARM 1) did so at d=0.22 — small enough
+    # that it needs to be shown stable across noise draws before it is claimed.
+    # generate_batch_with_policy already took base_seed; it was simply never
+    # exposed, and the no-policy branch hardcoded 0.
+    # Ensemble membership, for testing whether MORE classifiers push transfer
+    # further — ARM 1 is the only countermeasure that helped, so this is the one
+    # direction worth pushing. Sets config.GUIDANCE_ENSEMBLE_WEIGHTS, which
+    # pipeline.build_common reads and current_cfg_stamp records, so an arm with
+    # a different roster cannot be pooled with cm1's shards.
+    #
+    # CAUTION: the remaining weight sets share TRAINING DATA with the held-out
+    # validators (mimic_nb with mimic_ch; 'all' with all three). An ensemble
+    # member that saw a validator's data can raise transfer for reasons that are
+    # not "the edit is real signal", so drop the overlapping validator when
+    # adding one — see --validators in arm_transfer.py.
+    ap.add_argument("--ensemble-weights", dest="ensemble_weights", type=str,
+                    default=None,
+                    help="comma-separated xrv weight sets for --guidance-ensemble, "
+                         "e.g. 'densenet121-res224-rsna,densenet121-res224-chex,"
+                         "densenet121-res224-mimic_nb'. Defaults to the domain's.")
+    ap.add_argument("--base-seed", dest="base_seed", type=int, default=0,
+                    help="global offset for the per-image noise seed "
+                         "(base_seed + global_index). Changing it redraws every "
+                         "counterfactual, so each value needs its own "
+                         "--shard-dir; _load_shards refuses a mixed set.")
     ap.add_argument("--group-source", dest="group_source",
                     choices=("classifier", "label"), default=None,
                     help="how Xn/Xp are chosen: 'classifier' (f(x) thresholds, "
@@ -718,6 +760,12 @@ def parse_args(argv=None):
     # flags, so shards from different arms cannot be pooled by the reduce stage.
     if args.guidance_ensemble:
         config.USE_GUIDANCE_ENSEMBLE = True
+    if args.ensemble_weights:
+        config.GUIDANCE_ENSEMBLE_WEIGHTS = [
+            w.strip() for w in args.ensemble_weights.split(",") if w.strip()
+        ]
+        if not args.guidance_ensemble:
+            ap.error("--ensemble-weights only takes effect with --guidance-ensemble")
     if args.gradcam_mask:
         config.USE_GRADCAM_MASK = True
     if (args.guidance_ensemble or args.gradcam_mask) and not args.tag:

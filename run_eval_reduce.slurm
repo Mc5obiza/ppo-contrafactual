@@ -103,6 +103,13 @@ EVAL_TAG="${EVAL_TAG:-}"
 # Must match the generate array exactly — it is part of the config stamp, so a
 # mismatch is caught by _load_shards rather than silently reported.
 EVAL_GROUP_SOURCE="${EVAL_GROUP_SOURCE:-}"
+# Seed replicate. Each value needs its own EVAL_TAG — eval_main refuses to pool
+# shards drawn under different seeds.
+EVAL_BASE_SEED="${EVAL_BASE_SEED:-}"
+# Ensemble roster for EVAL_CM=ensemble/both. Adding a member that shares training
+# data with a held-out validator inflates transfer for the wrong reason — drop
+# the overlapping validator when comparing (arm_transfer.py --validators).
+EVAL_ENSEMBLE_WEIGHTS="${EVAL_ENSEMBLE_WEIGHTS:-}"
 CM_FLAGS=""
 case "${EVAL_CM}" in
     "")        ;;
@@ -151,6 +158,8 @@ python -u eval_main.py \
     --out-dir "${OUT_DIR}" \
     ${EVAL_TAG:+--tag "${EVAL_TAG}"} \
     ${EVAL_GROUP_SOURCE:+--group-source "${EVAL_GROUP_SOURCE}"} \
+    ${EVAL_BASE_SEED:+--base-seed "${EVAL_BASE_SEED}"} \
+    ${EVAL_ENSEMBLE_WEIGHTS:+--ensemble-weights "${EVAL_ENSEMBLE_WEIGHTS}"} \
     ${CM_FLAGS}
 
 echo "=== Eval reduce finished at $(date) ==="

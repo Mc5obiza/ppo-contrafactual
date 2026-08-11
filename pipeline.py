@@ -145,8 +145,27 @@ def build_common() -> PipelineContext:
     # src/xrv_classifier.EnsemblePneumoniaClassifier for why the ensemble exists
     # and what its CV numbers are (not) comparable to.
     if config.USE_GUIDANCE_ENSEMBLE:
+        # Membership comes from config, not the domain, so there is ONE source of
+        # truth: current_cfg_stamp records config.GUIDANCE_ENSEMBLE_WEIGHTS, and
+        # if the domain drove membership instead then editing the domain would
+        # change what guided generation while the stamp kept describing the old
+        # ensemble — the same class of bug as USE_GUIDANCE_ENSEMBLE being absent
+        # from the stamp. They are seeded identically, so this changes nothing
+        # today; it makes them unable to diverge tomorrow.
+        members = list(config.GUIDANCE_ENSEMBLE_WEIGHTS or domain.ensemble_weights)
+        # DomainProfile validates disjointness for ITS list; re-assert it here
+        # because config can now override that list. A validator that helped
+        # guide generation measures nothing — it is the circularity the held-out
+        # validation exists to detect.
+        leaked = sorted(set(members) & set(domain.heldout_validators))
+        if leaked:
+            raise ValueError(
+                f"config.GUIDANCE_ENSEMBLE_WEIGHTS puts {leaked} in the guidance "
+                f"ensemble, but {domain.name!r} also lists them as held-out "
+                f"validators. Drop them from one side before running."
+            )
         classifier = build_ensemble_classifier(
-            weights_list=list(domain.ensemble_weights), pathology=domain.pathology
+            weights_list=members, pathology=domain.pathology
         )
     else:
         classifier = build_xrv_classifier(
