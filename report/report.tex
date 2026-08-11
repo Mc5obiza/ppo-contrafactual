@@ -13,8 +13,6 @@
 \usepackage{subcaption}
 \usepackage{xcolor}
 \usepackage{hyperref}
-\usepackage{authblk}
-\usepackage{siunitx}
 \usepackage{listings}
 \usepackage{enumitem}
 
@@ -32,8 +30,7 @@
 \title{\textbf{Reinforcement-Learning-Guided Latent Diffusion for\\
 Visual Counterfactual Explanations in Chest Radiography}}
 
-\author[1]{Ayoub}
-\affil[1]{Independent Research Project}
+\author{Ayoub \\ \small Independent Research Project}
 \date{\today}
 
 \begin{document}
@@ -67,7 +64,12 @@ score) under paired $t$-tests ($p<10^{-3}$ in both cases). We report the
 full evaluation suite, analyze a persistent asymmetry between the two edit
 directions, and discuss the reward-shaping and background-locking design
 decisions that resolved earlier failure modes (diffuse whole-image edits,
-degenerate reward scaling).
+degenerate reward scaling). As additional work, we generalize the system
+behind a dataset-agnostic domain-registry abstraction and report a
+preliminary extension to a second, dissimilar imaging domain — mammography
+on CBIS-DDSM — where a purpose-built diagnostic metric surfaces evidence of
+the same diffuse-edit failure mode without yet having an independent
+classifier available to confirm it (Section~\ref{sec:breast}).
 \end{abstract}
 
 \tableofcontents
@@ -124,6 +126,10 @@ Fr\'echet Inception Distance (FID), and Foreign-Object Preservation (FOP)
 practical substitute for FOP, and two clinically motivated proxy metrics,
 Cardio-Thoracic Ratio (CTR) and Costophrenic-recess score (SCP), each
 tested with paired $t$-tests between real and counterfactual populations.
+RSNA chest radiography is the focus of this report and the domain on which
+every design decision above was made and validated; Section~\ref{sec:breast}
+reports, as additional work, a preliminary extension of the same pipeline to
+a second, unrelated imaging domain.
 
 % ═════════════════════════════════════════════════════════════════════════
 \section{Related Work}
@@ -728,6 +734,109 @@ mismatches.
 \end{itemize}
 
 % ═════════════════════════════════════════════════════════════════════════
+\section{Additional Work: Extension to a Second Domain (Mammography)}
+\label{sec:breast}
+% ═════════════════════════════════════════════════════════════════════════
+
+Everything above concerns a single domain: binary pneumonia classification
+on RSNA chest radiographs. As additional, exploratory work beyond the core
+project, the pipeline was generalized behind a domain-registry abstraction
+(\texttt{domains/}) binding a dataset, its classifier target, and its
+clinical metrics, so that a new imaging domain is one module plus one
+configuration line rather than an edit threaded through the guidance and
+evaluation code. This section reports the result of exercising that
+abstraction on a second, deliberately dissimilar domain: mammography, on
+the CBIS-DDSM dataset~\cite{lee2017cbisddsm}.
+
+\textbf{What had to be rebuilt.} TorchXRayVision supplies no breast model
+of any kind, so this domain brings its own classifier $f$ (trained from
+scratch on a patient-level split, since an image-level split would place
+the same breast in both train and validation), its own analytic
+breast-anatomy segmenter for the background lock, a separately trained
+lesion U-Net~\cite{ronneberger2015unet} kept deliberately \emph{outside}
+the guidance loop, and four new clinical proxy metrics replacing CTR/SCP:
+Lesion Load Ratio (LLR, the structural analogue of CTR), Margin
+Spiculation Index (MSI, replacing SCP with a quantity CBIS-DDSM's own
+\texttt{mass margins} labels make directly calibratable), Breast Density
+Contrast (BDC, a diagnostic purpose-built to catch a diffuse global
+brightness/density edit that moves the classifier without touching a
+lesion, rather than a genuine change to the segmented mass), and Marker
+Preservation (MOP, a model-free
+FOP analogue built on the observation that surgical clips are small,
+saturated, high-contrast metal objects a simple blob detector can find).
+
+\textbf{Label semantics differ from the chest domain.} CBIS-DDSM is a
+curated set of lesion cases with no normal mammograms at all, so the
+binary label is malignant vs.\ benign, not healthy vs.\ diseased; the two
+edit directions are benign$\to$malignant and malignant$\to$benign, and a
+successful malignant$\to$benign edit claims only that the lesion was made
+to \emph{look} benign to the classifier, not that disease was removed.
+
+\begin{table}[h]
+\centering
+\caption{Mammography-domain evaluation, $n_{\text{eval}} \le 200$ per
+group (\texttt{checkpoints/cbis\_ddsm\_breast/eval\_metrics.json}).}
+\label{tab:breast_results}
+\begin{tabular}{@{}llrr@{}}
+\toprule
+\textbf{Metric} & \textbf{Definition} & \textbf{ben.$\to$mal.} & \textbf{mal.$\to$ben.} \\
+\midrule
+CV   & fraction valid ($\tau=0.8$)      & 1.000 & 1.000 \\
+     & \textit{mean}                     & \multicolumn{2}{c}{1.000} \\
+FID  & breast-domain features, lower better & 163.6 & 193.8 \\
+IP   & MS-SSIM / HF-corr                 & 0.891 / 0.932 & 0.886 / 0.946 \\
+EditConcentration & top-5\% mass (uniform $=0.05$) / \% pixels changed & 0.367 / 38.2\% & 0.332 / 40.6\% \\
+MOP  & marker preservation                & 0.930 & 0.872 \\
+LLR $\Delta$ & ($t$, $p$)                 & $+0.00014$ (0.04, 0.970) & $-0.00107$ ($-0.34$, 0.732) \\
+MSI $\Delta$ & ($t$, $p$)                 & $-0.082$ ($-1.39$, 0.165) & $-0.055$ ($-1.68$, 0.094) \\
+BDC $\Delta$ & ($t$, $p$)                 & $+0.0014$ (0.29, 0.773) & $+0.0154$ (2.46, $0.015^{\ast}$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{./checkpoints/cbis_ddsm_breast/counterfactual_diff_n_to_p.png}
+  \caption{\textbf{Benign $\to$ malignant}, mammography domain. Same
+  four-panel layout as Figures~\ref{fig:n2p}--\ref{fig:p2n}.}
+  \label{fig:breast_n2p}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{./checkpoints/cbis_ddsm_breast/counterfactual_diff_p_to_n.png}
+  \caption{\textbf{Malignant $\to$ benign}, mammography domain.}
+  \label{fig:breast_p2n}
+\end{figure}
+
+\textbf{This is not a second validated success, and should not be read as
+one.} A mean CV of $1.000$ against the guidance ensemble looks, on its
+face, like an even stronger number than the RSNA result; but no
+independent held-out re-scoring was run for mammography within the time
+available, and the guidance ensemble and the reserved validator backbone
+here were all trained on the \emph{same} $\sim$3{,}500-image dataset and
+differ only in architecture, so any future held-out check on this domain
+would be a weaker, same-corpus test rather than a cross-corpus one. More
+tellingly, the metrics that \emph{were} computed already show a
+diffuse-edit signature directly, without needing an independent
+classifier to surface it: in the malignant$\to$benign direction, BDC
+shifts significantly ($p=0.015$) while LLR — the metric that would move
+if a lesion actually shrank — does not ($p=0.732$), and edit
+concentration (0.33--0.37 against a uniform baseline of $0.05$, with
+38--41\% of all pixels changed) is well short of what a focal,
+lesion-confined edit would produce. The most defensible reading is that
+the classifier is being moved substantially by a diffuse density change
+rather than by a change to the segmented lesion itself. What this
+extension demonstrates is that the domain-registry architecture
+generalizes to a modality sharing essentially nothing with chest
+radiography, and that the same purpose-built-diagnostic discipline used
+throughout this project catches a plausible adversarial shortcut on a
+new domain without requiring a second classifier ensemble to be trained
+first; it does not yet demonstrate that the mammography counterfactuals
+carry genuine, lesion-specific disease signal, and completing an
+independent validator for this domain is the natural next step.
+
+% ═════════════════════════════════════════════════════════════════════════
 \section{Conclusion}
 % ═════════════════════════════════════════════════════════════════════════
 
@@ -745,7 +854,13 @@ adding and removing pathology evidence. Head-to-head comparison against a
 GAN-based counterfactual baseline and an unguided CycleGAN baseline
 (Section~\ref{sec:baseline_comparison}) shows the system matches
 GAN-based counterfactual validity while generating substantially more
-realistic images. The clearest next steps are scaling PPO training
+realistic images. As additional work, we showed the pipeline generalizes
+architecturally to a second, dissimilar domain (mammography, CBIS-DDSM,
+Section~\ref{sec:breast}), where a purpose-built density diagnostic
+surfaced the same diffuse-edit concern found on RSNA; validating those
+counterfactuals against an independent classifier, as done here for chest
+radiographs, remains open work specific to that domain. The clearest next
+steps for the core system are scaling PPO training
 compute (particularly for the harder n$\to$p direction), replacing the
 SCP and IP proxies with dedicated, purpose-trained detectors if annotated
 data becomes available, and increasing FID evaluation sample size for
@@ -795,6 +910,16 @@ M.~Guarrera, M.~P.~Lungren, A.~Chaudhari, R.~Brooks, M.~Hashir, and
 H.~Bertrand.
 \textit{TorchXRayVision: A library of chest X-ray datasets and models.}
 MIDL, 2022.
+
+\bibitem{lee2017cbisddsm}
+R.~S.~Lee, F.~Gimenez, A.~Hoogi, K.~K.~Miyake, M.~Gorovoy, and D.~L.~Rubin.
+\textit{A Curated Mammography Data Set for Use in Computer-Aided Detection
+and Diagnosis Research.} Scientific Data, vol.~4, 170177, 2017.
+
+\bibitem{ronneberger2015unet}
+O.~Ronneberger, P.~Fischer, and T.~Brox.
+\textit{U-Net: Convolutional Networks for Biomedical Image Segmentation.}
+MICCAI, 2015.
 
 \end{thebibliography}
 
