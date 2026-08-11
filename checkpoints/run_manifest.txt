@@ -1,53 +1,78 @@
 run manifest
 ================================================================
-written        : 2026-08-11T22:26:59+02:00
-job            : ppo-eval-reduce-17689840
-node           : hpc-n977
+written        : 2026-08-11T23:09:49+02:00
+job            : ppo-eval-reduce-17689971
+node           : hpc-n981
 slurm partition: publicgpu
 
 -- git ---------------------------------------------------------
-commit         : cf5204fb36c459871d95429720da70c47f333e8c
-branch         : master
+commit         : fb268c665a901b310a1893d86d8229dcc04a556e
+branch         : evaluation-integrity
 tree           : DIRTY — the commit above does not describe this run
-                  M .gitignore
-                  M PROJECT_STRUCTURE.md
-                  M checkpoints/counterfactual_diff_n_to_p.png
-                  M checkpoints/counterfactual_diff_p_to_n.png
-                  M checkpoints/eval_metrics.json
-                  M config.py
+                  M arm_transfer.py
+                  M checkpoints/run_manifest.txt
                   M eval_main.py
-                  M factory/environment.py
-                  M factory/finetuning.py
-                  M heldout_validation.py
-                  M ingestion.py
-                  M main.py
                   M pipeline.py
-                  M report/report.tex
-                  M requirements.lock.txt
-                  M run_classifier.slurm
                   M run_eval_cf.slurm
-                  M run_eval_ppo.slurm
                   M run_eval_reduce.slurm
-                  M run_heldout_validation.slurm
-                  M run_ppo.slurm
-                  M run_smoke_test.slurm
-                  M run_smoke_test_eval.slurm
-                  M setup_env.sh
-                  M src/metrics.py
-                 ?? arm_transfer.py
-                 ?? benchmark_episode_cost.py
-                 ?? checkpoints/n_to_p/
-                 ?? checkpoints/p_to_n/
-                 ?? checkpoints/run_manifest.txt
-                 ?? compare_arms.py
-                 ?? logs/
-                 ?? paired_arm_test.py
-                 ?? record_run_manifest.sh
+                 ?? logs/ppo-eval-cf-17689879_0.manifest
+                 ?? logs/ppo-eval-cf-17689879_1.manifest
+                 ?? logs/ppo-eval-cf-17689879_2.manifest
+                 ?? logs/ppo-eval-cf-17689879_3.manifest
+                 ?? logs/ppo-eval-cf-17689879_4.manifest
+                 ?? logs/ppo-eval-cf-17689879_5.manifest
+                 ?? logs/ppo-eval-cf-17689879_6.manifest
+                 ?? logs/ppo-eval-cf-17689879_7.manifest
+                 ?? logs/ppo-eval-cf-17689881_0.manifest
+                 ?? logs/ppo-eval-cf-17689881_1.manifest
+                 ?? logs/ppo-eval-cf-17689881_2.manifest
+                 ?? logs/ppo-eval-cf-17689881_3.manifest
+                 ?? logs/ppo-eval-cf-17689881_4.manifest
+                 ?? logs/ppo-eval-cf-17689881_5.manifest
+                 ?? logs/ppo-eval-cf-17689881_6.manifest
+                 ?? logs/ppo-eval-cf-17689881_7.manifest
+                 ?? logs/ppo-eval-cf-17689883_0.manifest
+                 ?? logs/ppo-eval-cf-17689883_1.manifest
+                 ?? logs/ppo-eval-cf-17689883_2.manifest
+                 ?? logs/ppo-eval-cf-17689883_3.manifest
+                 ?? logs/ppo-eval-cf-17689883_4.manifest
+                 ?? logs/ppo-eval-cf-17689883_5.manifest
+                 ?? logs/ppo-eval-cf-17689883_6.manifest
+                 ?? logs/ppo-eval-cf-17689883_7.manifest
+                 ?? logs/ppo-eval-cf-17689885_0.manifest
+                 ?? logs/ppo-eval-cf-17689885_1.manifest
+                 ?? logs/ppo-eval-cf-17689885_2.manifest
+                 ?? logs/ppo-eval-cf-17689885_3.manifest
+                 ?? logs/ppo-eval-cf-17689885_4.manifest
+                 ?? logs/ppo-eval-cf-17689885_5.manifest
+                 ?? logs/ppo-eval-cf-17689885_6.manifest
+                 ?? logs/ppo-eval-cf-17689885_7.manifest
+                 ?? logs/ppo-eval-cf-17689943_0.manifest
+                 ?? logs/ppo-eval-cf-17689943_2.manifest
+                 ?? logs/ppo-eval-cf-17689943_3.manifest
+                 ?? logs/ppo-eval-cf-17689943_4.manifest
+                 ?? logs/ppo-eval-cf-17689951_0.manifest
+                 ?? logs/ppo-eval-cf-17689951_1.manifest
+                 ?? logs/ppo-eval-cf-17689951_2.manifest
+                 ?? logs/ppo-eval-cf-17689951_3.manifest
+                 ?? logs/ppo-eval-cf-17689951_4.manifest
+                 ?? logs/ppo-eval-cf-17689951_5.manifest
+                 ?? logs/ppo-eval-cf-17689951_6.manifest
+                 ?? logs/ppo-eval-cf-17689951_7.manifest
+                 ?? logs/ppo-eval-cf-17689970_0.manifest
+                 ?? logs/ppo-eval-cf-17689970_1.manifest
+                 ?? logs/ppo-eval-cf-17689970_2.manifest
+                 ?? logs/ppo-eval-cf-17689970_3.manifest
+                 ?? logs/ppo-eval-cf-17689970_4.manifest
+                 ?? logs/ppo-eval-cf-17689970_5.manifest
+                 ?? logs/ppo-eval-cf-17689970_6.manifest
+                 ?? logs/ppo-eval-cf-17689970_7.manifest
+                 ?? logs/ppo-eval-reduce-17689880.manifest
+                 ?? logs/ppo-eval-reduce-17689882.manifest
+                 ?? logs/ppo-eval-reduce-17689884.manifest
+                 ?? logs/ppo-eval-reduce-17689944.manifest
+                 ?? logs/ppo-eval-reduce-17689952.manifest
                  ?? report/report.pdf
-                 ?? run_benchmark.slurm
-                 ?? seeding.py
-                 ?? splits.py
-                 ?? test_invariants.py
 
 -- environment -------------------------------------------------
 python         : Python 3.12.8
