@@ -40,6 +40,7 @@ import torch
 
 import config
 import domains
+import splits
 from ingestion import build_dataset          # re-exported: smoke tests patch this
 from src.models import build_segmentation_net, build_object_detector
 from src.generator import build_generator
@@ -70,6 +71,27 @@ class PipelineContext:
     # consumers (metrics, held-out validation) read the domain's bindings
     # instead of re-deriving them from config and drifting apart.
     domain: object = None
+    # The persisted patient-level train/test split (splits.Split), or None when
+    # config.USE_SPLIT is False. Carried here so every stage reads ONE
+    # assignment: training must draw only from `split.train` and evaluation only
+    # from `split.test`, and the whole point is lost if any stage recomputes it.
+    split: object = None
+
+    # ── convenience views ─────────────────────────────────────────────────────
+    # Return dataset indices for a fold, or all indices when splitting is off,
+    # so callers need no `if config.USE_SPLIT` of their own.
+
+    def train_indices(self):
+        import numpy as np
+        if self.split is None:
+            return np.arange(len(self.dataset), dtype=np.int64)
+        return self.split.train
+
+    def eval_indices(self):
+        import numpy as np
+        if self.split is None:
+            return np.arange(len(self.dataset), dtype=np.int64)
+        return self.split.test
 
 
 def build_common() -> PipelineContext:
@@ -98,6 +120,19 @@ def build_common() -> PipelineContext:
         dataset = build_dataset(img_size=config.IMG_SIZE)
     else:
         dataset = domain.build_dataset(config.IMG_SIZE)
+
+    # Resolve the train/test split HERE, once, before anything can touch the
+    # dataset. Every stage then reads ctx.split rather than deriving its own —
+    # see splits.py for why a recomputed split would not hold across the 8
+    # generate-stage processes.
+    split = None
+    if config.USE_SPLIT:
+        split = splits.load_or_create(dataset, domain=domain.name)
+    else:
+        print(
+            "[split] USE_SPLIT=False — training and evaluation share every image. "
+            "Reproduces the pre-split behaviour; NOT valid for a reported result."
+        )
 
     print("\n" + "=" * 70)
     print("STEP 2 — Loading pretrained models")
@@ -138,6 +173,7 @@ def build_common() -> PipelineContext:
         obj_det=obj_det,
         generator=generator,
         domain=domain,
+        split=split,
     )
 
 
@@ -268,6 +304,12 @@ def load_directional_policy(
         obj_det=ctx.obj_det,
         budget_T=config.BUDGET_T,
         device=config.DEVICE,
+        # Evaluation-time env: the EVAL fold. At eval the far pool is only used
+        # by reset() to size the observation — the counterfactuals themselves are
+        # generated for images scan_groups selected — but pointing it at the
+        # training fold here would make the one env object in the eval process
+        # disagree with the fold everything else uses.
+        allowed_indices=ctx.eval_indices(),
     )
 
     obs     = env.reset()

@@ -17,10 +17,11 @@ resume from the latest checkpoint automatically if the job restarts.
 import os
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, WeightedRandomSampler
+from torch.utils.data import DataLoader, SubsetRandomSampler, WeightedRandomSampler
 from peft import get_peft_model_state_dict, set_peft_model_state_dict
 
 import config
+import seeding
 
 
 def _extract_labels(dataset) -> np.ndarray:
@@ -72,32 +73,50 @@ def _extract_labels(dataset) -> np.ndarray:
     return labels
 
 
-def _build_balanced_sampler(dataset) -> WeightedRandomSampler:
+def _build_balanced_sampler(dataset, indices=None) -> WeightedRandomSampler:
     """
     Build a WeightedRandomSampler that gives each class roughly equal
     expected representation per epoch, regardless of the dataset's true
     class balance.
+
+    `indices` restricts sampling to a subset (the training fold). It is applied
+    by ZEROING the weight of every excluded sample rather than by wrapping the
+    dataset in a Subset: _extract_labels reads `dataset.samples` to avoid
+    decoding 21k DICOMs, and a Subset does not carry that attribute, so wrapping
+    would silently fall back to the slow per-image path. Zero-weight entries are
+    never drawn by WeightedRandomSampler, so the effect is identical.
     """
     labels = _extract_labels(dataset)
-    class_counts = np.bincount(labels, minlength=2)
+
+    if indices is None:
+        eligible = np.arange(len(labels))
+    else:
+        eligible = np.asarray(indices, dtype=np.int64)
+
+    # Balance against the classes present in the SUBSET, not the whole dataset —
+    # otherwise the weights encode the full set's balance and the fold is not
+    # actually balanced.
+    class_counts = np.bincount(labels[eligible], minlength=2)
     if (class_counts == 0).any():
         raise RuntimeError(
-            f"[finetuning] one class has zero samples: counts={class_counts}. "
-            f"Cannot build a balanced sampler."
+            f"[finetuning] one class has zero samples in the sampled subset: "
+            f"counts={class_counts}. Cannot build a balanced sampler."
         )
 
-    class_weights = 1.0 / class_counts
-    sample_weights = class_weights[labels]
+    class_weights  = 1.0 / class_counts
+    sample_weights = np.zeros(len(labels), dtype=np.float64)
+    sample_weights[eligible] = class_weights[labels[eligible]]
 
     print(
         f"[finetuning] class counts: negative={class_counts[0]}, "
         f"positive={class_counts[1]} | balanced sampling enabled "
-        f"(effective ratio ~1:1 per epoch)"
+        f"(effective ratio ~1:1 per epoch) | drawing from {len(eligible)} "
+        f"of {len(labels)} images"
     )
 
     return WeightedRandomSampler(
         weights=torch.as_tensor(sample_weights, dtype=torch.double),
-        num_samples=len(dataset),
+        num_samples=len(eligible),
         replacement=True,
     )
 
@@ -143,8 +162,25 @@ def _save_checkpoint(
         "scaler_state_dict": scaler.state_dict(),
     }
     # atomic-ish write: save to a temp file then rename, so a crash mid-save
-    # doesn't corrupt the checkpoint you'd resume from
-    tmp_path = path + ".tmp"
+    # doesn't corrupt the checkpoint you'd resume from.
+    #
+    # The PID in the temp name matters because ckpt_dir is config.CKPT_DIR —
+    # SHARED across directions, deliberately, so a later run resumes as a no-op.
+    # run_ppo.slurm runs both directions as a simultaneous array, and the two
+    # tasks are seeded identically, so they reach each epoch boundary within
+    # seconds of each other and would both be writing the same ".tmp" path.
+    # torch.save from two processes into one file interleaves, and os.replace
+    # would then promote the resulting garbage — breaking resume for both
+    # directions while the run itself looked healthy (nothing re-reads this file
+    # until a resubmission). Per-process temp files make the loser's rename a
+    # harmless overwrite instead.
+    #
+    # The surviving file is EQUIVALENT, not bit-identical: measured on job
+    # 17686489, the two tasks agreed at 100 of 101 logged steps and differed by
+    # one ulp at the other, because STRICT_DETERMINISM defaults to False. Either
+    # file is a valid state of the same training run, so resume is correct
+    # whichever lands — but do not read this as bit-reproducibility.
+    tmp_path = f"{path}.{os.getpid()}.tmp"
     torch.save(checkpoint, tmp_path)
     os.replace(tmp_path, path)
     print(f"[finetuning] checkpoint saved: {path} (epoch {epoch})")
@@ -201,10 +237,11 @@ def run_lora_finetuning(
     batch_size: int  = config.DENOISE_BATCH_SIZE,
     lr: float        = config.DENOISE_LR,
     log_every: int   = config.LOG_EVERY_N_STEPS,
-    num_workers: int = 2,
+    num_workers: int = config.DATALOADER_NUM_WORKERS,
     use_balanced_sampling: bool = True,
     ckpt_dir: str = config.CKPT_DIR,
     resume: bool = True,
+    indices=None,
 ) -> None:
     """
     Fine-tune the generator's UNet LoRA adapters and cond_proj on the given dataset.
@@ -253,16 +290,30 @@ def run_lora_finetuning(
         batch_size  = batch_size,
         num_workers = num_workers,
         drop_last   = False,
+        # Workers seed themselves from entropy otherwise, so shuffling differs
+        # per run even after seed_everything. See seeding.loader_kwargs.
+        **seeding.loader_kwargs(),
     )
 
+    # THE LEAK THIS CLOSES. This used to train on the whole dataset, including
+    # the images the evaluation later reported on — so the generator had already
+    # fitted the test images before FID and IP were measured against them.
+    # `indices` is the training fold from splits.py; None means the caller
+    # deliberately wants everything (config.USE_SPLIT=False).
+    n_sampled = len(dataset) if indices is None else len(indices)
     if use_balanced_sampling:
-        sampler = _build_balanced_sampler(dataset)
+        sampler = _build_balanced_sampler(dataset, indices=indices)
         train_loader = DataLoader(dataset, sampler=sampler, **loader_kwargs)
+    elif indices is not None:
+        train_loader = DataLoader(
+            dataset, sampler=SubsetRandomSampler(list(map(int, indices))), **loader_kwargs
+        )
     else:
         train_loader = DataLoader(dataset, shuffle=True, **loader_kwargs)
 
     print(
-        f"[finetuning] {len(dataset)} images | "
+        f"[finetuning] {n_sampled} images"
+        f"{'' if indices is None else f' (of {len(dataset)}; held-out fold excluded)'} | "
         f"{len(train_loader)} steps/epoch | batch_size={batch_size} | "
         f"balanced_sampling={use_balanced_sampling} | "
         f"epochs {start_epoch}->{n_epochs - 1}"

@@ -72,6 +72,72 @@ DATASET_DOMAIN = "rsna_pneumonia"
 # so there is no auto-download). Only read by domains/node21_nodule.py.
 NODE21_ROOT = ""
 
+# ─────────────────────────────────────────────
+# Train / test split
+# ─────────────────────────────────────────────
+# THE LEAKAGE THIS FIXES. Before this existed, pipeline.build_common() built one
+# dataset and gave the same object to LoRA fine-tuning, the PPO far-pool and the
+# metrics group scan, so every reported number was measured on images the
+# generator had been trained on and the policy had done rollouts against. See
+# splits.py for why the assignment has to be persisted rather than recomputed
+# (the generate stage runs as 8 separate processes).
+#
+# USE_SPLIT=False reproduces the old no-split behaviour exactly, for comparing
+# against the pre-split numbers. It is NOT a valid setting for a reported
+# result — splits.py is bypassed entirely and train == test == everything.
+USE_SPLIT = True
+
+# Patient-level, not image-level: two views of one patient must not straddle the
+# fold boundary. Moot for RSNA (one sample per patientId) but not for domains
+# with several views per patient.
+SPLIT_SEED = 0
+
+# 0.2 leaves ~5.3k held-out RSNA patients, far more than the n_eval=200 the
+# metrics use, so the eval set can grow (see the FID sample-size problem) without
+# renegotiating the split.
+TEST_FRAC  = 0.2
+
+# ─────────────────────────────────────────────
+# Reproducibility
+# ─────────────────────────────────────────────
+# The training path was entirely unseeded — two identical submissions of
+# run_ppo.slurm produced two different policies, and nothing recorded which one
+# a checkpoint came from. That is fatal for the control arms, where the whole
+# claim is that trained / random / no-policy differ by TREATMENT. See seeding.py
+# for what this does and does not guarantee (notably: a RESUMED run does not
+# replay an uninterrupted one).
+TRAIN_SEED = 0
+
+# ─────────────────────────────────────────────
+# How the Xn / Xp evaluation groups are chosen
+# ─────────────────────────────────────────────
+#   "classifier" — Xn = {f(x) < 0.2}, Xp = {f(x) > 0.8}. Singla et al.'s
+#                  protocol, and what every number reported so far used. Keep it
+#                  to stay comparable with those numbers and with the paper.
+#   "label"      — Xn / Xp from the RADIOLOGIST LABEL instead.
+#
+# WHY "label" IS THE MORE HONEST OPTION, AND WHY IT IS NOT THE DEFAULT.
+# Under "classifier", the groups are selected by the same model that provides
+# the guidance gradient and then scores CV. So "Xp" means "images f is confident
+# about", not "images with pneumonia" — the evaluation set is defined by the
+# model being evaluated, and easy cases are selected for on both ends. Under
+# "label" the groups are defined by ground truth and that circularity is gone.
+#
+# But it also changes what CV MEANS: on a label-selected Xp, f is no longer
+# guaranteed to start confident, so the CV numbers stop being comparable to the
+# published protocol or to anything measured here before. That is a scientific
+# call about which claim is being made, not a cleanup, so the default preserves
+# the existing semantics and the honest variant is one config line away.
+#
+# Recommended: report both. They answer different questions.
+EVAL_GROUP_SOURCE = "classifier"
+
+# torch.use_deterministic_algorithms(True). OFF by default: several ops in the
+# diffusion path have no deterministic CUDA kernel and this RAISES rather than
+# falling back, so leaving it on trades a reproducible run for a crashing one.
+# Turn on only to investigate a specific nondeterminism.
+STRICT_DETERMINISM = False
+
 # The weight sets below are the rsna_pneumonia defaults, kept for backwards
 # compatibility. The ACTIVE values come from the domain profile — see
 # pipeline.build_common — so switching DATASET_DOMAIN switches them too.
