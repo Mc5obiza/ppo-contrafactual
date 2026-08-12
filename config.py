@@ -146,21 +146,25 @@ GUIDANCE_ENSEMBLE_WEIGHTS = [
     "densenet121-res224-chex",
 ]
 
-# REVERTED 2026-08-07 to False, i.e. back to v1's single-model f(·).
+# SET TO True on 2026-08-12: the cm0/cm1 countermeasure comparison (replicated
+# across 3 seeds) and the ensemble-size sweep both show ensemble guidance is
+# the one tested countermeasure that raises lesion-targeting lift and held-out
+# transfer, so it is now the default for new training/eval runs.
 #
 # True  -> f(·) is the mean-probability ensemble over GUIDANCE_ENSEMBLE_WEIGHTS.
 # False -> f(·) is the single GUIDANCE_SINGLE_WEIGHTS model, which is what the
 #          archived checkpoints/archive_v1_rank8/ policies were trained against
 #          and what produced the CV=0.975 numbers in checkpoints/eval_metrics.json.
+#          Set this back to False to reproduce those or the cm0 baseline arm.
 #
 # READ THIS BEFORE QUOTING CV. The ensemble exists because held-out validation
 # (checkpoints/heldout/heldout_validation.json, job 17649721) showed the
 # single-rsna counterfactuals do NOT transfer: strict CV 0.0 on nih and 0.0-0.08
 # on chex, transfer ratio 0.13-0.20, with the original-image agreement control
-# passing. So with this False, CV measures gradient descent against rsna
-# succeeding against rsna, and is NOT evidence the counterfactuals are
-# explanatory. Run heldout_validation.py alongside any CV reported from here.
-USE_GUIDANCE_ENSEMBLE  = False
+# passing. Even with this True, transfer is only partial (see
+# logs/ppo-counterfactual-heldout-*.out) — run heldout_validation.py alongside
+# any CV reported from here rather than trusting CV on its own.
+USE_GUIDANCE_ENSEMBLE  = True
 GUIDANCE_SINGLE_WEIGHTS = "densenet121-res224-rsna"
 
 # Default root for CXRDataset (src/models.py) — an ImageFolder-style
