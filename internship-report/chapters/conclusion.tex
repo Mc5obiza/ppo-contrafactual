@@ -1,0 +1,102 @@
+\chapter*{General Conclusion}
+\addcontentsline{toc}{chapter}{General Conclusion}
+\markboth{General Conclusion}{}
+
+This research internship at the Maersk Mc-Kinney Moller Institute
+produced a complete, reproducible pipeline for generating visual
+counterfactual explanations on chest radiographs: RSNA data ingestion, a
+Stable Diffusion~1.5 generator adapted to the radiograph domain through
+LoRA at 0.78\% of its parameters, a gradient-guided DDIM sampler with a
+hard segmentation-gated background lock, two directional PPO policies
+controlling that sampler step by step, and an evaluation suite following
+the protocol of Singla~\emph{et al.} --- all executable as batch jobs on
+an offline HPC cluster.
+
+Measured against the guidance classifier, the system reaches high
+counterfactual validity (mean CV $0.975$) with good identity
+preservation, and the background lock demonstrably confines edits to the
+lung field.
+
+The internship's most important result, however, is the one that
+undermines that headline number. An independent held-out validation ---
+re-scoring the generated counterfactuals with classifiers that never
+participated in the guidance loop --- showed that counterfactuals
+accepted 99.5\% of the time by the guidance model were accepted at most
+8\% of the time by an independent one, while an agreement control
+confirmed the validators understood the task on unedited images. The
+system had, in significant part, learned to fool its own critic rather
+than to depict or remove disease.
+
+That finding reframed the second half of the internship. Ensemble
+guidance, a Grad-CAM-derived constraint on the action space, and an
+annealed sparsity reward were designed, implemented and enabled
+specifically to attack the adversarial failure mode. Their validation
+was not completed within the internship period, and this report is
+explicit that their effectiveness remains an open question rather than a
+demonstrated improvement.
+
+A further, later phase of work (Chapter~\ref{ch:integrity}) turned the same
+falsification discipline on the evaluation apparatus itself, auditing the
+control-arm and held-out-transfer machinery built to answer that open
+question. The audit found, and closed, three uncontrolled confounds in the
+measurement pipeline and two silent bugs that would each have invalidated a
+comparison built on top of them --- including a routing bug that would have
+made every control arm's output identical, and a denominator bug that had
+inflated every previously published transfer ratio. It also found, and
+corrected, a set of FID values in the project's own recorded results that
+had been altered by hand. Of the two countermeasures, ensemble guidance is
+now shown, across three independent seeds, to modestly but reliably improve
+lesion targeting and, at a larger ensemble size, to substantially improve
+held-out transfer; the Grad-CAM spatial constraint is shown instead to hurt
+lesion targeting rather than help it. A full held-out re-validation of the
+surviving countermeasure was the item this chapter did not close, and is
+taken up in Chapter~\ref{ch:closing}.
+
+Chapter~\ref{ch:closing} closes it, partially. Both directional policies
+were retrained from scratch under ensemble guidance --- not merely
+evaluated through it, as the no-policy arms above were --- and re-scored
+against the leak-free validator set. Mean held-out transfer improves on
+both directions, \pton{} very nearly doubling; the trained-vs-random gap
+from Table~\ref{tab:lhr_arms} is confirmed statistically significant
+($p=0.012$) at a small effect size. But the single most independent
+validator, \texttt{nih}, does not improve on \ntop{}, remaining in the
+adversarial range. Ensemble guidance is accordingly reported as a real,
+partial countermeasure, not a solved problem --- the same falsification
+discipline this report has applied to every favourable number applied to
+its own fix, and did not let it pass uncontested.
+
+Technically, the project provided sustained exposure to latent diffusion
+models, parameter-efficient fine-tuning, reinforcement learning with
+continuous action spaces and shaped rewards, and the practical discipline
+of research computing on a shared, non-interactive, walltime-bounded
+cluster --- where an experiment must be fully specified in advance,
+instrumented well enough to be diagnosed from a log file, and cheap
+enough to fail fast.
+
+As additional work beyond the assigned scope, the pipeline was extended to
+a second, deliberately dissimilar imaging domain --- mammography, on
+CBIS-DDSM (Chapter~\ref{ch:breast}) --- to test whether this lesson was
+specific to RSNA or would recur elsewhere. It recurred: a mean
+Counterfactual Validity of $1.000$ against the mammography guidance
+ensemble was accompanied by a significant density shift with no
+corresponding change in lesion size, the same diffuse-edit signature the
+RSNA held-out validation had exposed, this time caught by a purpose-built
+diagnostic metric rather than by an independent classifier, since training
+one for that domain remains future work. This is reported as additional,
+less-validated evidence alongside the RSNA result, not as a second
+demonstrated success, but it strengthens rather than weakens the report's
+central claim: a system's own validity number is not to be trusted without
+an independent check built to falsify it.
+
+The methodological lesson runs deeper than any of those techniques. The
+most dangerous metric in a machine learning project is the one the system
+was optimised against. Counterfactual validity computed with the guidance
+classifier was not a weak measurement --- it was a circular one, and it
+reported near-perfect success for a system that was substantially
+failing. Every subsequent design decision of value in this project
+descended from building the control capable of exposing that, and from
+being willing to report what it found. For an internship whose purpose
+was to bridge academic training and research practice, learning to
+distrust a favourable number was worth more than obtaining one.
+
+\clearpage

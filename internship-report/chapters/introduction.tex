@@ -1,0 +1,99 @@
+\chapter*{General Introduction}
+\addcontentsline{toc}{chapter}{General Introduction}
+\markboth{General Introduction}{}
+
+The transition from theoretical academic study to the practice of
+scientific research is a decisive stage in an engineer's training. This
+report documents the work carried out during a research internship
+completed as part of the first year of the engineering cycle at the
+Higher Institute of Applied Sciences and Technology of Sousse (ISSAT
+Sousse), hosted remotely by the Maersk Mc-Kinney Moller Institute at the
+University of Southern Denmark (SDU).
+
+Deep neural classifiers now reach expert-level accuracy on many medical
+imaging tasks, but their clinical adoption remains constrained by a
+question they cannot themselves answer: \emph{why} was this prediction
+made? The dominant family of post-hoc explanation methods --- saliency
+maps and Grad-CAM among them --- answers only \emph{where} the model is
+looking. It does not say \emph{what} would have to change for the
+decision to be different. For a radiologist auditing a pneumonia
+classifier, a heatmap over the right lower lobe is a far weaker statement
+than an image showing precisely which change to that lobe would flip the
+model's verdict.
+
+\textbf{Visual counterfactual explanations} address this gap directly.
+Given a query image $x$ and a target class $c$, a counterfactual
+generator produces an image $x_c$ such that a classifier $f$ predicts
+$f(x_c) \approx c$, while $x_c$ remains a realistic radiograph that
+preserves the patient's anatomy and any non-pathological content --- ribs,
+mediastinal silhouette, tubes, pacemakers and monitoring leads. The
+change between $x$ and $x_c$ \emph{is} the explanation.
+
+This internship investigated a specific research hypothesis in that
+setting: that the per-step control of a guided diffusion sampler should
+be \emph{learned} rather than fixed. A hand-tuned guidance schedule
+applies the same editing effort to every image, which under-edits
+difficult cases and over-edits --- and thereby de-realizes --- easy ones.
+The system built during this internship instead frames the choice of
+per-step sampling parameters as a sequential decision problem and trains
+a Proximal Policy Optimization (PPO) agent to solve it, on top of a
+Stable Diffusion~1.5 latent generator adapted to chest radiography with
+Low-Rank Adaptation (LoRA).
+
+The work was organised around four research questions:
+
+\begin{itemize}[leftmargin=*]
+  \item Can a reinforcement-learning agent that controls only the
+        \emph{sampling procedure} --- never the diffusion weights ---
+        produce valid counterfactuals on chest radiographs?
+  \item Can the edits be spatially confined to clinically plausible
+        regions, rather than diffusing over the whole image?
+  \item Do the resulting counterfactuals encode \emph{genuine disease
+        signal}, or do they merely constitute adversarial perturbations
+        against the particular classifier used for guidance?
+  \item How do the standard counterfactual evaluation metrics of
+        Singla~\emph{et al.}~\cite{singla2022} behave under the compute
+        constraints of a two-month single-GPU project?
+\end{itemize}
+
+The third question turned out to be the scientifically decisive one, and
+its answer reshaped the second half of the internship. An independent
+held-out validation --- re-scoring the generated counterfactuals with
+classifiers that had never participated in the guidance loop --- showed
+that a system reporting near-perfect validity against its own guidance
+classifier transferred very poorly to independent models. That negative
+result, and the redesign it motivated, form the substantive contribution
+of this work and are reported in full in Chapter~\ref{ch:results}.
+
+The report is organised into five chapters:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Chapter~\ref{ch:context}} presents the internship
+        context, the host research institution, and the objectives, work
+        packages and expected outcomes of the project.
+  \item \textbf{Chapter~\ref{ch:environment}} describes the research and
+        development environment: the HPC cluster and its SLURM scheduler,
+        the deep-learning frameworks, the pretrained model zoo, and the
+        dataset-access tooling.
+  \item \textbf{Chapter~\ref{ch:tasks}} details the tasks performed ---
+        the architecture of the pipeline, its module-by-module
+        construction, and the iterative debugging and redesign cycles
+        that the experimental evidence forced.
+  \item \textbf{Chapter~\ref{ch:results}} reports the measured results,
+        discusses the strengths and the substantial limitations of the
+        current system, and sets out realistic perspectives for future
+        work.
+  \item \textbf{Chapter~\ref{ch:breast}} documents additional,
+        self-initiated work extending the pipeline to a second imaging
+        domain --- mammography, on the CBIS-DDSM dataset --- undertaken to
+        test whether the method and its evaluation discipline generalise
+        beyond chest radiography.
+\end{itemize}
+
+The RSNA pneumonia system of Chapters~\ref{ch:context}--\ref{ch:results}
+remains the core deliverable and the primary subject of this report;
+Chapter~\ref{ch:breast} is reported separately, and more briefly, as
+additional work rather than as a second fully-validated result standing
+alongside the main one.
+
+\clearpage

@@ -1,0 +1,238 @@
+\chapter{Closing the Loop: Real Ensemble Training and Full Re-Validation}
+\label{ch:closing}
+
+Chapter~\ref{ch:integrity} closed on two explicitly unresolved items,
+repeated in Section~\ref{sec:future}: whether the trained/random gap in
+Table~\ref{tab:lhr_arms} survives a paired per-image test, and whether
+ensemble guidance --- shown in that chapter only on no-policy, generation-only
+arms (\texttt{cm1}, \texttt{cm4}) --- actually closes the held-out transfer
+gap of Table~\ref{tab:heldout} when a policy is \emph{trained under it}
+rather than merely evaluated through it. This short chapter closes both, in
+a later work session after the chapters above were written.
+
+\section{Making Ensemble Guidance the Trained Default}
+
+\file{config.py}'s \texttt{USE\_GUIDANCE\_ENSEMBLE} flag had been reverted to
+\texttt{False} on 2026-08-07 for comparability with the archived
+\texttt{v1\_rank8} policies, meaning every trained-policy result in
+Chapters~\ref{ch:results}--\ref{ch:integrity} --- including
+Table~\ref{tab:heldout} and the trained arm of Table~\ref{tab:lhr_arms} ---
+was produced under single-classifier guidance, even though
+Section~\ref{sec:arm_results} had already shown ensemble
+guidance to be the one countermeasure that helps. This was corrected: the
+flag now defaults to \texttt{True}, with the previous behaviour still
+reachable by setting it back to \texttt{False}.
+
+Flipping a config default is not, by itself, evidence of anything --- the
+trained policies on disk still reflected the old value until retrained. Two
+checks were needed before that retraining could be trusted:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{The resume path silently no-ops on stale state.}
+        \texttt{PPOTrainer} resumes from \texttt{ppo\_latest.pt} and, on
+        finding the target episode count already reached, prints
+        ``nothing to do'' and re-saves the checkpoint files without
+        training a single new step. A first smoke-test submission
+        (job~17693158) demonstrated exactly this: it loaded the new
+        ensemble classifier correctly but silently re-stamped a policy
+        trained two days earlier under the old configuration, which would
+        have looked, from the output alone, like a successful ensemble-guided
+        training run. \file{checkpoints/n\_to\_p/} and
+        \file{checkpoints/p\_to\_n/} --- along with
+        \file{finetuning\_latest.pt} and the guidance-diagnostics artefacts
+        --- were therefore moved, not deleted, to
+        \file{checkpoints/archive\_pre\_ensemble\_default\_20260812/} before
+        any real retraining was submitted, and a second smoke test (job
+        17694467) confirmed 24 fresh episodes trained per direction with no
+        resumable state found.
+  \item \textbf{The eval pipeline defaults to the same shard directory
+        the pre-existing comparisons depend on.} \texttt{run\_eval\_cf.slurm}
+        writes \file{checkpoints/eval\_shards/} for the trained arm unless
+        given an explicit tag, which is exactly the directory backing the
+        paired significance test below and every previously reported
+        trained-arm number. Regenerating with default settings would have
+        silently overwritten it. Generation and reduction were tagged
+        \texttt{ens\_default} throughout, writing to
+        \file{checkpoints/eval\_shards\_ens\_default/} and
+        \file{checkpoints\_ens\_default/} instead, leaving the original
+        artefacts untouched for direct comparison.
+\end{itemize}
+
+With both directions' prior checkpoints archived, \texttt{run\_ppo.slurm}
+(job~17694482) was resubmitted and trained both directions from scratch
+under \texttt{USE\_GUIDANCE\_ENSEMBLE=True}: 800 episodes each, confirmed by
+the domain banner (\texttt{ensemble=[densenet121-res224-rsna,
+densenet121-res224-chex]}) and the loaded-model log line on every task, with
+no ``resuming'' message in either. \ntop{} finished in 8h40m, \pton{} in
+11h00m, both within the 22h wall-clock budget the job checkpoints against.
+
+\section{What Changed on the Guidance-Side Metrics}
+
+Re-evaluating the freshly trained policies
+(\file{checkpoints\_ens\_default/eval\_metrics.json}, jobs~17695832/17695840)
+gives a mixed picture on the metrics computed \emph{with} the guidance
+model, which is expected: Section~\ref{sec:heldout} already established
+these cannot be trusted as evidence of transfer, and ensemble CV asking two
+classifiers to agree is a strictly harder bar than asking one.
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Counterfactual Validity fell}, from mean $0.965$
+        (single-classifier, Table~\ref{tab:results}) to mean $0.8375$
+        ($\ntop{}=0.960$, $\pton{}=0.715$) --- consistent with a harder
+        joint criterion, not a weaker policy.
+  \item \textbf{Lesion Hit Rate rose}, to a $2.67\times$ lift over the
+        radiologist-box chance baseline ($t=24.19$, $p=4.2\times10^{-53}$,
+        $n=148$), above the single-classifier trained arm's $2.293\times$
+        in Table~\ref{tab:lhr_arms}. Unlike CV, LHR is scored against
+        ground truth, not against any classifier, so this is a real
+        (if not yet significance-tested against the old arm) improvement
+        in \emph{where} the edit lands.
+  \item \textbf{Edit concentration stayed diffuse}: $0.253$ (\ntop{}) and
+        $0.318$ (\pton{}) against the $0.05$ uniform baseline --- close to
+        the values in Section~\ref{sec:heldout} and still far short of the
+        $\sim\!0.5$ that would indicate a focal, lesion-shaped edit.
+\end{itemize}
+
+None of this answers the actual question. It motivates re-running the one
+check that does.
+
+\section{The Held-Out Transfer Result}
+\label{sec:closing_transfer}
+
+\texttt{arm\_transfer.py} was run against both shard sets directly ---
+\file{checkpoints/eval\_shards\_ens\_default} (new, ensemble-trained) and
+\file{checkpoints/eval\_shards} (old, single-classifier-trained, unchanged
+since Chapter~\ref{ch:results}) --- scored by the same three validators used
+throughout Chapter~\ref{ch:integrity}, \texttt{\{nih, pc, mimic\_ch\}}. This
+set, not Table~\ref{tab:heldout}'s \texttt{\{chex, nih\}}, is the correct
+comparison: \texttt{chex} is now a guidance-ensemble member for the new
+policy, so scoring it as ``held out'' would let the new arm improve purely
+by losing a validator rather than by editing more honestly, exactly the
+mistake \file{arm\_transfer.py}'s own denominator discipline
+(Section~\ref{sec:denominator_bug}) exists to prevent.
+
+\begin{table}[h]
+\centering
+\caption[Held-out transfer, before and after real ensemble training]{Held-out
+transfer ratio ($\Delta_{\text{validator}}/\Delta_{\text{guidance}}$), single-
+vs.\ ensemble-guided \emph{trained} policies, $n=200$ per group,
+validators \texttt{\{nih, pc, mimic\_ch\}}.}
+\label{tab:closing_transfer}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+& \multicolumn{2}{c}{\textbf{nih}} & \multicolumn{2}{c}{\textbf{pc}} & \multicolumn{2}{c}{\textbf{mimic\_ch}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+\textbf{Policy} & \ntop{} & \pton{} & \ntop{} & \pton{} & \ntop{} & \pton{} \\
+\midrule
+Single-classifier (old) & $0.080$ & $0.100$ & $0.414$ & $0.224$ & $0.197$ & $0.112$ \\
+Ensemble-guided (new)   & $0.046$ & $0.186$ & $0.462$ & $0.308$ & $0.337$ & $0.384$ \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3em}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Policy} & \textbf{Mean \ntop{}} & \textbf{Mean \pton{}} \\
+\midrule
+Single-classifier (old) & $0.230$ & $0.146$ \\
+Ensemble-guided (new)   & $\mathbf{0.282}$ & $\mathbf{0.293}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{It mostly worked.} Mean transfer rose on both directions ---
+\pton{} very nearly doubled ($0.146 \to 0.293$), matching what the
+no-policy ensemble sweep (Table~\ref{tab:ensemble_sweep}) predicted, now
+confirmed with an actually-trained policy rather than the fixed default
+sampling schedule that sweep used. Two of the three validators, \texttt{pc}
+and \texttt{mimic\_ch}, improved on both directions.
+
+\textbf{It did not work uniformly.} \texttt{nih} --- the toughest and most
+independent of the three validators, sharing no training data with any
+guidance-ensemble member --- improved on \pton{} ($0.100 \to 0.186$) but
+\emph{worsened} on \ntop{} ($0.080 \to 0.046$), remaining flatly in
+\file{arm\_transfer.py}'s \texttt{ADVERSARIAL} band on both counts. The
+honest reading is not ``the adversarial gap is closed,'' but ``ensemble
+guidance measurably narrows it against two of three independent
+classifiers, while the hardest one shows no improvement in the direction
+that matters least favourably for this claim.'' Section~\ref{sec:heldout}'s
+central warning --- that a system's own validity number should not be
+trusted without an independent, adversarially-chosen check --- applies with
+undiminished force to this result too: \texttt{nih} was the check that did
+not confirm the story the other two validators tell.
+
+\section{The Trained-vs-Random Paired Significance Test}
+\label{sec:closing_significance}
+
+The second open item did not require new training: \file{paired\_arm\_test.py}
+was run against the existing \texttt{trained} and \texttt{random} shard sets
+that produced Table~\ref{tab:lhr_arms}'s control-arm row --- the same 183
+images, single-classifier-guided, that Chapter~\ref{ch:integrity} left
+untested at the per-image level.
+
+\begin{table}[h]
+\centering
+\caption[Paired trained-vs-random significance test]{Paired per-image LHR
+lift, trained vs.\ random, $n=183$ shared images (\pton{}).}
+\label{tab:closing_significance}
+\begin{tabular}{@{}lr@{}}
+\toprule
+Mean lift, trained & $2.293 \pm 0.780$ \\
+Mean lift, random  & $2.204 \pm 0.772$ \\
+Paired difference (95\% CI) & $+0.090$ $[+0.021,\ +0.160]$ \\
+Paired $t$-test & $t=2.551$, $p=0.0116$ \\
+Wilcoxon signed-rank & $p=0.0147$ \\
+Cohen's $d$ (paired) & $0.189$ \\
+Trained better on & $105/183$ images \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The gap survives: both the paired $t$-test and its non-parametric check
+agree the trained policy edits closer to the radiologist's box than an
+untrained one at the same action bounds and step budget, at $p<0.05$ by
+either test. But \file{paired\_arm\_test.py}'s own printed reading is the
+right one to close on: a Cohen's $d$ of $0.189$ against a between-image
+standard deviation of $0.78$ is a \emph{small} effect. Eight hundred
+episodes of PPO bought a real, statistically detectable improvement over
+an untrained policy with the same action bounds --- not a large one.
+
+\section{What This Closes, and What Is Still Open}
+
+Table~\ref{tab:closing_summary} restates Section~\ref{sec:future}'s two
+highest-priority items against what this chapter found.
+
+\begin{table}[h]
+\centering
+\caption[Status of the two items this chapter addresses]{Future-work items
+from Section~\ref{sec:future}, resolved.}
+\label{tab:closing_summary}
+\begin{tabular}{@{}p{0.55\textwidth}p{0.35\textwidth}@{}}
+\toprule
+\textbf{Item} & \textbf{Status} \\
+\midrule
+Complete the validation loop: re-run held-out validation against ensemble
+guidance, trained (not just no-policy) &
+Done (\S\ref{sec:closing_transfer}). Transfer improves on 2/3 validators
+and both directions on average; \texttt{nih} \ntop{} does not improve. \\
+\addlinespace
+Resolve the trained-vs-random paired significance test &
+Done (\S\ref{sec:closing_significance}). Significant, $p=0.012$, small
+effect ($d=0.19$). \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Both items are closed in the sense that Section~\ref{sec:future} asked for
+closure: a number now exists where an open question used to. Neither is
+closed in the sense of settling the project's central claim. Ensemble
+guidance is confirmed, with a trained policy and the correct leak-free
+validator set, to be a real partial countermeasure --- and \texttt{nih}'s
+\ntop{} result is confirmation that ``partial'' is the accurate word,
+not a hedge. What remains, unchanged from Section~\ref{sec:future}, is
+diagnosing \emph{why} the Grad-CAM constraint hurts rather than helps, and
+whether a larger guidance ensemble (Table~\ref{tab:ensemble_sweep} suggests
+three members) would close the \texttt{nih} gap specifically when actually
+trained under it rather than only evaluated through the no-policy path.
+The old single-classifier policies and their shards were archived, not
+overwritten, specifically so that comparison remains reproducible.

@@ -3,6 +3,7 @@
 % ─────────────────────────────────────────────────────────────────────────────
 % Packages
 % ─────────────────────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
 \usepackage[a4paper,margin=1in]{geometry}
 \usepackage{times}
 \usepackage[T1]{fontenc}
@@ -69,7 +70,16 @@ behind a dataset-agnostic domain-registry abstraction and report a
 preliminary extension to a second, dissimilar imaging domain — mammography
 on CBIS-DDSM — where a purpose-built diagnostic metric surfaces evidence of
 the same diffuse-edit failure mode without yet having an independent
-classifier available to confirm it (Section~\ref{sec:breast}).
+classifier available to confirm it (Section~\ref{sec:breast}). A later
+audit of the evaluation apparatus itself — patient-level splitting,
+seeding, control and countermeasure arms, and the held-out-transfer
+machinery — found and closed a routing bug and a denominator bug that
+would each have silently invalidated an arm comparison, corrected a set of
+hand-altered values in the recorded results, and, on a lesion-annotation
+metric anchored to ground truth rather than to any classifier, shows
+ensemble guidance (replicated across three seeds) as the one tested
+countermeasure that helps while a Grad-CAM spatial constraint measurably
+hurts (Section~\ref{sec:integrity}).
 \end{abstract}
 
 \tableofcontents
@@ -430,7 +440,7 @@ with a paired $t$-test on the within-image delta $X - X_c$.
 
 Table~\ref{tab:results} reports the full metric suite computed by
 \texttt{run\_full\_evaluation} (values from
-\texttt{checkpoints/eval\_metrics.json}).
+\texttt{checkpoints/}\allowbreak\texttt{eval\_metrics.json}).
 
 \begin{table}[h]
 \centering
@@ -545,6 +555,7 @@ significant, directionally consistent SCP shifts.
 \caption{Comparison of clinical proxy-metric shifts across methods: mean
 paired delta ($t$, $p$) by direction.}
 \label{tab:baseline_clinical}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}lrrrr@{}}
 \toprule
 & \multicolumn{2}{c}{\textbf{CTR} $\Delta$ ($t$, $p$)} & \multicolumn{2}{c}{\textbf{SCP} $\Delta$ ($t$, $p$)} \\
@@ -555,7 +566,8 @@ Vanilla CycleGAN & $0.030$ ($t=2.0$, $p=0.05$) & $0.040$ ($t=2.3$, $p=0.02$) & $
 GANterfactual & $0.070$ ($t=4.2$, $p\!=\!3\!\times\!10^{-5}$) & $0.090$ ($t=5.5$, $p\!=\!5\!\times\!10^{-7}$) & $-0.0030$ ($t=-6.5$, $p\!=\!1\!\times\!10^{-6}$) & $-0.0035$ ($t=-7.0$, $p\!=\!5\!\times\!10^{-7}$) \\
 \textbf{\method{} (ours)} & $0.041$ ($t=3.49$, $p\!=\!6.3\!\times\!10^{-4}$) & $0.072$ ($t=5.14$, $p\!=\!1.1\!\times\!10^{-6}$) & $-0.00026$ ($t=-4.65$, $p\!=\!6.0\!\times\!10^{-6}$) & $-0.00034$ ($t=-4.48$, $p\!=\!1.3\!\times\!10^{-5}$) \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 \subsection{Qualitative counterfactuals}
@@ -734,6 +746,325 @@ mismatches.
 \end{itemize}
 
 % ═════════════════════════════════════════════════════════════════════════
+\section{Evaluation Integrity: Auditing and Repairing the Measurement Apparatus}
+\label{sec:integrity}
+% ═════════════════════════════════════════════════════════════════════════
+
+Every number above evaluates the trained system. This section reports a
+separate, later phase of work whose object was the \emph{evaluation
+apparatus itself} — the patient split, the seeding, the control-arm and
+held-out-transfer machinery — undertaken because several of the assumptions
+it rested on turned out not to hold, and because one of its serialized
+results had been altered by hand. It also introduces a fourth diagnostic
+question beyond validity, realism, and preservation: since CV in
+Table~\ref{tab:results} is computed with the same classifier that guided
+generation, it cannot on its own distinguish a genuine class-relevant edit
+from an adversarial perturbation tuned to that one model. \textbf{Held-out
+transfer} — re-scoring counterfactuals with classifiers that never
+participated in guidance, and comparing their score shift to the guidance
+model's own — probes exactly that distinction, and is the quantity two of
+the bugs below were silently corrupting.
+
+\subsection{Three preconditions that did not hold}
+
+\texttt{build\_common()} handed one dataset object to LoRA fine-tuning, the
+PPO far-pool, and the metrics group scan alike, so the images the
+evaluation suite above reports on had already been seen by the generator
+during fine-tuning. \texttt{splits.py} fixes this with a single
+deterministic, persisted, \emph{patient-level} split shared by every stage
+that touches the dataset — computed once, since \texttt{eval\_main.py} runs
+generation as eight independent SLURM array processes and cannot recompute
+an RNG-based split consistently across them.
+
+Training itself was unseeded: the only \texttt{manual\_seed} in the tree
+was in the eval loop, so two identical submissions of \texttt{run\_ppo.slurm}
+produced two different policies. This is survivable for one headline
+number but not for a control-arm comparison, where trained, random, and
+no-policy arms must differ by treatment alone. \texttt{seeding.py} seeds
+every RNG the training path draws from, and documents explicitly what it
+does not buy: a resumed run does not replay an uninterrupted one, since it
+re-seeds at the same base and fast-forwards through a different number of
+draws.
+
+Finally, no metric anchored to ground truth existed: RSNA ships $9{,}555$
+radiologist-drawn opacity bounding boxes and \texttt{ingestion.py} discarded
+them at load. \texttt{metrics.lesion\_hit\_rate} (LHR) retains them and
+measures the fraction of an edit's absolute-difference mass landing inside
+the annotation, against the box's own area as the null baseline (so
+\emph{lift} — hit rate over null — rather than raw hit rate carries
+information). LHR is defined only for the p$\to$n direction, since
+n$\to$p source images are classifier-negative and carry no lesion
+annotation. Calibrated before use on synthetic edits with known ground
+truth: a uniform wash scores lift $1.00$ ($p=0.59$, chance, as it should),
+an on-lesion edit scores lift $12.4$ ($p=3\times10^{-49}$), an off-lesion
+edit scores $0$. A CPU-only test suite (\texttt{test\_invariants.py},
+$\sim$1~minute) pins this calibration, split disjointness, and three
+further properties whose silent failure would otherwise yield a
+plausible-looking but wrong number rather than a crash.
+
+\subsection{Two bugs that would have invalidated any arm comparison}
+\label{sec:integrity_bugs}
+
+\texttt{--arm trained|none|random} was added to make control arms runnable
+at all — the \texttt{policy is None} fallback had existed in
+\texttt{run\_full\_evaluation} but had never been exercised. Wiring it up
+surfaced two routing bugs, either of which would have invalidated the
+comparison silently rather than visibly: \texttt{run\_eval\_reduce.slurm}
+computed its shard directory from the requested arm but never passed the
+result to Python, so every reduce silently fell back to the \emph{trained}
+arm's shards — a control arm run this way would have loaded the trained
+policies' output and reported it under the control's label, and all three
+arms would have agreed exactly, making ``the PPO policy contributes
+nothing'' an artefact of a missing flag rather than a finding. Separately,
+all arms wrote their metrics to one shared directory, so each reduce
+overwrote the previous arm's result; \texttt{--out-dir} now separates them.
+
+A second, more consequential bug concerned the held-out validation gate
+itself: it built its guidance ensemble model from the full configured
+weight list regardless of whether ensemble guidance was actually enabled
+for the run being scored, which was false for every result reported above.
+Measured directly, $\Delta_{\text{rsna}}=0.9152$, $\Delta_{\text{chex}}=
+0.4106$, mean $0.663$ — exactly the denominator that had been printed —
+meaning a validator that never participated in guidance was diluting a
+denominator it never optimized, and every previously computed transfer
+ratio was inflated as a result (one ratio moved from a reported $0.117$ to
+a corrected $0.085$). A caching layer compounded this: a stale shard set
+returned its own recorded configuration regardless of a command-line
+override, so two independently ``corrected'' re-runs produced
+byte-identical output that looked like confirmation. Precedence is now
+explicit CLI~$>$~shard's own recorded stamp~$>$~live configuration.
+
+\subsection{Reproducibility and survivability}
+
+A parallel engineering effort addressed runs that never finished or
+finished non-reproducibly. \texttt{benchmark\_episode\_}\allowbreak\texttt{cost.py} measures
+the actual per-episode cost \emph{distribution} rather than assuming
+\texttt{config.py}'s placeholder episode budget was tuned — six jobs,
+including two full PPO runs, had previously been killed at their 24-hour
+walltime. On an H200, the harder n$\to$p direction runs at $30.7$s/episode
+at the 90th percentile, fitting the configured 800-episode budget in
+roughly 6.8 hours, versus roughly 27 hours for the same run on an older
+Quadro RTX~6000 — close enough to explain the earlier failures directly.
+A concurrent-write race was also found and fixed: both edit directions
+train in the same checkpoint directory and, being seeded identically,
+reach LoRA epoch boundaries within seconds of each other, so two
+concurrent \texttt{torch.save} calls into the same temporary path could
+interleave and be atomically promoted as corrupted output — invisible
+until a later resumption, at exactly the moment a resume path is needed
+most. Both this and an identical race in \texttt{splits.py} now write to
+PID-scoped temporary paths. A run-manifest script snapshots the checked
+out commit, dirty state, and live configuration at job start, since the
+checkpoints behind this project's earliest headline numbers were lost with
+no record of what configuration produced them.
+
+\subsection{Restoring the record, and proper statistics}
+
+An audit of \texttt{checkpoints/eval\_metrics.json} found that its two FID
+values had been altered by hand: $103.8349346109803$ had become
+$13.8349346109803$ and $59.730386426776136$ had become $9.730386426776136$
+— both discrepancies exactly $-90.0$ and $-50.0$ with the original values'
+full mantissa preserved, the signature of a deleted leading digit rather
+than of anything a re-run of the evaluation code could produce. The
+measured values have been restored. This is reported here, rather than
+silently corrected, in keeping with this section's own argument: a report
+built around distrusting a favorable number would be self-undermining if
+it omitted the one case where that principle caught an altered value in
+its own project's records.
+
+Two further tools close a related statistical gap. \texttt{paired\_arm\_test.py}
+runs a paired test between arms rather than comparing group means by eye —
+every arm generates counterfactuals for the same dataset indices from the
+same source images, so per-image lesion-box area (which varies over
+roughly an order of magnitude) can be cancelled exactly by pairing, where
+an unpaired comparison of summary statistics cannot.
+\texttt{arm\_transfer.py} computes the held-out transfer ratio directly
+from an arm's own shards using a denominator read from that shard's own
+recorded configuration stamp — the direct, generalized fix for
+Section~\ref{sec:integrity_bugs}'s denominator bug — against the domain's
+validator set (\texttt{\{nih, pc, mimic\_ch\}} for RSNA), which stays
+disjoint from every guidance configuration and therefore comparable across
+arms.
+
+\subsection{Results: control arms, countermeasures, and an ensemble-size sweep}
+
+\begin{table}[h]
+\centering
+\caption{Lesion Hit Rate (p$\to$n), group summaries by arm. Top: Phase~2
+control arms (classifier-threshold groups, 183/200 annotated). Bottom:
+Phase~3a countermeasure arms, \texttt{--group-source label} (200/200
+annotated). cm0 is the no-countermeasure baseline; cm1 is ensemble
+guidance; cm2 is the Grad-CAM mask; cm3 is both; cm4 is a 3-model ensemble.}
+\label{tab:lhr_arms}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+\textbf{Arm} & \textbf{Hit rate} & \textbf{Null} & \textbf{Lift} & \textbf{$t$} & \textbf{$p$} \\
+\midrule
+none            & 0.317 & 0.167 & 2.046 & 22.05 & $2.8\times10^{-53}$ \\
+random          & 0.339 & 0.167 & 2.204 & 22.33 & $5.1\times10^{-54}$ \\
+trained         & 0.353 & 0.167 & 2.293 & 22.39 & $3.6\times10^{-54}$ \\
+\midrule
+cm0 (baseline)   & 0.228 & 0.123 & 2.057 & 17.28 & $1.8\times10^{-41}$ \\
+cm1 (ensemble)   & 0.233 & 0.123 & 2.127 & 18.68 & $1.2\times10^{-45}$ \\
+cm2 (Grad-CAM)   & 0.185 & 0.123 & 1.534 & 11.03 & $2.2\times10^{-22}$ \\
+cm3 (both)       & 0.173 & 0.123 & 1.531 & 12.70 & $1.9\times10^{-27}$ \\
+cm4 (3-ensemble) & 0.232 & 0.123 & 2.127 & 18.74 & $7.9\times10^{-46}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Read at the group level, trained edits toward a higher LHR lift than
+random ($2.293$ vs.\ $2.204$), which in turn edits toward a higher lift
+than no policy at all ($2.046$) — but resolving whether the trained/random
+gap survives \texttt{paired\_arm\_test.py}'s per-image paired test, rather
+than asserting it from group means, is left as the direct next step. The
+countermeasure comparison is more conclusive: \textbf{ensemble guidance is
+the only countermeasure that raises lesion-targeting lift} above the
+label-protocol baseline ($2.057 \to 2.127$), while \textbf{the Grad-CAM
+spatial mask lowers it, both alone and combined with ensemble guidance}
+($2.057 \to 1.534$ / $1.531$) — a genuine negative finding about a
+mechanism designed, earlier in this project, specifically to help.
+
+The ensemble-guidance effect was replicated across three independent
+seeds — paired per-image LHR-lift deltas of $+0.0694$ ($d=0.221$),
+$+0.0693$ ($d=0.223$), and $+0.0575$ ($d=0.151)$, all with 95\% confidence
+intervals excluding zero — before being sized further. Sweeping the
+guidance ensemble to two and three members (Table~\ref{tab:ensemble_sweep},
+measured on the leak-free validator set \texttt{\{nih, pc\}} with
+\texttt{mimic} moved wholly into guidance) shows p$\to$n held-out transfer
+very nearly doubling, while LHR lift saturates at cm1's single-ensemble
+level (cm4: $+0.070$ vs.\ cm1: $+0.069$). \textbf{Ensemble size buys
+resistance to fooling an independent classifier, not sharper lesion
+targeting} — the two properties dissociate.
+
+\begin{table}[h]
+\centering
+\caption{Held-out transfer ratio by guidance ensemble size, leak-free
+validators \texttt{\{nih, pc\}}. Higher is better.}
+\label{tab:ensemble_sweep}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Ensemble size} & \textbf{Transfer n$\to$p} & \textbf{Transfer p$\to$n} \\
+\midrule
+1 model  & 0.234 & 0.176 \\
+2 models & 0.224 & 0.255 \\
+3 models & 0.303 & 0.357 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This sweep produced its own false positive, caught only by the run
+manifest's configuration stamp: SLURM's \texttt{--export} splits its
+argument on commas, so a three-member ensemble roster passed this way
+reached the job truncated to a single model, silently. \texttt{arm\_transfer.py}
+still computed its denominator from the domain's declared roster rather
+than the shard's own stamp at that point, describing an ensemble that had
+never run and inflating that arm's transfer ratio into the best result in
+the sweep — caught only because Counterfactual Validity matched the
+single-model baseline to four decimal places, which a genuinely
+three-member ensemble should not do. The fix generalizes
+Section~\ref{sec:integrity_bugs}'s denominator fix: ensemble membership is
+now read from the shard's own recorded stamp everywhere it is used, and
+the roster is exported through the job environment rather than a
+comma-delimited flag.
+
+\subsection{What this changes}
+
+None of the headline results in Table~\ref{tab:results} above are altered
+by this audit — they predate this apparatus and are unaffected by it. What
+this section establishes is that the control-arm and countermeasure
+comparison this project's held-out-validation methodology depends on now
+rests on a corrected apparatus, free of the routing and denominator bugs
+that would have invalidated it silently; that ensemble guidance is the one
+tested countermeasure shown, across seeds, to help, while the Grad-CAM
+spatial constraint is shown to hurt. At the point this section was written,
+a full held-out re-validation of ensemble guidance against a
+\emph{trained} policy, and the paired trained-vs-random significance test
+the summary numbers above motivate but do not settle, were both still open.
+Section~\ref{sec:closing} closes both.
+
+\subsection{Closing the loop: real ensemble training and full re-validation}
+\label{sec:closing}
+
+\texttt{config.py}'s \texttt{USE\_GUIDANCE\_ENSEMBLE} default was flipped
+from \texttt{False} to \texttt{True} — every trained-policy result above,
+including Table~\ref{tab:results} and the "trained" arm of
+Table~\ref{tab:lhr_arms}, was produced under single-classifier guidance,
+despite this section already having shown ensemble guidance helps. Two
+precautions preceded retraining. First, \texttt{PPOTrainer} resumes from
+\texttt{ppo\_latest.pt} and, finding the target episode count already
+reached, silently re-saves the old checkpoint without training a step — a
+first smoke test (job 17693158) demonstrated exactly this trap, loading the
+new ensemble classifier correctly while re-stamping a two-day-old,
+single-classifier-trained policy. \texttt{checkpoints/n\_to\_p/} and
+\texttt{checkpoints/p\_to\_n/} were therefore archived, not deleted, before
+resubmitting; a second smoke test confirmed fresh training with no
+resumable state found. Second, \texttt{run\_eval\_cf.slurm} defaults to the
+same shard directory the paired significance test below depends on, so
+generation and reduction were tagged \texttt{ens\_default} throughout,
+leaving the original trained-arm shards untouched.
+
+\texttt{run\_ppo.slurm} (job 17694482) then trained both directions from
+scratch under ensemble guidance — 800 episodes each, confirmed by the
+domain banner and loaded-model log with no "resuming" message in either
+task; n$\to$p finished in 8h40m, p$\to$n in 11h00m, both within budget.
+Re-evaluating (jobs 17695832/17695840) gives, as expected, a mixed
+guidance-side picture: mean CV \emph{fell} to 0.8375 (n$\to$p 0.960,
+p$\to$n 0.715 — a harder joint criterion, not a weaker policy), while
+ground-truth LHR \emph{rose} to a 2.67$\times$ lift ($t=24.19$,
+$p=4.2\times10^{-53}$, $n=148$), above the single-classifier trained arm's
+2.293$\times$.
+
+The question that matters is held-out transfer, scored against
+\texttt{\{nih, pc, mimic\_ch\}} — not against \texttt{chex} as well, even
+though \texttt{chex} was a legitimate held-out validator for the original
+single-classifier policy, since \texttt{chex} is now a guidance-ensemble
+member and scoring it as held-out would let the new arm "improve" purely
+by losing a validator.
+
+\begin{table}[h]
+\centering
+\caption{Held-out transfer ratio, single- vs.\ ensemble-guided
+\emph{trained} policies, $n=200$ per group.}
+\label{tab:closing_transfer}
+\begin{tabular}{@{}lrrrrrrrr@{}}
+\toprule
+& \multicolumn{2}{c}{nih} & \multicolumn{2}{c}{pc} & \multicolumn{2}{c}{mimic\_ch} & \multicolumn{2}{c}{mean} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+Policy & n$\to$p & p$\to$n & n$\to$p & p$\to$n & n$\to$p & p$\to$n & n$\to$p & p$\to$n \\
+\midrule
+Single-classifier (old) & 0.080 & 0.100 & 0.414 & 0.224 & 0.197 & 0.112 & 0.230 & 0.146 \\
+Ensemble-guided (new)   & 0.046 & 0.186 & 0.462 & 0.308 & 0.337 & 0.384 & \textbf{0.282} & \textbf{0.293} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Mean transfer rose on both directions, p$\to$n nearly doubling, and two of
+three validators (\texttt{pc}, \texttt{mimic\_ch}) improved on both counts.
+\texttt{nih} — the most independent validator — improved on p$\to$n
+(0.100$\to$0.186) but \emph{worsened} on n$\to$p (0.080$\to$0.046),
+staying flatly ADVERSARIAL by \texttt{arm\_transfer.py}'s own verdict on
+both counts. Read honestly: ensemble guidance is a real, partial
+countermeasure, not a closed case — two validators out of three agree it
+helps, and the hardest one does not confirm that story in the direction
+that matters least favorably for the claim.
+
+The paired significance test needed no new training: \texttt{paired\_arm\_test.py}
+against the existing \texttt{trained}/\texttt{random} shards (the same 183
+images behind Table~\ref{tab:lhr_arms}'s control-arm row) gives a paired
+lift difference of $+0.090$ (95\% CI $[+0.021, +0.160]$), $t=2.551$,
+$p=0.0116$, Wilcoxon $p=0.0147$, Cohen's $d=0.189$, trained better on
+105/183 images. The gap survives at $p<0.05$ by both tests — a real,
+small effect, not noise.
+
+Both items this section's earlier revision left open now have numbers
+rather than open questions attached to them. Neither is closed in the
+sense of settling the project's central claim: what remains, unchanged, is
+diagnosing why the Grad-CAM constraint hurts rather than helps, and whether
+a larger trained ensemble would close the \texttt{nih} gap specifically.
+The old single-classifier policies and shards were archived, not
+overwritten, so this comparison stays reproducible.
+
+% ═════════════════════════════════════════════════════════════════════════
 \section{Additional Work: Extension to a Second Domain (Mammography)}
 \label{sec:breast}
 % ═════════════════════════════════════════════════════════════════════════
@@ -777,6 +1108,7 @@ to \emph{look} benign to the classifier, not that disease was removed.
 \caption{Mammography-domain evaluation, $n_{\text{eval}} \le 200$ per
 group (\texttt{checkpoints/cbis\_ddsm\_breast/eval\_metrics.json}).}
 \label{tab:breast_results}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}llrr@{}}
 \toprule
 \textbf{Metric} & \textbf{Definition} & \textbf{ben.$\to$mal.} & \textbf{mal.$\to$ben.} \\
@@ -791,7 +1123,8 @@ LLR $\Delta$ & ($t$, $p$)                 & $+0.00014$ (0.04, 0.970) & $-0.00107
 MSI $\Delta$ & ($t$, $p$)                 & $-0.082$ ($-1.39$, 0.165) & $-0.055$ ($-1.68$, 0.094) \\
 BDC $\Delta$ & ($t$, $p$)                 & $+0.0014$ (0.29, 0.773) & $+0.0154$ (2.46, $0.015^{\ast}$) \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 \begin{figure}[h]
@@ -859,7 +1192,17 @@ architecturally to a second, dissimilar domain (mammography, CBIS-DDSM,
 Section~\ref{sec:breast}), where a purpose-built density diagnostic
 surfaced the same diffuse-edit concern found on RSNA; validating those
 counterfactuals against an independent classifier, as done here for chest
-radiographs, remains open work specific to that domain. The clearest next
+radiographs, remains open work specific to that domain. A later audit of
+the evaluation apparatus itself (Section~\ref{sec:integrity}) closed two
+bugs that would have silently invalidated any control-arm or
+countermeasure comparison, corrected a set of hand-altered values in the
+recorded results, and — on a lesion-annotation metric anchored to ground
+truth — showed ensemble guidance to be the one tested countermeasure that
+helps, replicated across three seeds, while a Grad-CAM spatial constraint
+measurably hurts; a full re-validation of ensemble guidance against
+held-out classifiers, at the larger ensemble size the sweep in
+Section~\ref{sec:integrity} suggests is worth pursuing, remains the item
+that work did not close. The clearest next
 steps for the core system are scaling PPO training
 compute (particularly for the harder n$\to$p direction), replacing the
 SCP and IP proxies with dedicated, purpose-trained detectors if annotated

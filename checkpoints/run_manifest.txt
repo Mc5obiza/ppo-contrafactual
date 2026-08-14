@@ -1,87 +1,45 @@
 run manifest
 ================================================================
-written        : 2026-08-11T23:09:49+02:00
-job            : ppo-eval-reduce-17689971
-node           : hpc-n981
+written        : 2026-08-13T13:49:14+02:00
+job            : ppo-eval-reduce-17695840
+node           : hpc-n982
 slurm partition: publicgpu
 
 -- git ---------------------------------------------------------
-commit         : fb268c665a901b310a1893d86d8229dcc04a556e
+commit         : 49e6050548e5376d26997e08027fb84a99383843
 branch         : evaluation-integrity
 tree           : DIRTY — the commit above does not describe this run
-                  M arm_transfer.py
+                  D checkpoints/counterfactual_diff_n_to_p.png
+                  D checkpoints/counterfactual_diff_p_to_n.png
+                  M checkpoints/n_to_p/run_manifest.txt
+                  M checkpoints/p_to_n/run_manifest.txt
+                  D checkpoints/reward_trace.png
                   M checkpoints/run_manifest.txt
-                  M eval_main.py
-                  M pipeline.py
-                  M run_eval_cf.slurm
-                  M run_eval_reduce.slurm
-                 ?? logs/ppo-eval-cf-17689879_0.manifest
-                 ?? logs/ppo-eval-cf-17689879_1.manifest
-                 ?? logs/ppo-eval-cf-17689879_2.manifest
-                 ?? logs/ppo-eval-cf-17689879_3.manifest
-                 ?? logs/ppo-eval-cf-17689879_4.manifest
-                 ?? logs/ppo-eval-cf-17689879_5.manifest
-                 ?? logs/ppo-eval-cf-17689879_6.manifest
-                 ?? logs/ppo-eval-cf-17689879_7.manifest
-                 ?? logs/ppo-eval-cf-17689881_0.manifest
-                 ?? logs/ppo-eval-cf-17689881_1.manifest
-                 ?? logs/ppo-eval-cf-17689881_2.manifest
-                 ?? logs/ppo-eval-cf-17689881_3.manifest
-                 ?? logs/ppo-eval-cf-17689881_4.manifest
-                 ?? logs/ppo-eval-cf-17689881_5.manifest
-                 ?? logs/ppo-eval-cf-17689881_6.manifest
-                 ?? logs/ppo-eval-cf-17689881_7.manifest
-                 ?? logs/ppo-eval-cf-17689883_0.manifest
-                 ?? logs/ppo-eval-cf-17689883_1.manifest
-                 ?? logs/ppo-eval-cf-17689883_2.manifest
-                 ?? logs/ppo-eval-cf-17689883_3.manifest
-                 ?? logs/ppo-eval-cf-17689883_4.manifest
-                 ?? logs/ppo-eval-cf-17689883_5.manifest
-                 ?? logs/ppo-eval-cf-17689883_6.manifest
-                 ?? logs/ppo-eval-cf-17689883_7.manifest
-                 ?? logs/ppo-eval-cf-17689885_0.manifest
-                 ?? logs/ppo-eval-cf-17689885_1.manifest
-                 ?? logs/ppo-eval-cf-17689885_2.manifest
-                 ?? logs/ppo-eval-cf-17689885_3.manifest
-                 ?? logs/ppo-eval-cf-17689885_4.manifest
-                 ?? logs/ppo-eval-cf-17689885_5.manifest
-                 ?? logs/ppo-eval-cf-17689885_6.manifest
-                 ?? logs/ppo-eval-cf-17689885_7.manifest
-                 ?? logs/ppo-eval-cf-17689943_0.manifest
-                 ?? logs/ppo-eval-cf-17689943_2.manifest
-                 ?? logs/ppo-eval-cf-17689943_3.manifest
-                 ?? logs/ppo-eval-cf-17689943_4.manifest
-                 ?? logs/ppo-eval-cf-17689951_0.manifest
-                 ?? logs/ppo-eval-cf-17689951_1.manifest
-                 ?? logs/ppo-eval-cf-17689951_2.manifest
-                 ?? logs/ppo-eval-cf-17689951_3.manifest
-                 ?? logs/ppo-eval-cf-17689951_4.manifest
-                 ?? logs/ppo-eval-cf-17689951_5.manifest
-                 ?? logs/ppo-eval-cf-17689951_6.manifest
-                 ?? logs/ppo-eval-cf-17689951_7.manifest
-                 ?? logs/ppo-eval-cf-17689970_0.manifest
-                 ?? logs/ppo-eval-cf-17689970_1.manifest
-                 ?? logs/ppo-eval-cf-17689970_2.manifest
-                 ?? logs/ppo-eval-cf-17689970_3.manifest
-                 ?? logs/ppo-eval-cf-17689970_4.manifest
-                 ?? logs/ppo-eval-cf-17689970_5.manifest
-                 ?? logs/ppo-eval-cf-17689970_6.manifest
-                 ?? logs/ppo-eval-cf-17689970_7.manifest
-                 ?? logs/ppo-eval-reduce-17689880.manifest
-                 ?? logs/ppo-eval-reduce-17689882.manifest
-                 ?? logs/ppo-eval-reduce-17689884.manifest
-                 ?? logs/ppo-eval-reduce-17689944.manifest
-                 ?? logs/ppo-eval-reduce-17689952.manifest
+                  M report/report.tex
+                 ?? logs/ppo-counterfactual-17694482_0.manifest
+                 ?? logs/ppo-counterfactual-17694482_1.manifest
+                 ?? logs/ppo-eval-cf-17695832_0.manifest
+                 ?? logs/ppo-eval-cf-17695832_1.manifest
+                 ?? logs/ppo-eval-cf-17695832_2.manifest
+                 ?? logs/ppo-eval-cf-17695832_3.manifest
+                 ?? logs/ppo-eval-cf-17695832_4.manifest
+                 ?? logs/ppo-eval-cf-17695832_5.manifest
+                 ?? logs/ppo-eval-cf-17695832_6.manifest
+                 ?? logs/ppo-eval-cf-17695832_7.manifest
+                 ?? report/report.aux
+                 ?? report/report.log
+                 ?? report/report.out
                  ?? report/report.pdf
+                 ?? report/report.toc
+                 ?? social_media/
 
 -- environment -------------------------------------------------
 python         : Python 3.12.8
 torch          : 2.5.1+cu121 cuda 12.1
-gpu            : NVIDIA H200, 143771 MiB
-n/a
+gpu            : NVIDIA H100 NVL, 95830 MiB
 
 -- config.py ---------------------------------------------------
-sha256         : ff168a23901dfc7aec81e6db9a2905e554631f03630ed2066796d5d375a4ee95
+sha256         : f687e57a2cf782840e0ffd46ac8262c8e85e0db09d9a216984c3a5dc719b78fe
   DATASET_DOMAIN          = rsna_pneumonia
   CKPT_DIR                = checkpoints
   DEVICE                  = cuda
@@ -93,7 +51,7 @@ sha256         : ff168a23901dfc7aec81e6db9a2905e554631f03630ed2066796d5d375a4ee9
   EVAL_GROUP_SOURCE       = classifier
   TRAIN_SEED              = 0
   STRICT_DETERMINISM      = False
-  USE_GUIDANCE_ENSEMBLE   = False
+  USE_GUIDANCE_ENSEMBLE   = True
   USE_GRADCAM_MASK        = False
   USE_SPARSITY_REWARD     = False
   USE_SPARSITY_ANNEALING  = True

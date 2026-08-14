@@ -1,0 +1,152 @@
+\chapter*{Glossary}
+\addcontentsline{toc}{chapter}{Glossary}
+\markboth{Glossary}{}
+
+\begin{description}[leftmargin=0pt,style=unboxed,itemsep=6pt]
+
+\item[Adversarial perturbation] A small, often visually diffuse change to
+an image that flips a classifier's prediction without altering the
+semantic content a human would recognise. Distinguishing genuine
+counterfactuals from adversarial perturbations is the central validation
+problem of this project.
+
+\item[Background lock] A hard spatial constraint, adapted from RePaint and
+Blended Latent Diffusion, in which the latent outside a permitted edit
+mask is overwritten at every denoising step with the original image's
+forward-noised latent, guaranteeing that region cannot be repainted.
+
+\item[BDC (Breast Density Contrast)] A mammography diagnostic metric ---
+mean intensity of the segmented dense breast tissue --- purpose-built to
+detect a diffuse global brightness/density change large enough to move a
+classifier without altering a lesion, the mammography signature of a
+failure mode first identified on RSNA.
+
+\item[CBIS-DDSM] The Curated Breast Imaging Subset of the Digital Database
+for Screening Mammography: a public mammography dataset of mass and
+calcification lesion cases labelled malignant or benign, used as the
+second imaging domain in Chapter~\ref{ch:breast}. Unlike RSNA, it contains
+no normal (lesion-free) images.
+
+\item[Counterfactual explanation] For a query image $x$ classified by $f$,
+an image $x_c$ that $f$ assigns to a different target class while
+remaining realistic and preserving the identity of $x$. The difference
+between $x$ and $x_c$ constitutes the explanation.
+
+\item[Counterfactual Validity (CV)] The fraction of generated
+counterfactuals for which the classifier's score both moves by more than
+a margin $\tau$ and crosses the decision boundary in the intended
+direction.
+
+\item[CTR (Cardio-Thoracic Ratio)] The ratio of the heart's horizontal
+span to the thorax's, computed here from segmentation masks. A ratio
+above $0.5$ is the standard clinical cardiomegaly threshold.
+
+\item[DDIM] Denoising Diffusion Implicit Model: a deterministic,
+non-Markovian sampling procedure for diffusion models that permits
+partial forward-then-reverse trajectories, and therefore image editing
+rather than only synthesis from noise.
+
+\item[DomainProfile / domain registry] A dataclass and module registry
+(\file{domains/}) binding a dataset, its classifier target and its
+clinical metrics together, so that adding a new imaging domain --- as in
+Chapter~\ref{ch:breast} --- is one new module plus one configuration line
+rather than a change threaded through the guidance and evaluation code.
+
+\item[FID (Fr\'echet Inception Distance)] A distributional realism
+measure comparing the means and covariances of deep features extracted
+from real and generated image sets. Lower is better. Computed here in
+TorchXRayVision DenseNet feature space rather than ImageNet Inception
+space.
+
+\item[FOP (Foreign-Object Preservation)] A metric measuring whether
+medical hardware --- tubes, leads, pacemakers --- survives counterfactual
+editing. Requires a dedicated device detector, and is not computable
+offline in this project.
+
+\item[GAE (Generalized Advantage Estimation)] A variance-reduction
+technique for policy-gradient methods that interpolates between one-step
+and Monte-Carlo advantage estimates via a parameter $\lambda$.
+
+\item[Grad-CAM] Gradient-weighted Class Activation Mapping: a technique
+producing class-discriminative localisation maps by weighting
+convolutional feature maps with the gradients flowing into them. Used
+here both as a diagnostic and as a spatial constraint.
+
+\item[Guidance] The injection of a classifier's gradient into a diffusion
+model's sampling trajectory, steering generation toward a target class
+without retraining the generator.
+
+\item[Held-out validation] Re-scoring generated counterfactuals with
+classifiers that never participated in the guidance loop, to distinguish
+genuine semantic change from adversarial perturbation against the
+guidance model.
+
+\item[Identity Preservation (IP)] A model-free substitute for FOP used
+here, combining MS-SSIM (global anatomical similarity) with the
+correlation of high-pass-filtered images (survival of thin, high-contrast
+structures).
+
+\item[LHR (Lesion Hit Rate)] The share of an edit's absolute-difference
+mass falling inside the radiologist's annotated lesion box, divided by the
+box's own area as a null baseline (so ``lift'' rather than raw hit rate
+carries information). The only metric in this project anchored to
+ground-truth disease location rather than to a classifier or a structural
+proxy; introduced in Chapter~\ref{ch:integrity}.
+
+\item[Latent diffusion] A diffusion model operating in the compressed
+latent space of a pretrained autoencoder rather than in pixel space,
+reducing computational cost by orders of magnitude.
+
+\item[LLR (Lesion Load Ratio)] The mammography analogue of CTR: the ratio
+of segmented lesion area to segmented breast area, expected to rise under
+a benign$\to$malignant edit and fall under the reverse.
+
+\item[LoRA (Low-Rank Adaptation)] A parameter-efficient fine-tuning
+technique that freezes pretrained weights and trains small injected
+low-rank matrix pairs, drastically reducing the memory and compute
+required to adapt a large model.
+
+\item[MOP (Marker/clip Preservation)] The mammography counterpart of FOP:
+the fraction of images containing a surgical clip or skin marker in which
+that object survives editing. Computable offline via a model-free
+saturated-blob detector, unlike FOP.
+
+\item[MS-SSIM] Multi-Scale Structural Similarity Index Measure: an image
+similarity metric evaluating luminance, contrast and structure across
+multiple spatial scales.
+
+\item[MSI (Margin Spiculation Index)] A mammography clinical proxy metric:
+the normalised boundary complexity of the segmented lesion's largest
+component, higher for spiculated (malignancy-associated) margins than for
+smoothly circumscribed ones. Replaces SCP in the mammography domain.
+
+\item[PPO (Proximal Policy Optimization)] A policy-gradient reinforcement
+learning algorithm that constrains each update with a clipped surrogate
+objective, trading some theoretical rigour for stability and sample
+efficiency.
+
+\item[Reward shaping] The addition of auxiliary terms to a reinforcement
+learning reward to guide learning toward desired behaviour. A recurring
+source of bugs in this project, since the terms' relative magnitudes ---
+not their presence --- determine what the agent actually optimises.
+
+\item[SCP (Costophrenic-recess score)] A proxy for pleural-effusion-related
+blunting of the costophrenic angle, approximated here from an object
+detector's feature norm in a lower-lobe crop.
+
+\item[SLURM] Simple Linux Utility for Resource Management: the batch
+scheduler allocating compute nodes on the HPC cluster used for all
+experiments.
+
+\item[Transfer ratio] The fraction of the guidance classifier's score
+shift that an independent held-out classifier reproduces on the same
+counterfactual. Low values indicate an adversarial rather than semantic
+edit.
+
+\item[VAE (Variational Autoencoder)] The encoder-decoder pair mapping
+images to and from the compressed latent space in which the diffusion
+model operates. Frozen throughout this project.
+
+\end{description}
+
+\clearpage
