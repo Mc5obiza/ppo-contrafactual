@@ -36,48 +36,45 @@ second chest-radiograph corpus would have been.
 \section{A Domain-Registry Architecture}
 
 Before this extension, three things that logically belong together were
-scattered across unrelated files: the dataset and its label, the pathology
-head the classifier guidance targets, and which clinical metrics are even
-meaningful for that pathology. Changing the dataset without also changing
-the other two silently produces nonsense --- guidance toward the wrong
-disease, or a cardio-thoracic ratio reported for an anatomy that has no
-heart in frame.
+scattered across unrelated parts of the system: the dataset and its label,
+the pathology head the classifier guidance targets, and which clinical
+metrics are even meaningful for that pathology. Changing the dataset without
+also changing the other two silently produces nonsense --- guidance toward
+the wrong disease, or a cardio-thoracic ratio reported for an anatomy that
+has no heart in frame.
 
-\file{domains/base.py} introduces a \texttt{DomainProfile} dataclass that
-binds all three together, together with a set of optional
-\texttt{build\_*} hooks (\texttt{build\_guidance}, \texttt{build\_validators},
-\texttt{build\_masker}, \texttt{build\_lesion\_net}) that a domain may
-override when the TorchXRayVision-shaped defaults --- an XRV classifier head,
-a PSPNet segmenter, CTR/SCP as the clinical metrics --- do not apply.
-Left unset, a domain behaves exactly as the original single-dataset pipeline
-did, which is what keeps the RSNA domain module byte-identical to the
-pre-refactor behaviour. Adding a new dataset is then one new module in
-\file{domains/} plus one line in \file{config.py}, rather than an edit
-threaded through ingestion, guidance and evaluation code.
+A domain-registry abstraction was introduced to bind all three together,
+with a set of optional construction hooks that a domain may override when
+the TorchXRayVision-shaped defaults --- an XRV classifier head, a PSPNet
+segmenter, CTR/SCP as the clinical metrics --- do not apply. Left unset, a
+domain behaves exactly as the original single-dataset pipeline did, which
+is what keeps the RSNA domain's behaviour byte-identical to the
+pre-refactor version. Adding a new dataset is then a self-contained new
+domain module plus a one-line registration, rather than an edit threaded
+through ingestion, guidance and evaluation code.
 
 \section{What Mammography Required Rebuilding}
 
 Almost nothing about the TorchXRayVision-based guidance stack survives the
 move to mammography, because that whole stack --- the pathology classifier,
 the PSPNet lung/heart segmenter, and the FID feature extractor --- has no
-breast equivalent. \file{domains/cbis_ddsm_breast.py} therefore supplies
-its own version of every frozen component the RSNA pipeline was able to
-borrow for free.
+breast equivalent. The mammography domain therefore supplies its own
+version of every frozen component the RSNA pipeline was able to borrow for
+free.
 
 \subsection{A classifier trained from scratch}
 
-\file{train_breast_classifier.py} trains $f(\cdot)$ for this domain, since no
+A dedicated training procedure builds $f(\cdot)$ for this domain, since no
 pretrained breast-malignancy head exists in the model zoo used elsewhere in
-this project. Three backbones are trained under \texttt{config.BREAST\_BACKBONES}
-(\texttt{densenet121}, \texttt{efficientnet\_b0}~\cite{tan2019efficientnet},
-\texttt{resnet18}); the
-first two form the guidance ensemble and the third is held back as the
-independent validator, mirroring the guidance/validator split described in
-Section~\ref{sec:heldout_method} for the chest domain. \texttt{run\_breast\_classifier\_gate.slurm}
-applies a hard floor (\texttt{MIN\_ACCEPTABLE\_AUC}$=0.65$) against each
+this project. Three backbones are trained --- a DenseNet-121, an
+EfficientNet-B0~\cite{tan2019efficientnet}, and a ResNet-18; the first two
+form the guidance ensemble and the third is held back as the independent
+validator, mirroring the guidance/validator split described in
+Section~\ref{sec:heldout_method} for the chest domain. A gating step
+applies a hard floor (minimum acceptable AUC of $0.65$) against each
 backbone's saved validation AUC before any of them is allowed to guide
-generation, failing the job explicitly rather than proceeding with a
-near-chance classifier.
+generation, failing explicitly rather than proceeding with a near-chance
+classifier.
 
 The split is taken at the \emph{patient} level, not the image level. CBIS-DDSM
 contains up to four images per patient (left/right breast, CC/MLO view) plus
@@ -87,26 +84,25 @@ in both train and validation and report a memorisation score as an AUC.
 \subsection{Two segmenters instead of one}
 
 The chest pipeline's single PSPNet segmenter conflated two roles that
-mammography must separate. \file{src/breast_segmentation.py} supplies both:
+mammography must separate:
 
 \begin{itemize}[leftmargin=*]
-  \item \textbf{\texttt{BreastAnatomySegmenter}}, an analytic (not learned)
-        segmenter producing breast/pectoral/dense-tissue masks, used to gate
-        the background lock exactly as the lung mask does for RSNA.
-  \item \textbf{\texttt{LesionSegmenter}}, a U-Net~\cite{ronneberger2015unet}
-        trained by \file{train_lesion_segmenter.py} on CBIS-DDSM's shipped
-        region-of-interest masks. It is deliberately excluded from the
-        guidance loop, so that the clinical metrics computed from it stay
-        independent of the edits they are measuring --- the same
-        independence principle that motivated held-out validation in the
-        first place.
+  \item An analytic (not learned) anatomy segmenter producing
+        breast/pectoral/dense-tissue masks, used to gate the background
+        lock exactly as the lung mask does for RSNA.
+  \item A learned lesion segmenter, a U-Net~\cite{ronneberger2015unet}
+        trained on CBIS-DDSM's shipped region-of-interest masks. It is
+        deliberately excluded from the guidance loop, so that the
+        clinical metrics computed from it stay independent of the edits
+        they are measuring --- the same independence principle that
+        motivated held-out validation in the first place.
 \end{itemize}
 
 \subsection{A new clinical metric suite}
 
 CTR and SCP, the chest domain's clinical proxy metrics, have no meaning
-here: there is no heart or costophrenic recess in a mammogram.
-\file{src/metrics.py} adds four mammography-specific metrics instead.
+here: there is no heart or costophrenic recess in a mammogram. Four
+mammography-specific metrics were added instead.
 
 \begin{itemize}[leftmargin=*]
   \item \textbf{LLR (Lesion Load Ratio)} --- lesion area over breast area,
@@ -116,27 +112,28 @@ here: there is no heart or costophrenic recess in a mammogram.
         complexity (perimeter$^2$ / $4\pi\cdot$area) of the segmented
         lesion's largest component. Margin morphology is the single most
         load-bearing malignancy sign in mammography, and CBIS-DDSM labels it
-        directly (\texttt{mass margins}: spiculated/ill-defined versus
-        circumscribed), which makes MSI \emph{calibratable on real images}
-        in a way SCP never was. \file{check_lesion_localization.py} is the
-        gate: MSI must separate spiculated from circumscribed lesions on
-        ground-truth images before it may be reported as evidence about
-        counterfactuals at all. This calibration script was written and is
-        part of the delivered pipeline, but was not run to completion within
-        the time available for this additional work, so the MSI numbers in
+        directly (spiculated/ill-defined versus circumscribed margins),
+        which makes MSI \emph{calibratable on real images} in a way SCP
+        never was. A dedicated calibration check is the gate: MSI must
+        separate spiculated from circumscribed lesions on ground-truth
+        images before it may be reported as evidence about counterfactuals
+        at all. This calibration procedure was written and is part of the
+        delivered pipeline, but was not run to completion within the time
+        available for this additional work, so the MSI numbers in
         Section~\ref{sec:breast_results} should be read as provisional
         pending that gate.
   \item \textbf{BDC (Breast Density Contrast)} --- mean intensity of the
         segmented dense (fibroglandular) tissue. This one is a diagnostic
         rather than a success criterion, purpose-built to catch a specific
-        failure this project had already seen once, on RSNA: job
-        \textbf{17648985} reported CV$=0.975$ while changing 73.6\% of all
-        pixels at MAE $=0.036$ --- a diffuse global brightness wash that
-        moved the classifier without editing any anatomy. The mammography
-        signature of the same failure is a large BDC shift paired with a
-        flat LLR: the generator brightened or darkened the whole breast
-        rather than altering a lesion. Section~\ref{sec:breast_results}
-        reports exactly this pattern.
+        failure this project had already seen once, on RSNA: an early
+        policy version reported a Counterfactual Validity of $0.975$ while
+        changing 73.6\% of all pixels at a mean absolute error of $0.036$
+        --- a diffuse global brightness wash that moved the classifier
+        without editing any anatomy. The mammography signature of the same
+        failure is a large BDC shift paired with a flat LLR: the generator
+        brightened or darkened the whole breast rather than altering a
+        lesion. Section~\ref{sec:breast_results} reports exactly this
+        pattern.
   \item \textbf{MOP (Marker/clip Preservation)} --- the mammography
         counterpart of FOP, and, unlike FOP, computable offline: surgical
         clips and skin markers are small, saturated, high-contrast metal
@@ -148,11 +145,11 @@ here: there is no heart or costophrenic recess in a mammogram.
 \section{Dataset and Label Semantics}
 \label{sec:breast_semantics}
 
-CBIS-DDSM (Curated Breast Imaging Subset of DDSM)~\cite{lee2017cbisddsm} is retrieved from a public
-Kaggle mirror by the same \texttt{setup\_env.sh} provisioning step used for
-RSNA. It comprises roughly 3{,}500 mass and calcification lesion images,
-pooled across both abnormality types, with a workable class balance of
-approximately 1{,}400 malignant against 2{,}100 benign or
+CBIS-DDSM (Curated Breast Imaging Subset of DDSM)~\cite{lee2017cbisddsm} is
+retrieved from a public Kaggle mirror by the same provisioning step used
+for RSNA. It comprises roughly 3{,}500 mass and calcification lesion
+images, pooled across both abnormality types, with a workable class
+balance of approximately 1{,}400 malignant against 2{,}100 benign or
 benign-without-callback lesions --- a considerably less skewed split than
 RSNA's 22.5\% positive rate.
 
@@ -174,8 +171,7 @@ the classifier.
 The trained system was evaluated with the same protocol as
 Chapter~\ref{ch:results}: groups split by classifier confidence
 ($n_{\text{eval}} \le 200$ per direction), deterministic mean-action policy
-rollouts, metrics read from
-\file{checkpoints/cbis_ddsm_breast/eval_metrics.json}.
+rollouts.
 
 \begin{table}[h]
 \centering
@@ -222,8 +218,7 @@ qualitative examples for each direction.
   \includegraphics[width=\textwidth]{counterfactual_diff_n_to_p_breast.png}
   \caption[Breast counterfactual: benign to malignant]{\textbf{Benign $\rightarrow$ malignant.} Original, counterfactual
   targeting the malignant class, signed pixel difference, and
-  absolute-difference heatmap, produced by \file{src/diff_viz.py} on the
-  mammography domain.}
+  absolute-difference heatmap, on the mammography domain.}
   \label{fig:breast_n2p}
 \end{figure}
 
@@ -234,14 +229,14 @@ qualitative examples for each direction.
   \label{fig:breast_p2n}
 \end{figure}
 
-The guidance diagnostics recorded alongside each policy checkpoint
-(\file{guidance\_diagnostics\_\{n\_to\_p,p\_to\_n\}.json}, a 20-episode probe)
-show the same kind of directional specialisation observed on RSNA: the
-benign$\to$malignant policy settles at a higher guidance bias (mean $0.980$,
-$3.45$ refinement passes on average, average reward $8.53$) than the
-malignant$\to$benign policy ($0.790$, $3.20$ passes, average reward $5.10$),
-indicating the two directions again learned visibly different control
-strategies rather than converging to a shared, direction-agnostic schedule.
+The guidance diagnostics recorded alongside each policy checkpoint (a
+20-episode probe) show the same kind of directional specialisation
+observed on RSNA: the benign$\to$malignant policy settles at a higher
+guidance bias (mean $0.980$, $3.45$ refinement passes on average, average
+reward $8.53$) than the malignant$\to$benign policy ($0.790$, $3.20$
+passes, average reward $5.10$), indicating the two directions again
+learned visibly different control strategies rather than converging to a
+shared, direction-agnostic schedule.
 
 \subsection{Reading These Numbers Honestly}
 
@@ -294,11 +289,11 @@ nothing with chest radiography, and the discipline of building an
 independent check \emph{before} trusting a validity number generalises with
 it. The BDC diagnostic --- designed specifically because a diffuse-edit
 failure had already been caught once on RSNA --- found the same qualitative
-pattern here without a single line of the guidance pipeline being reused.
-That the lesson transferred even though almost none of the code
-(classifier, segmenters, metrics) did is, if anything, a stronger argument
-for the internship's methodological contribution than a second clean
-success would have been.
+pattern here without a single component of the guidance pipeline being
+reused. That the lesson transferred even though almost none of the
+underlying implementation (classifier, segmenters, metrics) did is, if
+anything, a stronger argument for the internship's methodological
+contribution than a second clean success would have been.
 
 Completing the held-out validation for this domain --- training the third
 validator backbone was already budgeted for exactly this purpose --- and

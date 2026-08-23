@@ -3,11 +3,10 @@
 
 This chapter reports the measurements obtained, assesses what they do and
 do not establish, and sets out perspectives for continuing the work. All
-figures quoted are read directly from the serialised evaluation artefacts
-in \file{checkpoints/} --- principally \file{eval_metrics.json},
-\file{heldout/heldout_validation.json} and the two
-\file{guidance_diagnostics_*.json} files --- rather than transcribed
-from run logs.
+figures quoted are read directly from the project's serialised evaluation
+artefacts --- the primary metric suite, the held-out validation results,
+and the guidance diagnostics recorded alongside each trained policy ---
+rather than transcribed from run logs.
 
 \section{Evaluation Protocol}
 
@@ -33,9 +32,9 @@ The reference protocol's Foreign-Object Preservation metric requires a
 Fast R-CNN device detector trained on private, manually annotated data.
 It is not reproducible offline, and no TorchXRayVision weight set exposes
 a usable ``Support Devices'' head. FOP is accordingly reported as
-\textbf{unavailable} --- it is serialised as \texttt{null} in
-\file{eval_metrics.json}, not silently omitted --- and substituted by a
-model-free IP score measuring the same underlying property:
+\textbf{unavailable} --- recorded explicitly as such, not silently
+omitted --- and substituted by a model-free IP score measuring the same
+underlying property:
 
 \begin{itemize}[leftmargin=*]
   \item \textbf{MS-SSIM}~\cite{wang2003msssim}: multi-scale structural
@@ -54,7 +53,7 @@ model-free IP score measuring the same underlying property:
 
 \begin{table}[h]
 \centering
-\caption[Primary evaluation metric suite]{Evaluation results from \file{checkpoints/eval_metrics.json},
+\caption[Primary evaluation metric suite]{Primary evaluation metric suite,
 $n_{\text{eval}} \le 200$ per group. FID is computed between each real
 group and its own counterfactual set.}
 \label{tab:results}
@@ -141,8 +140,8 @@ should be treated as a weak instrument.
   \includegraphics[width=\textwidth]{counterfactual_diff_n_to_p.png}
   \caption[Counterfactual: normal to pneumonia]{\textbf{Normal $\rightarrow$ pneumonia.} Left to right:
   original, counterfactual targeting $c=1$, signed pixel difference, and
-  absolute-difference heatmap, produced by \file{src/diff_viz.py}. The
-  classifier score crosses the decision boundary by a wide margin.}
+  absolute-difference heatmap. The classifier score crosses the decision
+  boundary by a wide margin.}
   \label{fig:n2p}
 \end{figure}
 
@@ -153,7 +152,7 @@ should be treated as a weak instrument.
   layout. Change is distributed over both lung fields, consistent with
   opacity removal, and at a lower overall magnitude than the \ntop{} case
   --- MAE $0.029$ versus $0.042$, as measured over 200 images per
-  direction in \file{heldout_validation.json}.}
+  direction.}
   \label{fig:p2n}
 \end{figure}
 
@@ -167,8 +166,7 @@ lock holding as designed.
   \centering
   \includegraphics[width=0.72\textwidth]{reward_trace.png}
   \caption[PPO reward trace diagnostic]{Flat per-step reward $R_t$ against the GAE-shaped reward
-  $\tilde R_t$ over a short post-training rollout
-  (\file{factory/evaluate.py}, \texttt{plot\_reward\_trace}). The trace is
+  $\tilde R_t$ over a short post-training rollout. The trace is
   short because this rollout reaches validity almost immediately, and the
   two curves are near-coincident --- a direct consequence of PPO's
   per-update advantage normalisation absorbing a uniform shaping term.
@@ -200,14 +198,14 @@ concerns the interpretation of Table~\ref{tab:results}.
 
 Counterfactual Validity there is computed with the same classifier that
 generated the guidance gradient. To test whether the edits carry disease
-signal rather than a perturbation tailored to that one model, job
-\textbf{17649721} re-scored 200 counterfactuals per direction with two
-TorchXRayVision DenseNet-121 classifiers that had never participated in
-guidance.
+signal rather than a perturbation tailored to that one model, a dedicated
+held-out validation run re-scored 200 counterfactuals per direction with
+two TorchXRayVision DenseNet-121 classifiers that had never participated
+in guidance.
 
 \begin{table}[h]
 \centering
-\caption[Held-out validation results]{Held-out validation (\file{checkpoints/heldout/heldout_validation.json}),
+\caption[Held-out validation results]{Held-out validation results,
 $n=200$ per direction, $\tau=0.8$. Guidance classifier at generation time:
 \texttt{densenet121-res224-rsna} alone. Strict CV is the fraction of
 counterfactuals each validator independently judges valid.}
@@ -259,12 +257,11 @@ constraint, and the annealed sparsity reward.
 \subsection{Status of the Countermeasures}
 \label{sec:status}
 
-The countermeasures are \textbf{implemented and enabled} in
-\file{config.py}, and a training run under the new configuration was in
-progress at the close of the internship: the most recent log
-(job \textbf{17653310}) shows the ensemble classifier loading correctly
-with both members, the Grad-CAM mask active, and the sparsity ramp
-resolved over updates $[20, 60)$ of 100.
+The countermeasures are \textbf{implemented and enabled}, and a training
+run under the new configuration was in progress at the close of the
+internship: the most recent training log shows the ensemble classifier
+loading correctly with both members, the Grad-CAM mask active, and the
+sparsity ramp resolved over updates $[20, 60)$ of 100.
 
 \textbf{A re-run of the held-out validation against the new configuration
 was not completed within the internship period.} Whether ensemble
@@ -326,9 +323,8 @@ design intends.
         against a 1024-dimensional feature space gives wide error bars,
         and the absolute values indicate a real realism gap.
   \item \textbf{Compute-constrained training scale.} The episode and
-        epoch budgets are documented in \file{config.py} as conservative
-        placeholders sized for the available walltime, not values
-        established by ablation.
+        epoch budgets are documented as conservative placeholders sized
+        for the available walltime, not values established by ablation.
   \item \textbf{Two independently trained policies.} A single
         target-conditioned policy would let the harder direction share
         representation capacity with the easier one, but requires an
@@ -361,14 +357,14 @@ design intends.
         \emph{Resolved in Chapter~\ref{ch:closing}.}}
         Table~\ref{tab:lhr_arms} in Chapter~\ref{ch:integrity} shows trained
         editing toward a higher LHR lift than random ($2.293$ vs.\ $2.204$)
-        at the group level; \S\ref{sec:closing_significance} runs
-        \file{paired\_arm\_test.py}'s per-image paired test on the same 183
-        images and finds the gap survives ($p=0.012$) at a small effect size
-        ($d=0.19$).
-  \item \textbf{Run the ablation arms.} The \texttt{SMOKE\_ARM}
-        infrastructure (\texttt{baseline} / \texttt{mask} / \texttt{all})
-        is already in place to attribute any improvement to the
-        individual mechanisms rather than to their combination.
+        at the group level; \S\ref{sec:closing_significance} runs a
+        per-image paired test on the same 183 images and finds the gap
+        survives ($p=0.012$) at a small effect size ($d=0.19$).
+  \item \textbf{Run the ablation arms.} The smoke-test infrastructure,
+        which already exercises baseline, mask-only and full
+        configurations at small scale, is in place to attribute any
+        improvement to the individual mechanisms rather than to their
+        combination.
   \item \textbf{Diagnose why the Grad-CAM constraint hurts lesion
         targeting.} Chapter~\ref{ch:integrity} found the Grad-CAM mask
         (ARM~2) measurably \emph{lowers} LHR lift relative to baseline,

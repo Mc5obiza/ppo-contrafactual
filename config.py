@@ -138,9 +138,20 @@ EVAL_GROUP_SOURCE = "classifier"
 # Turn on only to investigate a specific nondeterminism.
 STRICT_DETERMINISM = False
 
-# The weight sets below are the rsna_pneumonia defaults, kept for backwards
-# compatibility. The ACTIVE values come from the domain profile — see
-# pipeline.build_common — so switching DATASET_DOMAIN switches them too.
+# THIS LIST IS THE ACTIVE ONE, not the domain profile's ensemble_weights —
+# pipeline.build_common uses `config.GUIDANCE_ENSEMBLE_WEIGHTS or
+# domain.ensemble_weights`, so a non-empty list here always wins (see
+# pipeline.py:147-155's comment on why membership is deliberately
+# config-driven, not domain-driven). Keep domains/rsna_pneumonia.py's
+# ensemble_weights in sync anyway — arm_transfer.py's default validator
+# resolution and the disjointness check both read the domain's copy.
+#
+# Committed default (2-member). A 3-member variant [rsna, chex, mimic_nb]
+# was trained and evaluated for the gap-2 experiment (checkpoints_ens3/,
+# see internship-report ch7, "A Trained 3-Model Ensemble") and reverted
+# back to this default afterward — see that section for the results and
+# domains/rsna_pneumonia.py's git history for the matching validator-set
+# revert.
 GUIDANCE_ENSEMBLE_WEIGHTS = [
     "densenet121-res224-rsna",
     "densenet121-res224-chex",
@@ -219,7 +230,16 @@ BG_MASK_FEATHER  = 1.0    # Gaussian sigma (latent cells) for seam feathering
 # named_modules() and silently returns members.0's `features`, producing an
 # rsna-only CAM labelled as the ensemble's. Verified behaviour, not a guess.
 # Watch the degenerate-CAM rate PPOTrainer.train reports at the end of a run.
-USE_GRADCAM_MASK = False   # REVERTED 2026-08-07 (was ARM 2)
+#
+# REVERTED again after a second, isolated attempt: GRADCAM_TARGET_LAYER=
+# features.denseblock3 was trained for real (checkpoints_gradcam_fix/, see
+# internship-report ch7, "A Trained Grad-CAM-Fix Arm") to test whether the
+# finer layer actually helps a trained policy, not just the offline
+# diagnostic. It does not — CV collapsed to 0.017 (from 0.838), LHR lift
+# dropped to 1.636 (d=1.205 vs the default, the largest paired effect size
+# measured anywhere in this project), and held-out transfer fell across
+# all three validators. Confirmed, not merely diagnosed: this is not a fix.
+USE_GRADCAM_MASK = False
 
 # Grad-CAM hook target inside the FROZEN classifier. Spatial resolution of the
 # xrv DenseNet-121 at its 224 input (cell size quoted for IMG_SIZE=256):
@@ -394,7 +414,12 @@ ENV_REFINEMENT_PASSES = 2
 # uniform baseline (top-5% of pixels' share of |Δ|), i.e. mostly diffuse.
 # PPOTrainer used to log "the annealing schedule is inert" at startup; that
 # line should stop firing now.
-USE_SPARSITY_REWARD    = False   # REVERTED 2026-08-07 (was ARM 3)
+# Committed default (off). Re-enabled once, isolated, for the gap-4 retrain
+# (checkpoints_sparsity/, see internship-report ch7, "A Trained
+# Sparsity-Reward Arm") — result: did not concentrate edits and measurably
+# hurt LHR lift (p=4.7e-9, d=0.512) and p→n transfer. Reverted back to
+# False afterward; see that section for the full numbers.
+USE_SPARSITY_REWARD    = False   # REVERTED (gap-4 retrain complete)
 USE_SPARSITY_ANNEALING = True
 
 # Target weight. Same scale as LAM_FID, which is worth noting: R_fid is already

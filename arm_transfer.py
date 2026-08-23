@@ -40,6 +40,7 @@ import os
 import re
 import sys
 
+import numpy as np
 import torch
 
 import config
@@ -136,18 +137,49 @@ def _score(clf, X, bs: int = 32) -> torch.Tensor:
     return torch.cat(out)
 
 
+def _per_image_deltas(clf, xn, xp, xc_np, xc_pn) -> tuple[np.ndarray, np.ndarray]:
+    """Per-image movement TOWARD the target, per direction — what _deltas collapses to a mean."""
+    d_np = (_score(clf, xc_np) - _score(clf, xn)).numpy()
+    d_pn = (_score(clf, xp) - _score(clf, xc_pn)).numpy()
+    return d_np, d_pn
+
+
 def _deltas(clf, xn, xp, xc_np, xc_pn) -> tuple[float, float]:
     """Mean movement TOWARD the target, per direction."""
-    d_np = (_score(clf, xc_np) - _score(clf, xn)).mean().item()
-    d_pn = (_score(clf, xp) - _score(clf, xc_pn)).mean().item()
-    return d_np, d_pn
+    d_np, d_pn = _per_image_deltas(clf, xn, xp, xc_np, xc_pn)
+    return float(d_np.mean()), float(d_pn.mean())
+
+
+def _bootstrap_ratio_ci(guidance_delta: np.ndarray, validator_delta: np.ndarray,
+                         n_boot: int = 10000, seed: int = 0) -> tuple[float, float, float]:
+    """
+    Percentile bootstrap CI on ratio-of-means = mean(validator_delta) / mean(guidance_delta).
+
+    Resamples IMAGE INDICES jointly for numerator and denominator in every
+    replicate, so the within-image pairing (both deltas come from the same
+    generated counterfactual, just scored by a different classifier) is
+    preserved. This is a ratio-of-means CI for ONE arm's shards — it does not
+    assume any pairing ACROSS arms, which arm_transfer.py cannot rely on
+    since the group-selection classifier (and therefore which images land in
+    Xn/Xp) can differ between arms.
+    """
+    rng = np.random.default_rng(seed)
+    n = len(guidance_delta)
+    point = float(validator_delta.mean() / guidance_delta.mean())
+    boot = np.empty(n_boot)
+    for i in range(n_boot):
+        idx = rng.integers(0, n, n)
+        den = guidance_delta[idx].mean()
+        boot[i] = validator_delta[idx].mean() / den if den else np.nan
+    lo, hi = np.nanpercentile(boot, [2.5, 97.5])
+    return point, float(lo), float(hi)
 
 
 def _verdict(r: float) -> str:
     return "ADVERSARIAL" if r < 0.15 else ("partial" if r < 0.5 else "TRANSFERS")
 
 
-def main(dirs: list[str], validators_override: str | None = None) -> int:
+def main(dirs: list[str], validators_override: str | None = None, bootstrap: bool = False) -> int:
     from src.xrv_classifier import build_xrv_classifier, build_ensemble_classifier
 
     try:
@@ -181,19 +213,32 @@ def main(dirs: list[str], validators_override: str | None = None) -> int:
               f"| groups = {stamp.get('EVAL_GROUP_SOURCE', '?')} "
               f"| gradcam = {stamp.get('USE_GRADCAM_MASK', '?')}")
 
-        g_np, g_pn = _deltas(clf_for(gm), xn, xp, xc_np, xc_pn)
+        if bootstrap:
+            g_np_arr, g_pn_arr = _per_image_deltas(clf_for(gm), xn, xp, xc_np, xc_pn)
+            g_np, g_pn = float(g_np_arr.mean()), float(g_pn_arr.mean())
+        else:
+            g_np, g_pn = _deltas(clf_for(gm), xn, xp, xc_np, xc_pn)
         print(f"  Δ_guidance  n→p={g_np:.4f}  p→n={g_pn:.4f}")
         print(f"  {'validator':12s} {'Δ n→p':>8s} {'Δ p→n':>8s} "
               f"{'ratio n→p':>10s} {'ratio p→n':>10s}   verdict")
 
         ratios = []
         for v in vals:
-            d_np, d_pn = _deltas(clf_for([v]), xn, xp, xc_np, xc_pn)
+            if bootstrap:
+                v_np_arr, v_pn_arr = _per_image_deltas(clf_for([v]), xn, xp, xc_np, xc_pn)
+                d_np, d_pn = float(v_np_arr.mean()), float(v_pn_arr.mean())
+            else:
+                d_np, d_pn = _deltas(clf_for([v]), xn, xp, xc_np, xc_pn)
             r_np = d_np / g_np if g_np else float("nan")
             r_pn = d_pn / g_pn if g_pn else float("nan")
             ratios.append((r_np, r_pn))
             print(f"  {short(v):12s} {d_np:8.4f} {d_pn:8.4f} "
                   f"{r_np:10.3f} {r_pn:10.3f}   {_verdict(r_np)}/{_verdict(r_pn)}")
+            if bootstrap:
+                _, lo_np, hi_np = _bootstrap_ratio_ci(g_np_arr, v_np_arr)
+                _, lo_pn, hi_pn = _bootstrap_ratio_ci(g_pn_arr, v_pn_arr)
+                print(f"    95% CI  n→p [{lo_np:.3f}, {hi_np:.3f}]"
+                      f"   p→n [{lo_pn:.3f}, {hi_pn:.3f}]  (10000 resamples)")
 
         m_np = sum(r for r, _ in ratios) / len(ratios)
         m_pn = sum(r for _, r in ratios) / len(ratios)
@@ -220,7 +265,10 @@ if __name__ == "__main__":
         i = argv.index("--validators")
         override = argv[i + 1]
         del argv[i : i + 2]
+    bootstrap = "--bootstrap" in argv
+    if bootstrap:
+        argv.remove("--bootstrap")
     if not argv:
         print(__doc__)
         raise SystemExit(2)
-    raise SystemExit(main(argv, override))
+    raise SystemExit(main(argv, override, bootstrap))

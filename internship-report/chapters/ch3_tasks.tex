@@ -12,68 +12,62 @@ forced upon it.
 \subsection{Delivered Functional Flow}
 
 The system is organised as a single linear data flow, split across two
-independent executable entry points that share a common construction
-layer:
+independent stages that share a common construction step:
 
 \begin{enumerate}[leftmargin=*]
-  \item \file{ingestion.py} downloads the RSNA dataset and exposes it as
-        an \texttt{RSNACXRDataset}.
-  \item \file{pipeline.py}'s \texttt{build\_common()} constructs the
-        dataset, the frozen models and the generator. Both entry points
-        call it, which guarantees that training and evaluation operate on
-        \emph{identical} objects.
-  \item \file{src/models.py} loads and freezes the classifier, the
-        PSPNet segmenter and the YOLOv8 feature extractor.
-  \item \file{src/generator.py} and \file{factory/finetuning.py}
-        adapt the Stable Diffusion UNet to the radiograph domain via
+  \item The RSNA dataset is downloaded and exposed as a structured,
+        indexable dataset object.
+  \item A shared construction routine builds the dataset, the frozen
+        models and the generator. Both training and evaluation call it,
+        which guarantees they operate on \emph{identical} objects.
+  \item The classifier, the PSPNet segmenter and the YOLOv8 feature
+        extractor are loaded and frozen.
+  \item The Stable Diffusion UNet is adapted to the radiograph domain via
         LoRA.
-  \item \file{factory/environment.py} and \file{factory/ppo.py} train
-        two directional PPO policies.
-  \item \file{eval_main.py} reloads the checkpoints and runs
-        \file{src/metrics.py} and \file{src/diff_viz.py}.
+  \item Two directional PPO policies are trained against that adapted
+        generator.
+  \item Evaluation reloads the checkpoints and computes the full metric
+        suite and the qualitative diff visualisations.
 \end{enumerate}
 
 Alongside this main path sit two diagnostic tools that never participate
-in training: \file{heldout_validation.py} and
-\file{check_classifier_localization.py}.
+in training: the held-out validation procedure, and a classifier
+localisation check, both described below.
 
 \subsection{Splitting Training from Evaluation}
 \label{sec:walltime}
 
-The pipeline was originally a single process, \file{main.py}, that
-trained both policies and then evaluated them. This design failed
-concretely. Job \textbf{17644171} completed PPO training, wrote both
-policies to disk, and was then killed at the 24-hour walltime boundary
-partway through evaluation. No metrics were produced, and --- critically
---- no entry point existed that could reload the surviving policies. A
-full training run had to be repeated to recover a number that the
-finished policies could already have produced.
+The pipeline was originally a single process that trained both policies
+and then evaluated them. This design failed concretely: one early run
+completed PPO training, wrote both policies to disk, and was then killed
+at the 24-hour walltime boundary partway through evaluation. No metrics
+were produced, and --- critically --- no entry point existed that could
+reload the surviving policies. A full training run had to be repeated to
+recover a number that the finished policies could already have produced.
 
-The pipeline was restructured in response. \file{main.py} now performs
-Steps~1--5 (training) and terminates after writing checkpoints;
-\file{eval_main.py} performs Steps~6--6B (evaluation) as a separate
-process, failing fast with an explicit message if the expected policy
-checkpoints are absent. Beyond removing the walltime hazard, this gives
-evaluation the property of being freely repeatable: metric fixes,
-different sample sizes and regenerated plots no longer cost a training
-run.
+The pipeline was restructured in response. Training now terminates as
+soon as checkpoints are written; evaluation runs as a separate process,
+failing fast with an explicit message if the expected policy checkpoints
+are absent. Beyond removing the walltime hazard, this gives evaluation
+the property of being freely repeatable: metric fixes, different sample
+sizes and regenerated plots no longer cost a training run.
 
-This split also created a subtler risk, addressed by
-\file{smoke_test_eval.py}: with training and evaluation in one process,
-a checkpoint that fails to reload correctly in a \emph{cold} process is
-invisible, because the objects are already in memory. The evaluation
-smoke test exercises precisely that cold-reload path.
+This split also created a subtler risk: with training and evaluation in
+one process, a checkpoint that fails to reload correctly in a \emph{cold}
+process is invisible, because the objects are already in memory. A
+dedicated evaluation smoke test was added specifically to exercise that
+cold-reload path.
 
 \section{Data and Generator Work}
 
 \subsection{Dataset Preparation}
 
-\file{ingestion.py} retrieves the RSNA Pneumonia Detection Challenge
-corpus and derives a binary label from the challenge's bounding-box
-annotations: a study is positive if any box marks lung opacity, negative
-otherwise. DICOM files are decoded, min--max normalised to $[0,1]$ and
-resized to $256\times256$. The loaded corpus comprises \textbf{26{,}684
-studies}: 6{,}012 positive and 20{,}672 negative.
+The RSNA Pneumonia Detection Challenge corpus is retrieved and a binary
+label derived from the challenge's bounding-box annotations: a study is
+positive if any box marks lung opacity, negative otherwise. DICOM files
+are decoded, min--max normalised to $[0,1]$ and resized to
+$256\times256$. The loaded corpus comprises \textbf{26{,}684 studies}:
+6{,}012 positive and 20{,}672 negative.
 
 \subsection{Class Imbalance and Balanced Sampling}
 
@@ -83,39 +77,35 @@ sees pneumonia-positive radiographs less than a quarter of the time and
 learns a correspondingly weaker conditional model for exactly the class
 the harder edit direction must synthesise.
 
-\file{factory/finetuning.py} addresses this with a
-\file{WeightedRandomSampler} (\file{_build_balanced_sampler}),
-weighting each sample by the inverse frequency of its class so that each
-epoch presents roughly balanced classes. The function fails loudly rather
-than silently degrading if a class is absent from the dataset.
+Fine-tuning addresses this with a weighted random sampler, weighting each
+sample by the inverse frequency of its class so that each epoch presents
+roughly balanced classes. The sampler fails loudly rather than silently
+degrading if a class is absent from the dataset.
 
 \subsection{LoRA Fine-Tuning}
 
-The SD1.5 UNet is adapted with rank-16 LoRA adapters
-($\alpha = 16$, dropout $0.05$) inserted into the attention projections
-\texttt{to\_q}, \texttt{to\_k}, \texttt{to\_v} and \texttt{to\_out.0},
-trained on the standard $\epsilon$-prediction denoising objective for 30
-epochs at learning rate $10^{-4}$. Class conditioning replaces SD1.5's
-text encoder entirely: a small \texttt{cond\_proj} MLP maps the target
-class and a pooled latent summary to a single cross-attention
-conditioning token.
+The SD1.5 UNet is adapted with rank-16 LoRA adapters ($\alpha = 16$,
+dropout $0.05$) inserted into the attention layers' query, key, value
+and output projections, trained on the standard $\epsilon$-prediction
+denoising objective for 30 epochs at learning rate $10^{-4}$. Class
+conditioning replaces SD1.5's text encoder entirely: a small projection
+network maps the target class and a pooled latent summary to a single
+cross-attention conditioning token.
 
-The training loop checkpoints every epoch and resumes from
-\file{checkpoints/finetuning_latest.pt}, a necessity in a walltime-bounded
-batch environment --- the log of the most recent run shows it correctly
-detecting a completed 30-epoch fine-tune and skipping straight past
-Step~4.
+The training loop checkpoints every epoch and resumes from its last
+saved state, a necessity in a walltime-bounded batch environment --- a
+run resumed after a completed 30-epoch fine-tune correctly detects that
+and skips straight to the next stage.
 
-An earlier iteration used rank~8; its checkpoints are preserved under
-\file{checkpoints/archive_v1_rank8/} for comparison.
+An earlier iteration used rank~8; its checkpoints were preserved
+separately for comparison.
 
 \subsection{Gradient-Guided DDIM Sampling}
 
-Counterfactual generation (\file{src/generator.py}) performs a partial
-forward-then-reverse DDIM trajectory, whose length is set by a
-\texttt{strength} fraction of the $T_{\text{diff}}=50$ step schedule. At
-each reverse step, two gradient terms are injected into the predicted
-clean latent $\hat z_0$:
+Counterfactual generation performs a partial forward-then-reverse DDIM
+trajectory, whose length is set by a strength fraction of the
+$T_{\text{diff}}=50$ step schedule. At each reverse step, two gradient
+terms are injected into the predicted clean latent $\hat z_0$:
 
 \[
   \Delta z_0 = -\,w(i)\,\alpha_{\text{cls}}\,
@@ -144,27 +134,24 @@ current timestep (and clean at the final step).
 This is a structural guarantee rather than a soft penalty. Content
 outside the lung field cannot be repainted by the sampler regardless of
 how the guidance gradient behaves; it can only collapse to the VAE's
-reconstruction floor. Without it, an aggressive \texttt{strength}
-schedule repaints the entire thorax.
+reconstruction floor. Without it, an aggressive sampling schedule
+repaints the entire thorax.
 
 \section{Reinforcement-Learning Control}
 
 \subsection{Environment Design}
 
-\texttt{MedicalCounterfactualEnv} (\file{factory/environment.py}) exposes
-the sampling procedure as a Gym-style MDP. An episode begins by sampling
-a ``far'' image --- one the classifier scores more than
-\texttt{FAR\_THRESHOLD}$=0.5$ away from the target class. The most recent
-run logs the resulting pool: \textbf{15{,}267 of 26{,}684 images} qualify
-for the \ntop{} direction, split into 15{,}243 for rollouts and 24
-withheld for a validity probe.
+The sampling procedure is exposed as a Gym-style MDP. An episode begins
+by sampling a ``far'' image --- one the classifier scores more than
+$0.5$ away from the target class. \textbf{15{,}267 of 26{,}684 images}
+qualify for the \ntop{} direction, split into 15{,}243 for rollouts and
+24 withheld for a validity probe.
 
 The observation concatenates the flattened original and current latents,
 a normalised step index, the current $|f(x_t) - c|$, the target class,
-and the flattened lung mask --- $73{,}731$ dimensions in total, as logged
-at policy construction. Episodes terminate when
-$|f(x_t) - c| < \varepsilon_{\text{stop}} = 0.08$ or the step budget
-$T = 8$ is exhausted.
+and the flattened lung mask --- $73{,}731$ dimensions in total. Episodes
+terminate when $|f(x_t) - c| < \varepsilon_{\text{stop}} = 0.08$ or the
+step budget $T = 8$ is exhausted.
 
 \subsection{Action Space}
 
@@ -173,8 +160,7 @@ through sigmoid transforms onto bounded control ranges:
 
 \begin{table}[h]
 \centering
-\caption[PPO action space]{PPO action space (\file{factory/environment.py},
-\texttt{MedicalCounterfactualEnv.step}).}
+\caption[PPO action space]{PPO action space.}
 \label{tab:actions}
 \begin{tabular}{@{}clc@{}}
 \toprule
@@ -202,17 +188,17 @@ what makes the problem a sequential decision problem at all.
 
 \subsection{Actor-Critic Architecture}
 
-\texttt{PPOActorCritic} (\file{factory/ppo.py}) uses a convolutional
-trunk over the latent-shaped portion of the observation (three
-\texttt{Conv2d} layers, $32\to64\to128$ channels, followed by a
-256-unit MLP head that also consumes the scalar observation components).
-This trunk feeds four heads: a Gaussian policy head with a
-\textbf{learnable per-dimension \texttt{log\_std}} parameter, a value
-head, and three auxiliary heads predicting feasibility, progress and the
-stop decision, each trained with its own auxiliary loss.
+The policy network uses a convolutional trunk over the latent-shaped
+portion of the observation (three convolutional layers, $32\to64\to128$
+channels, followed by a 256-unit MLP head that also consumes the scalar
+observation components). This trunk feeds four heads: a Gaussian policy
+head with a \textbf{learnable per-dimension standard deviation}
+parameter, a value head, and three auxiliary heads predicting
+feasibility, progress and the stop decision, each trained with its own
+auxiliary loss.
 
-Making \texttt{log\_std} a learned parameter rather than a fixed
-schedule lets the agent modulate its own exploration per action
+Making the policy's standard deviation a learned parameter rather than a
+fixed schedule lets the agent modulate its own exploration per action
 dimension. The resulting policy is compact: \textbf{197{,}910
 parameters}, against an observation of $73{,}731$ dimensions.
 
@@ -232,23 +218,23 @@ identified in Section~\ref{sec:future} as future work.
 
 \section{Iterative Debugging and Redesign}
 
-The chronology below is reconstructed from the repository's commit
-history and from the design rationale recorded in \file{config.py}, which
-was maintained as a running experimental log throughout the internship.
+The chronology below is reconstructed from the project's development
+history and from the design rationale recorded alongside the system's
+configuration, which was maintained as a running experimental log
+throughout the internship.
 
 \subsection{Diagnosis: the Reward Was Almost Entirely a Flip Bonus}
 
 Early counterfactuals changed between 66\% and 75\% of all pixels ---
 diffuse, whole-image edits rather than localised lesions. Decomposing the
-reward actually obtained by the v1 policy (reconstructed from job
-\textbf{17648782}, which logged \texttt{avg\_return}$=33.931$ at
-\texttt{avg\_ep\_len}$=1.00$) explained why:
+reward actually obtained by the first policy version, whose episodes
+averaged length $1.00$ with a mean return of $33.931$, explained why:
 
 \begin{table}[h]
 \centering
-\caption[v1 reward decomposition]{Reward decomposition of the v1 policy, reconstructed from job 17648782.
-The terminal flip bonuses accounted for 93\% of the return; preservation was
-numerically negligible.}
+\caption[v1 reward decomposition]{Reward decomposition of the first policy
+version. The terminal flip bonuses accounted for 93\% of the return;
+preservation was numerically negligible.}
 \label{tab:v1reward}
 \begin{tabular}{@{}lrr@{}}
 \toprule
@@ -280,33 +266,31 @@ immediately. Three changes followed:
         sparsity-inducing, required rescaling $\lambda_{\text{fid}}$ from
         0.5 to 2.0, since L1 is roughly $25\times$ larger numerically at
         these magnitudes.
-  \item \textbf{Episode-origin anchoring.} With
-        \texttt{ANCHOR\_TO\_EPISODE\_ORIGIN}, the background lock and the
-        preservation targets are anchored to the episode's \emph{original}
-        image rather than to the previous refinement pass's output.
-        Anchoring to the previous pass allows unbounded drift over an
-        episode; anchoring to the origin restores the Markov property and
-        forces the policy to refine rather than to blast.
+  \item \textbf{Episode-origin anchoring.} The background lock and the
+        preservation targets were changed to anchor to the episode's
+        \emph{original} image rather than to the previous refinement
+        pass's output. Anchoring to the previous pass allows unbounded
+        drift over an episode; anchoring to the origin restores the
+        Markov property and forces the policy to refine rather than to
+        blast.
 \end{itemize}
 
 \subsection{A Reward-Scaling Bug in the Asymmetry Correction}
 
 The \ntop{} direction is empirically harder than \pton{}, and was
-originally compensated with a $2.25\times$ \texttt{direction\_scale}
-boost on its reward. The scale was found to be applied only to the
-progress terms and not to \Rterm{fid} or \Rterm{pres} --- meaning
-preservation was effectively $2.25\times$ \emph{less} important on
-precisely the direction that was already producing the most diffuse
-edits.
+originally compensated with a $2.25\times$ boost applied to its reward.
+The scale was found to be applied only to the progress terms and not to
+\Rterm{fid} or \Rterm{pres} --- meaning preservation was effectively
+$2.25\times$ \emph{less} important on precisely the direction that was
+already producing the most diffuse edits.
 
 Applying the scale uniformly across all reward terms corrected the
-relative weighting. It is worth stating explicitly, as the code's own
-change log does, that under PPO's per-update advantage normalisation a
-uniform scalar multiplying the entire reward is close to a no-op for the
-policy gradient. The fix removed a harmful \emph{relative} re-weighting;
-it did not inject additional learning signal into the harder direction,
-and the residual asymmetry in Chapter~\ref{ch:results} is consistent with
-that.
+relative weighting. It is worth stating explicitly that under PPO's
+per-update advantage normalisation a uniform scalar multiplying the
+entire reward is close to a no-op for the policy gradient. The fix
+removed a harmful \emph{relative} re-weighting; it did not inject
+additional learning signal into the harder direction, and the residual
+asymmetry in Chapter~\ref{ch:results} is consistent with that.
 
 \subsection{Grad-CAM Localisation Check}
 \label{sec:gradcam_mask}
@@ -317,9 +301,10 @@ global brightness or contrast shortcut --- a well-documented failure mode
 of CXR classifiers, and one that would make every generated
 counterfactual a mere exposure adjustment.
 
-\file{check_classifier_localization.py} renders Grad-CAM overlays for
-this purpose. The comparison between the original classifier and the
-TorchXRayVision DenseNet-121 is shown in Figure~\ref{fig:gradcam}.
+A dedicated diagnostic renders Grad-CAM overlays for this purpose. The
+comparison between an earlier in-house classifier and the TorchXRayVision
+DenseNet-121 ultimately adopted as the guidance model is shown in
+Figure~\ref{fig:gradcam}.
 
 \begin{figure}[h]
   \centering
@@ -331,27 +316,26 @@ TorchXRayVision DenseNet-121 is shown in Figure~\ref{fig:gradcam}.
     \includegraphics[width=\textwidth]{gradcam_xrv_0.png}
     \caption{TorchXRayVision DenseNet-121.}
   \end{subfigure}
-  \caption[Grad-CAM localisation diagnostic]{Grad-CAM localisation diagnostic, one representative case from
-  the six pairs written to \file{outputs/gradcam_check/}. This diagnostic
-  motivated the replacement of the project's own ResNet-18 classifier
-  (\file{checkpoint/classifier.pt}) with the pretrained TorchXRayVision
-  DenseNet-121 as the guidance model.}
+  \caption[Grad-CAM localisation diagnostic]{Grad-CAM localisation
+  diagnostic, one representative case from six compared pairs. This
+  diagnostic motivated the replacement of the project's own in-house
+  ResNet-18 classifier with the pretrained TorchXRayVision DenseNet-121
+  as the guidance model.}
   \label{fig:gradcam}
 \end{figure}
 
 The same Grad-CAM implementation was subsequently promoted from a
-diagnostic to a \emph{constraint}. With \texttt{USE\_GRADCAM\_MASK}, the
-map is normalised at its 99th percentile, raised to a power
-$\gamma = 0.75$, floored at $0.15$ and Gaussian-blurred, then used to
-modulate the edit budget spatially --- so the agent may edit freely where
-the classifier attends and only marginally elsewhere.
+diagnostic to a \emph{constraint}. Once enabled, the map is normalised at
+its 99th percentile, raised to a power $\gamma = 0.75$, floored at $0.15$
+and Gaussian-blurred, then used to modulate the edit budget spatially ---
+so the agent may edit freely where the classifier attends and only
+marginally elsewhere.
 
-Enabling this required an ensemble-aware Grad-CAM path
-(\texttt{gradcam.ensemble\_grad\_cam}). Without it, resolving the target
-layer on an ensemble walks \texttt{named\_modules()} and silently returns
-the \emph{first member's} feature block, producing a single-model CAM
-mislabelled as the ensemble's. This is recorded in \file{config.py} as
-verified behaviour rather than a suspicion.
+Enabling this required an ensemble-aware Grad-CAM path. Without it,
+resolving the target layer on an ensemble silently returns the \emph{first
+member's} feature block, producing a single-model CAM mislabelled as the
+ensemble's --- verified behaviour, recorded as such precisely so it could
+not be mistaken for a suspicion later.
 
 \subsection{Sparsity Reward with Annealed Ramp}
 
@@ -365,11 +349,10 @@ An explicit L1 sparsity reward term was added to target that tail, with
 two refinements. First, it is \emph{annealed}: the weight is zero for the
 first 20\% of updates, ramps linearly to its target of $2.0$ between 20\%
 and 60\%, and is constant thereafter, so the policy first learns a
-reliable flip and only then is pressured toward minimal edits.
-Second, with \texttt{SPARSITY\_OUTSIDE\_CAM\_ONLY} the penalty is
-weighted by $(1-\text{CAM})$, penalising only edit mass \emph{outside}
-the attended region --- a plain L1 would also penalise the concentrated
-core that the method is trying to keep.
+reliable flip and only then is pressured toward minimal edits. Second,
+the penalty can be restricted to weight only edit mass \emph{outside} the
+Grad-CAM-attended region, since a plain, unweighted penalty would also
+penalise the concentrated core the method is trying to keep.
 
 A safeguard accompanies the ramp: validity is probed on a held-out set
 every 10 updates, and the ramp freezes if it drops more than 8 points
@@ -389,65 +372,64 @@ the primary metric. Counterfactual Validity was being computed with the
 circular: it measures how well an optimiser optimised its own objective,
 not whether the resulting image depicts disease.
 
-\file{heldout_validation.py} was written as the independent check. It
+A held-out validation procedure was written as the independent check. It
 re-scores the generated counterfactuals with TorchXRayVision classifiers
 that never participated in the guidance loop, and includes an agreement
 control on the \emph{original} images --- so that poor transfer cannot be
-dismissed as the validators simply disagreeing about the task. It is
-deliberately a separate SLURM job rather than part of
-\file{eval_main.py}, and caches its generated counterfactuals so that
-adding a validator costs minutes rather than hours.
+dismissed as the validators simply disagreeing about the task. It runs
+deliberately as a separate step from the main evaluation pipeline, and
+caches its generated counterfactuals so that adding a validator costs
+minutes rather than hours.
 
 The results (Chapter~\ref{ch:results}, Section~\ref{sec:heldout}) were
 negative, and led directly to a redesign: the guidance signal was changed
-from the single RSNA model to an \textbf{ensemble} of
-\texttt{densenet121-res224-rsna} and \texttt{densenet121-res224-chex}.
-The reasoning is that an adversarial direction found against one model
-rarely survives against an independently trained one, so requiring
-consensus makes the adversarial shortcut a substantially narrower target.
-The \texttt{-chex} model was chosen specifically because its 11-head
-multi-task training resists the global-brightness shortcut.
+from a single classifier trained on RSNA data to an \textbf{ensemble} of
+that classifier and one trained on CheXpert. The reasoning is that an
+adversarial direction found against one model rarely survives against an
+independently trained one, so requiring consensus makes the adversarial
+shortcut a substantially narrower target. The CheXpert-trained model was
+chosen specifically because its eleven-head multi-task training resists
+the global-brightness shortcut.
 
-This change carries a bookkeeping obligation recorded in the
-configuration: any classifier in the guidance ensemble ceases to be a
-valid held-out validator. The validator set was accordingly reduced to
-\texttt{nih}, \texttt{mimic\_ch} and \texttt{pc}.
+This change carries a bookkeeping obligation: any classifier in the
+guidance ensemble ceases to be a valid held-out validator. The validator
+set was accordingly reduced to three classifiers trained on NIH, MIMIC-CXR
+and PadChest data respectively.
 
 \section{Experimental Infrastructure}
 
 \subsection{Smoke Tests}
 
-\file{smoke_test.py} and \file{smoke_test_eval.py} run the training and
-evaluation paths end-to-end with deliberately tiny budgets, to surface
-crashes and tensor-shape errors before a 20-hour job is queued. The
-training smoke test is parameterised by an \texttt{SMOKE\_ARM}
-environment variable selecting \texttt{baseline} (all new flags off,
-reproducing the pre-change pipeline), \texttt{mask} (Grad-CAM constraint
-only) or \texttt{all} --- the same ablation arms used to attribute
-behaviour changes to individual mechanisms.
+Dedicated smoke tests run the training and evaluation paths end-to-end
+with deliberately tiny budgets, to surface crashes and tensor-shape
+errors before a 20-hour job is queued. The training smoke test is
+parameterised to select between a baseline configuration (all new flags
+off, reproducing the pre-change pipeline), a Grad-CAM-constraint-only
+configuration, or the full configuration --- the same ablation arms used
+to attribute behaviour changes to individual mechanisms.
 
 \subsection{Job Monitoring}
 
-All batch scripts declare \texttt{--mail-type=END,FAIL} with a
-notification address, so job completion and failure are reported without
-polling. Each script also runs \texttt{set -euo pipefail} and performs
-explicit precondition checks before loading any model weights --- the
-evaluation and held-out scripts verify that the expected policy
-checkpoints exist, and the held-out script additionally verifies that
-each validator's weights are present in the local TorchXRayVision cache,
-failing in seconds rather than after three hours of generation.
+Every batch job is configured to send a notification on completion or
+failure, so job status is reported without polling. Each job also
+performs explicit precondition checks before loading any model weights
+--- the evaluation and held-out procedures verify that the expected
+policy checkpoints exist, and the held-out procedure additionally
+verifies that each validator's weights are present in the local
+TorchXRayVision cache, failing in seconds rather than after three hours
+of generation.
 
 One such check encodes a non-obvious detail worth recording: the
 TorchXRayVision cache filename does not always match the weight
-identifier. \texttt{densenet121-res224-rsna} is cached as
-\texttt{kaggle-densenet121-*.pt}, because RSNA was a Kaggle competition,
-so a naive existence check for \texttt{rsna-densenet121-*} fails even on
-a correctly provisioned machine.
+identifier, because the RSNA-trained classifier is cached under a name
+referencing Kaggle rather than RSNA (the dataset's original hosting
+platform), so a naive existence check on the more obvious name fails even
+on a correctly provisioned machine.
 
-Python is invoked unbuffered (\texttt{python -u}) throughout, so that a
-job's log is readable while it is still running. In a non-interactive
-environment where a stalled job cannot be inspected directly, the log is
-the only diagnostic channel available.
+Every process runs unbuffered, so that a job's log is readable while it
+is still running. In a non-interactive environment where a stalled job
+cannot be inspected directly, the log is the only diagnostic channel
+available.
 
 \section{Conclusion}
 

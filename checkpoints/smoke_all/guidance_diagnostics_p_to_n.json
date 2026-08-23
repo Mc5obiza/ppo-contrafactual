@@ -2,10 +2,10 @@
   "target_c": 0.0,
   "n_episodes": 2,
   "n_steps": 6,
-  "guidance_bias_mean": 1.024271696805954,
-  "guidance_bias_std": 0.0891894087187579,
-  "n_passes_mean": 2.1666666666666665,
-  "pres_suppression_mean": 0.9844795962174734,
-  "pres_suppression_min": 0.8866826295852661,
-  "avg_reward": -1.456748244604724
+  "guidance_bias_mean": 0.9549780786037445,
+  "guidance_bias_std": 0.09347982023715336,
+  "n_passes_mean": 2.0,
+  "pres_suppression_mean": 1.0567988852659862,
+  "pres_suppression_min": 0.922604501247406,
+  "avg_reward": -1.8988383738064165
 }
