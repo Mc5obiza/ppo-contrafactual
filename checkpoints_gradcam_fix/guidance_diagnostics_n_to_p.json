@@ -1,0 +1,11 @@
+{
+  "target_c": 1.0,
+  "n_episodes": 20,
+  "n_steps": 492,
+  "guidance_bias_mean": 0.7563116029510654,
+  "guidance_bias_std": 0.07718126573880912,
+  "n_passes_mean": 2.975609756097561,
+  "pres_suppression_mean": 1.3337808636630453,
+  "pres_suppression_min": 0.8543037176132202,
+  "avg_reward": -3.011675787672906
+}

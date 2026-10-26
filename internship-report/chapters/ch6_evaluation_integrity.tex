@@ -45,39 +45,38 @@ up to this point.
 
 \subsection{No train/test separation}
 
-\texttt{build\_common()} constructed a single dataset object and handed the
-same one to LoRA fine-tuning, to the PPO far-pool sampler, and to the
-metrics group scan. Concretely, this means the images the evaluation suite
-in Chapter~\ref{ch:results} reports on had already been seen by the
-generator during fine-tuning and by the policy during rollouts --- every
-headline number up to that chapter was measured, at least in part, on
-training data.
+The pipeline's shared construction step built a single dataset object and
+handed the same one to LoRA fine-tuning, to the PPO far-pool sampler, and
+to the metrics group scan. Concretely, this means the images the
+evaluation suite in Chapter~\ref{ch:results} reports on had already been
+seen by the generator during fine-tuning and by the policy during
+rollouts --- every headline number up to that chapter was measured, at
+least in part, on training data.
 
-\file{splits.py} closes this with one deterministic, persisted,
-\textbf{patient-level} split: computed once, written to disk, and read back
-by every stage that touches the dataset. Patient-level rather than
-image-level matters because splitting by image alone would place two views
-of the same patient on both sides of the boundary, letting the generator
-learn that patient's anatomy from the training copy before being evaluated
-against the test copy. For RSNA this happens to be moot (\texttt{ingestion.py}
-already groups one entry per \texttt{patientId}), but the same code path is
-what makes the split correct for CBIS-DDSM in Chapter~\ref{ch:breast},
-where a single patient contributes several mammographic views.
+This was closed with one deterministic, persisted, \textbf{patient-level}
+split: computed once, written to disk, and read back by every stage that
+touches the dataset. Patient-level rather than image-level matters
+because splitting by image alone would place two views of the same
+patient on both sides of the boundary, letting the generator learn that
+patient's anatomy from the training copy before being evaluated against
+the test copy. For RSNA this happens to be moot (the ingestion step
+already groups one entry per patient), but the same mechanism is what
+makes the split correct for CBIS-DDSM in Chapter~\ref{ch:breast}, where a
+single patient contributes several mammographic views.
 
 The split has to be computed once and shared rather than recomputed per
-process because \file{eval_main.py --stage generate} runs as eight
-independent SLURM array tasks in eight separate processes, with a ninth
-process performing the reduce; an RNG-based split recomputed in each would
-not agree with itself.
+process because counterfactual generation runs as several independent
+parallel batch tasks with a separate process performing the reduce
+afterward; a split recomputed independently in each would not agree with
+itself.
 
 \subsection{Unseeded training}
 
-The only \texttt{torch.manual\_seed} call anywhere in the codebase was in
-the evaluation loop, which made the sharded evaluation step
-bit-reproducible while the training that produced the policies being
-evaluated was not: two identical submissions of \file{run_ppo.slurm}
-produced two different policies, and nothing recorded which checkpoint came
-from which run.
+Randomness was seeded only in the evaluation loop, which made the
+sharded evaluation step bit-reproducible while the training that produced
+the policies being evaluated was not: two identical training submissions
+produced two different policies, and nothing recorded which checkpoint
+came from which run.
 
 That is survivable for reporting one headline number, as
 Chapter~\ref{ch:results} does. It is not survivable for a control-arm
@@ -86,14 +85,14 @@ by \emph{treatment alone}. If each arm also carries its own uncontrolled
 seed, an observed difference between arms cannot be attributed to the
 treatment with any confidence.
 
-\file{seeding.py} seeds Python's \texttt{random}, NumPy, torch on CPU and
-every CUDA device, cuDNN's algorithm selection, and DataLoader worker RNGs.
-It documents equally carefully what seeding does \emph{not} buy: resuming a
-run does not replay an uninterrupted one, because a resumed run re-seeds at
-the same base and then fast-forwards through a different number of draws
-than an uninterrupted run would --- a distinction made explicit via an
-\texttt{offset} parameter rather than left to be discovered by a mismatched
-resume.
+A dedicated seeding routine now seeds every relevant random-number
+source --- the language runtime, the numerical library, the GPU device,
+and the data-loading workers --- and documents equally carefully what
+seeding does \emph{not} buy: resuming a run does not replay an
+uninterrupted one, because a resumed run re-seeds at the same base and
+then fast-forwards through a different number of draws than an
+uninterrupted run would --- a distinction made explicit rather than left
+to be discovered by a mismatched resume.
 
 \subsection{No metric anchored to ground truth}
 \label{sec:lhr}
@@ -102,18 +101,19 @@ Every metric reported up to Chapter~\ref{ch:results} --- CV, FID, IP, CTR,
 SCP --- is either circular (computed with the guidance classifier) or a
 coarse structural proxy. None of them ask the most direct available
 question: \emph{does the edit land where the disease actually is?} RSNA
-ships 9{,}555 radiologist-drawn opacity bounding boxes, and
-\texttt{ingestion.py} discarded them at load time.
+ships 9{,}555 radiologist-drawn opacity bounding boxes, which had been
+discarded at load time up to this point.
 
-The boxes are retained now, and \texttt{metrics.lesion\_hit\_rate} (LHR)
-measures the share of an edit's absolute-difference mass that falls inside
-the annotated box, against the box's own area as the null baseline --- an
-image where the box covers 40\% of the frame needs no targeting at all to
-score a hit rate near $0.40$, so \textbf{lift} (hit rate divided by the null
-baseline) rather than raw hit rate is the number that carries information.
-LHR is defined only for the \pton{} direction: \ntop{} source images are
-classifier-negative by construction and carry no lesion annotation, so
-there is no ground truth for where a synthesised opacity ought to appear.
+The boxes are retained now, and a new metric, Lesion Hit Rate (LHR),
+measures the share of an edit's absolute-difference mass that falls
+inside the annotated box, against the box's own area as the null
+baseline --- an image where the box covers 40\% of the frame needs no
+targeting at all to score a hit rate near $0.40$, so \textbf{lift} (hit
+rate divided by the null baseline) rather than raw hit rate is the number
+that carries information. LHR is defined only for the \pton{} direction:
+\ntop{} source images are classifier-negative by construction and carry
+no lesion annotation, so there is no ground truth for where a synthesised
+opacity ought to appear.
 
 Before trusting it as a gate metric, LHR was calibrated against three
 sanity checks:
@@ -142,19 +142,19 @@ before it is trusted as one.
 
 \subsection{Pinning what a silent failure would otherwise hide}
 
-\file{test\_invariants.py} was added alongside these three fixes to pin five
+An automated test suite was added alongside these three fixes to pin five
 properties whose silent failure would produce a plausible-looking but
 \emph{wrong} number rather than a crash --- exactly the failure mode that
 had already cost this project one headline result in
 Section~\ref{sec:heldout}: that the train/test split is disjoint and
-patient-level; that \texttt{scan\_groups}' returned tensors and dataset
-indices stay aligned; that \texttt{lesion\_hit\_rate} reproduces the
-calibration above; that degenerate or uncomputed metrics never silently
-reach \file{eval\_metrics.json}; and that shard splitting and merging is a
-lossless partition that refuses a partial or mixed-arm set rather than
-reducing it anyway. It runs CPU-only in about a minute on the login node,
-deliberately outside the class of coverage \file{smoke\_test.py} already
-provides for shape errors and missing checkpoints.
+patient-level; that group-scanning tensors and dataset indices stay
+aligned; that LHR reproduces the calibration above; that degenerate or
+uncomputed metrics never silently reach a recorded result; and that shard
+splitting and merging is a lossless partition that refuses a partial or
+mixed-arm set rather than reducing it anyway. It runs CPU-only in about a
+minute on the login node, deliberately outside the class of coverage the
+project's existing smoke tests already provide for shape errors and
+missing checkpoints.
 
 \section{Making the Control and Countermeasure Arms Comparable}
 \label{sec:arms}
@@ -166,87 +166,91 @@ comparison silently.
 
 \subsection{A routing bug that would have made every arm identical}
 
-\file{run\_full\_evaluation} always had a \texttt{policy is None} fallback
-path, and it had never been exercised, because \file{eval\_main.py} always
-passed a trained policy. \texttt{--arm trained|none|random} now selects
-which of the three runs, completing a code path that existed but was dead.
+The core evaluation routine always had a fallback path for running with
+no policy at all, and it had never been exercised, because the pipeline
+always passed a trained policy. A new selector --- trained, no-policy, or
+random-policy --- now chooses which of the three runs, completing a code
+path that existed but was dead.
 
 Two further bugs, found while wiring this up, would each independently have
 invalidated any comparison built on top of them:
 
 \begin{itemize}[leftmargin=*]
-  \item \file{run\_eval\_reduce.slurm} computed \texttt{SHARD\_DIR} from
-        \texttt{EVAL\_ARM}, echoed it, and checked that it existed --- and
-        then never actually passed it to the Python process. Every reduce
-        therefore fell back silently to \texttt{--arm trained} and the
-        trained arm's shard directory. A control arm run this way would
-        have loaded the \emph{trained} arm's shards, drawn its diff plots
-        from the \emph{trained} policies, and written the result out
-        labelled as the control's. All three arms would have agreed
-        exactly, and ``the PPO policy contributes nothing'' would have been
-        an artefact of a missing command-line flag rather than a finding.
-  \item All three arms wrote \file{eval\_metrics.json} and the diff PNGs
-        into the same directory, so each reduce silently overwrote the
-        previous arm's output and only the most recently submitted arm's
-        results survived on disk. \texttt{--out-dir} now separates them.
+  \item The reduce stage computed the correct shard directory for the
+        arm being reduced, echoed it, and checked that it existed ---
+        and then never actually passed it on to the step that reads it.
+        Every reduce therefore fell back silently to the trained arm's
+        shard directory, regardless of which arm was requested. A control
+        arm run this way would have loaded the \emph{trained} arm's
+        shards, drawn its diff plots from the \emph{trained} policies,
+        and written the result out labelled as the control's. All three
+        arms would have agreed exactly, and ``the PPO policy contributes
+        nothing'' would have been an artefact of a missing setting rather
+        than a finding.
+  \item All three arms wrote their results into the same output
+        directory, so each reduce silently overwrote the previous arm's
+        output and only the most recently submitted arm's results
+        survived on disk. Each arm now writes to its own directory.
 \end{itemize}
 
 \subsection{Wiring the countermeasure arms}
 
 The two countermeasures carried forward from Chapter~\ref{ch:results} ---
-ensemble guidance and the Grad-CAM mask --- are exposed as run-time flags
-(\texttt{--guidance-ensemble}, \texttt{--gradcam-mask}) rather than edits to
-\file{config.py}, because \file{run\_eval\_cf.slurm} correctly forbids
-editing \file{config.py} between submitting a shard array and running its
-reduce. \file{generate\_counterfactual} had always accepted a
-\texttt{cam\_scale} argument, but only the RL environment ever computed and
-passed it, so the no-policy generation path silently ignored
-\texttt{USE\_GRADCAM\_MASK} entirely --- the Grad-CAM countermeasure would
-have been a silent no-op on precisely the arm it is cheapest to test it on.
+ensemble guidance and the Grad-CAM mask --- are exposed as run-time
+options rather than edits to the system's persistent configuration,
+because the generation stage correctly forbids changing that
+configuration between submitting a shard array and running its reduce.
+The counterfactual generator had always accepted an argument controlling
+the strength of the Grad-CAM constraint, but only the reinforcement-
+learning environment ever computed and passed it, so the no-policy
+generation path silently ignored the Grad-CAM setting entirely --- the
+Grad-CAM countermeasure would have been a silent no-op on precisely the
+arm it is cheapest to test it on.
 
-A further requirement, \texttt{--group-source label}, is mandatory whenever
-comparing arms that change $f(\cdot)$: the standard group selection
-(\texttt{scan\_groups}) picks the $X_n$/$X_p$ evaluation groups by
-classifier-confidence thresholds, so an ensemble-guided arm --- which by
-construction moves $f(\cdot)$ --- would otherwise be evaluated against a
-\emph{different} image set than the single-classifier baseline, and the
-paired comparison the whole sweep depends on would quietly stop being
-paired. Selecting by the radiologist's ground-truth label instead removes
-this dependence; a visible side effect is that the number of annotated
-pairs used for LHR rises from 183/200 under the classifier-threshold
-protocol to 200/200 under the label protocol (Table~\ref{tab:lhr_arms}),
-since every label-positive RSNA image carries a bounding box by
-construction.
+A further requirement is mandatory whenever comparing arms that change
+$f(\cdot)$: the standard group-selection procedure picks the $X_n$/$X_p$
+evaluation groups by classifier-confidence thresholds, so an
+ensemble-guided arm --- which by construction moves $f(\cdot)$ --- would
+otherwise be evaluated against a \emph{different} image set than the
+single-classifier baseline, and the paired comparison the whole sweep
+depends on would quietly stop being paired. Selecting by the
+radiologist's ground-truth label instead removes this dependence; a
+visible side effect is that the number of annotated pairs used for LHR
+rises from 183/200 under the classifier-threshold protocol to 200/200
+under the label protocol (Table~\ref{tab:lhr_arms}), since every
+label-positive RSNA image carries a bounding box by construction.
 
 \subsection{A denominator bug in the held-out gate}
 \label{sec:denominator_bug}
 
-The most consequential of these bugs concerned
-\file{heldout\_validation.py} itself, the script behind
-Table~\ref{tab:heldout}. It built its guidance ensemble model from
-\texttt{GUIDANCE\_ENSEMBLE\_WEIGHTS} \emph{regardless} of whether
-\texttt{USE\_GUIDANCE\_ENSEMBLE} was set --- and it was \texttt{False} for
-every result reported in Chapter~\ref{ch:results}. Generation was therefore
-guided by \texttt{-rsna} alone, while the transfer-ratio \emph{denominator}
-used the rsna+chex ensemble mean score shift. Measured directly:
-$\Delta_{\text{rsna}} = 0.9152$, $\Delta_{\text{chex}} = 0.4106$, mean
-$0.663$ --- exactly the ``guidance'' delta that had been printed. Since
-\texttt{-chex} never participated in guidance, it was diluting a denominator
+The most consequential of these bugs concerned the held-out validation
+procedure itself, behind Table~\ref{tab:heldout}. It built its guidance
+ensemble model from the configured ensemble roster \emph{regardless} of
+whether ensemble guidance was actually switched on --- and it was off for
+every result reported in Chapter~\ref{ch:results}. Generation was
+therefore guided by the single RSNA-trained classifier alone, while the
+transfer-ratio \emph{denominator} used the two-model ensemble's mean
+score shift. Measured directly: $\Delta_{\text{rsna}} = 0.9152$,
+$\Delta_{\text{chex}} = 0.4106$, mean $0.663$ --- exactly the
+``guidance'' delta that had been printed. Since the CheXpert-trained
+classifier never participated in guidance, it was diluting a denominator
 it never optimised, making that denominator too small and inflating
-\emph{every} previously published transfer ratio: the \texttt{-nih}
-transfer ratio had been read as $0.117$; corrected, it is $0.085$.
-\texttt{-chex} had also been wrongly dropped as a held-out validator in the
-process, when it should have remained one under single-classifier guidance.
+\emph{every} previously published transfer ratio: the NIH-validator
+transfer ratio had been read as $0.117$; corrected, it is $0.085$. That
+same classifier had also been wrongly dropped as a held-out validator in
+the process, when it should have remained one under single-classifier
+guidance.
 
-Worse, this could not be fixed by hand at the command line: the cached
-shard set returned its own stored configuration spec regardless of a
-\texttt{--guidance-weights} override, silently overriding the flag, so two
-independently ``corrected'' re-runs produced byte-identical output --- which
-looked exactly like confirmation rather than a second instance of the same
-bug. Precedence is now explicit and enforced in one place: an explicit CLI
-flag overrides the shard's own recorded stamp, which overrides the live
-\file{config.py} value, closing off the ambiguity that let a stale cache
-masquerade as a correction.
+Worse, this could not be fixed by hand at the command line: a cached
+shard set returned its own stored configuration regardless of an
+override supplied when re-running it, silently overriding the requested
+setting, so two independently ``corrected'' re-runs produced
+byte-identical output --- which looked exactly like confirmation rather
+than a second instance of the same bug. Precedence is now explicit and
+enforced in one place: an explicit run-time override takes priority over
+the shard's own recorded configuration stamp, which in turn takes
+priority over the live system configuration, closing off the ambiguity
+that let a stale cache masquerade as a correction.
 
 \section{Reproducibility and Survivability on a Shared Cluster}
 \label{sec:survivability}
@@ -257,74 +261,73 @@ non-reproducibly, cannot be compared at all.
 
 \subsection{Benchmarking episode cost instead of guessing it}
 
-\file{config.py} itself had, in a comment above \texttt{N\_EPISODES}, asked
-for a short throughput benchmark before the real run and warned that the
-placeholder value of 800 should not be treated as tuned. That benchmark was
-never run. The cost of not running it is on the record: six jobs were
-killed at their 24-hour walltime, including two full PPO training runs, one
-of which left nothing recoverable. \file{benchmark\_episode\_cost.py}
-measures the actual per-episode and per-LoRA-epoch cost distribution on
-whichever GPU a job lands on --- a \emph{distribution}, not a mean, because
-\texttt{BUDGET\_T=25} with \texttt{FIXED\_EPISODE\_LENGTH=False} makes
-per-episode cost variable rather than fixed, and it is exactly variability
-near the tail that a walltime budget needs to plan against. On an H200, the
-harder \ntop{} direction runs at 30.7\,s/episode at the 90th percentile, and
-\texttt{N\_EPISODES=800} fits comfortably within roughly 6.8 hours; the same
-run on an older Quadro RTX~6000 takes on the order of 27 hours --- close
-enough to the walltime cap to explain the earlier failures directly.
-\file{run\_ppo.slurm} is now pinned to hardware accordingly.
+The system's own configuration had, in a comment above the episode-count
+setting, asked for a short throughput benchmark before the real run and
+warned that the placeholder value of 800 should not be treated as tuned.
+That benchmark was never run. The cost of not running it is on the
+record: six jobs were killed at their 24-hour walltime, including two
+full PPO training runs, one of which left nothing recoverable. A
+dedicated benchmarking procedure measures the actual per-episode and
+per-LoRA-epoch cost distribution on whichever GPU a job lands on --- a
+\emph{distribution}, not a mean, because the per-step action budget and
+variable episode length make per-episode cost variable rather than fixed,
+and it is exactly variability near the tail that a walltime budget needs
+to plan against. On an H200, the harder \ntop{} direction runs at
+30.7\,s/episode at the 90th percentile, and the full episode budget fits
+comfortably within roughly 6.8 hours; the same run on an older Quadro
+RTX~6000 takes on the order of 27 hours --- close enough to the walltime
+cap to explain the earlier failures directly. Training jobs are now
+pinned to hardware accordingly.
 
-Four scripts had no SLURM \texttt{--constraint} and no preflight GPU check,
-so a job could land on a specific Blackwell node whose \texttt{sm\_120}
-architecture is incompatible with this project's pinned
-\texttt{torch~2.5.1+cu121} --- every CUDA operation on that node fails with
-``no kernel image is available'' rather than running slowly, which is what
-killed two jobs directly. The SLURM feature string alone cannot distinguish
-that node from the older Turing-generation RTX~6000s sharing its name, and
-SLURM constraints have no NOT operator, so the node is excluded by name
-instead.
+Four scripts had no hardware constraint and no preflight GPU check, so a
+job could land on a specific Blackwell node whose architecture is
+incompatible with this project's pinned numerical framework version ---
+every GPU operation on that node fails outright rather than running
+slowly, which is what killed two jobs directly. The scheduler's own
+feature tags alone cannot distinguish that node from an older-generation
+card sharing its advertised name, and the scheduler's constraint syntax
+has no negation operator, so the node is excluded by name instead.
 
 \subsection{A concurrent-write race}
 
-Found by watching a running array job: \file{run\_ppo.slurm} runs both edit
-directions concurrently in the same checkpoint directory, and seeding makes
-them reach every LoRA epoch boundary within seconds of each other, so both
-processes wrote the same \texttt{finetuning\_latest.pt.tmp} path
-simultaneously. Two concurrent \texttt{torch.save} calls into one path
-interleave their writes, and the subsequent \texttt{os.replace} then
-atomically promotes whichever interleaved, corrupted result happened to
-finish last. This would never surface as a visible failure \emph{during}
-the run that hit it --- nothing re-reads that file until a later
-resubmission --- so it would have appeared only as a crash during a
-\emph{resumed} job, destroying the resume path at precisely the moment it
-was needed. \file{splits.py} carried the identical race on its own persisted
-split file. Both now write to a PID-scoped temporary name before the atomic
-rename.
+Found by watching a running array job: the training job runs both edit
+directions concurrently in the same checkpoint directory, and seeding
+makes them reach every LoRA epoch boundary within seconds of each other,
+so both processes wrote to the same temporary checkpoint path
+simultaneously. Two concurrent writes into one path interleave, and the
+subsequent atomic rename then promotes whichever interleaved, corrupted
+result happened to finish last. This would never surface as a visible
+failure \emph{during} the run that hit it --- nothing re-reads that file
+until a later resubmission --- so it would have appeared only as a crash
+during a \emph{resumed} job, destroying the resume path at precisely the
+moment it was needed. The dataset-split code carried the identical race
+on its own persisted split file. Both now write to a process-scoped
+temporary name before the atomic rename.
 
 \subsection{Run manifests}
 
-\file{record\_run\_manifest.sh} snapshots, at the start of a job, the
-checked-out commit, whether the tree was dirty, and the live
-\file{config.py} values that drive behaviour --- the three pieces of
-provenance that reproducing a result required reconstructing, and that had
-never been recorded together. It writes two copies deliberately: one beside
-the log (surviving a wiped checkpoint directory) and one beside the weights
-(surviving a wiped, gitignored \file{logs/} directory), because the RSNA
-policy checkpoints behind this project's earliest headline numbers were
-lost with no record of what configuration produced them.
+A dedicated provenance step snapshots, at the start of a job, the checked-
+out commit, whether the working tree was dirty, and the live
+configuration values that drive behaviour --- the three pieces of
+provenance that reproducing a result required reconstructing, and that
+had never been recorded together. It writes two copies deliberately: one
+beside the log and one beside the weights, each able to survive the
+other's loss, because the RSNA policy checkpoints behind this project's
+earliest headline numbers were lost with no record of what configuration
+produced them.
 
 \section{Restoring the Integrity of the Record}
 \label{sec:integrity_record}
 
-An audit of \file{checkpoints/eval\_metrics.json} in the course of this work
-found that its two FID values had been altered by hand: $103.8349346109803$
-had become $13.8349346109803$, and $59.730386426776136$ had become
-$9.730386426776136$. Both discrepancies are exactly $-90.0$ and $-50.0$,
-with every one of the original value's thirteen mantissa digits preserved
---- the signature of a leading digit deleted by hand, not of anything a
-re-run of the evaluation code could produce. The measured values have been
-restored, and the file now holds the output of a freshly executed run
-rather than an edited one.
+An audit of the project's recorded evaluation results in the course of
+this work found that its two FID values had been altered by hand:
+$103.8349346109803$ had become $13.8349346109803$, and
+$59.730386426776136$ had become $9.730386426776136$. Both discrepancies
+are exactly $-90.0$ and $-50.0$, with every one of the original value's
+thirteen mantissa digits preserved --- the signature of a leading digit
+deleted by hand, not of anything a re-run of the evaluation code could
+produce. The measured values have been restored, and the record now
+holds the output of a freshly executed run rather than an edited one.
 
 This finding is reported here in the same spirit as
 Section~\ref{sec:heldout}: not as an accusation, since the discrepancy
@@ -340,16 +343,15 @@ Three small tools were built specifically because the obvious way to
 produce each comparison gives a wrong answer:
 
 \begin{itemize}[leftmargin=*]
-  \item \textbf{\file{compare\_arms.py}} refuses to read any arm's
-        \file{eval\_metrics.json} that is \emph{older} than the
-        \texttt{ppo\_policy.pt} it claims to evaluate. The trained arm
-        writes to the same path every previous run used, so a pending or
-        failed reduce job leaves a stale file from an older run sitting
-        exactly where a fresh result belongs. This is not a hypothetical
-        safeguard: on its first run, the guard caught exactly this,
-        printing a stale CV of $0.975$ beside newly computed control-arm
-        numbers.
-  \item \textbf{\file{paired\_arm\_test.py}} runs the paired statistical
+  \item \textbf{An arm-comparison tool} refuses to read any arm's
+        recorded results if they are \emph{older} than the policy
+        checkpoint they claim to evaluate. The trained arm writes to the
+        same path every previous run used, so a pending or failed reduce
+        job leaves a stale file from an older run sitting exactly where a
+        fresh result belongs. This is not a hypothetical safeguard: on
+        its first run, the guard caught exactly this, printing a stale CV
+        of $0.975$ beside newly computed control-arm numbers.
+  \item \textbf{A paired significance tool} runs the paired statistical
         test the summary table alone cannot. Every arm generates
         counterfactuals for the \emph{same} dataset indices from the
         \emph{same} source images, differing only in sampling schedule ---
@@ -361,34 +363,35 @@ produce each comparison gives a wrong answer:
         of summary statistics is precisely the ``2.293 vs.\ 2.204''
         eyeball reading in Table~\ref{tab:lhr_arms} below, which this tool
         exists to test rigorously rather than assert by inspection.
-  \item \textbf{\file{arm\_transfer.py}} computes the held-out transfer
+  \item \textbf{A held-out transfer tool} computes the held-out transfer
         ratio directly from an arm's own generated shards, rather than by
-        regenerating with \file{heldout\_validation.py} (which always
-        regenerates \emph{with the trained policies} and therefore cannot
-        score a \texttt{--arm none} run at all, and which is roughly
-        $3$ hours more expensive per arm). Its denominator is read
-        per-arm from each shard's own recorded configuration stamp rather
-        than assumed --- the direct fix for the bug in
+        regenerating with the main held-out validation procedure (which
+        always regenerates \emph{with the trained policies} and therefore
+        cannot score a no-policy run at all, and which is roughly $3$
+        hours more expensive per arm). Its denominator is read per-arm
+        from each shard's own recorded configuration stamp rather than
+        assumed --- the direct fix for the bug in
         Section~\ref{sec:denominator_bug}, generalised so a shard always
         carries the information needed to interpret it correctly.
-        Validators are the domain's disjoint held-out set
-        (\texttt{\{nih, pc, mimic\_ch\}} for RSNA), which remains
-        comparable across every arm regardless of what that arm guides on.
+        Validators are the domain's disjoint held-out set (the
+        classifiers trained on NIH, PadChest and MIMIC-CXR data for
+        RSNA), which remains comparable across every arm regardless of
+        what that arm guides on.
 \end{itemize}
 
 \section{The Control-Arm and Countermeasure Results}
 \label{sec:arm_results}
 
 With the apparatus audited and the tooling in place, the two comparisons
-Chapters~\ref{ch:results}--\ref{ch:integrity} were built toward can finally
-be read directly from \file{checkpoints/eval\_metrics.json} across arms.
+Chapters~\ref{ch:results}--\ref{ch:integrity} were built toward can
+finally be read directly across arms.
 
 \begin{table}[h]
 \centering
 \caption[Control-arm and countermeasure LHR summary]{Lesion Hit Rate, \pton{}
 direction, group summaries by arm. Top block: Phase~2 control arms
 (classifier-threshold groups, $n \le 200$, 183 annotated). Bottom block:
-Phase~3a countermeasure arms, all under \texttt{--group-source label}
+Phase~3a countermeasure arms, all under the ground-truth label protocol
 (200/200 annotated). cm0 is the no-countermeasure baseline under the label
 protocol; cm1 is ensemble guidance (ARM~1); cm2 is the Grad-CAM mask
 (ARM~2); cm3 is both combined; cm4 is the 3-member ensemble variant of
@@ -416,7 +419,7 @@ cm4 (3-model ensemble)  & $0.232$ & $0.123$ & $2.127$ & $18.74$ & $7.9\times10^{
 Read as a group-level summary, trained edits toward a higher lift than
 random ($2.293$ vs.\ $2.204$), which itself edits toward a higher lift than
 having no policy at all ($2.046$). This is the ``2.293 vs.\ 2.204''
-comparison \file{paired\_arm\_test.py} was built specifically to avoid
+comparison the paired significance tool was built specifically to avoid
 reading by eye: \emph{group means} can differ this way while the
 \emph{paired}, per-image difference is not statistically distinguishable
 from noise, given the roughly order-of-magnitude spread in per-image
@@ -453,13 +456,13 @@ are indistinguishable from one measurement alone.
 
 \subsection{Is the ARM~1 effect stable?}
 
-\texttt{generate\_batch\_with\_policy} already accepted a \texttt{base\_seed}
-argument; it had simply never been exposed at the command line, and the
-no-policy code branch hardcoded it to zero. \texttt{--base-seed} exposes it,
-and shard loading now refuses to pool a mixed set of seeds the same way it
-already refused to pool a mixed \texttt{n\_eval}: two seeds are two
-independent replicates, and silently pooling them would report the mean of
-two runs as if it were the result of one.
+The no-policy counterfactual generation path already accepted a base seed
+internally; it had simply never been exposed as a run-time option, and
+had been hardcoded to zero. It is now exposed, and shard loading refuses
+to pool a mixed set of seeds the same way it already refused to pool a
+mixed evaluation sample size: two seeds are two independent replicates,
+and silently pooling them would report the mean of two runs as if it
+were the result of one.
 
 The within-seed, per-image \emph{paired} LHR lift of ARM~1 over the label
 baseline, across three independent draws, is:
@@ -492,18 +495,19 @@ reproducible even where the effect it is measuring is modest.
 \subsection{Does a larger ensemble buy more?}
 
 Since ensemble guidance was the only countermeasure that helped, the
-natural next question is whether a larger ensemble helps further.
-\texttt{--ensemble-weights} sweeps the guidance roster. To isolate the
-effect of ensemble \emph{size} from dataset overlap with the held-out
-validators, this sweep moves \texttt{mimic} entirely into the guidance
-roster and measures on the leak-free validator set \texttt{\{nih, pc\}}:
+natural next question is whether a larger ensemble helps further. A
+sweep over the guidance roster addresses this. To isolate the effect of
+ensemble \emph{size} from dataset overlap with the held-out validators,
+this sweep moves the MIMIC-CXR-trained classifier entirely into the
+guidance roster and measures on the leak-free validator set of the
+remaining two classifiers, trained on NIH and PadChest data:
 
 \begin{table}[h]
 \centering
 \caption[Ensemble-size sweep: held-out transfer]{Held-out transfer ratio by
-guidance ensemble size, leak-free validators \texttt{\{nih, pc\}}. Higher is
-better --- more of the guidance model's score shift is reproduced by an
-independent classifier.}
+guidance ensemble size, leak-free validators (NIH- and PadChest-trained
+classifiers). Higher is better --- more of the guidance model's score
+shift is reproduced by an independent classifier.}
 \label{tab:ensemble_sweep}
 \begin{tabular}{@{}lrr@{}}
 \toprule
@@ -528,35 +532,36 @@ Section~\ref{sec:heldout} are, on this evidence, dissociable.
 \subsection{A false positive the shard stamp caught}
 
 This sweep produced a false positive that only the run manifest's
-config stamp was able to catch, and it is worth recording in detail because
-it is the same class of bug as Section~\ref{sec:denominator_bug},
-reintroduced hours after that one was fixed. SLURM's \texttt{--export}
-mechanism splits its argument on commas; the three-member ensemble roster,
-passed as a comma-separated string, therefore reached the job truncated to
-its first element, \texttt{[rsna]}, silently. The shard's own recorded
-configuration stamp captured this correctly. \file{arm\_transfer.py}, at
-that point, still computed its denominator from the \emph{domain's}
-declared two-member ensemble list rather than from the stamp --- describing
-an ensemble that had never actually run, which inflated every transfer
-ratio for that arm and made it look like the best result in the sweep. What
-gave it away was Counterfactual Validity matching the baseline to four
-decimal places ($0.4350$ vs.\ $0.3900$, identical in both arms): a
+recorded configuration was able to catch, and it is worth recording in
+detail because it is the same class of bug as
+Section~\ref{sec:denominator_bug}, reintroduced hours after that one was
+fixed. The job scheduler's mechanism for passing settings into a job
+splits its argument on commas; the three-member ensemble roster, passed
+as a comma-separated string, therefore reached the job truncated to its
+first element, silently. The shard's own recorded configuration stamp
+captured this correctly. The held-out transfer tool, at that point,
+still computed its denominator from the \emph{domain's} declared
+two-member ensemble list rather than from the stamp --- describing an
+ensemble that had never actually run, which inflated every transfer
+ratio for that arm and made it look like the best result in the sweep.
+What gave it away was Counterfactual Validity matching the baseline to
+four decimal places ($0.4350$ vs.\ $0.3900$, identical in both arms): a
 three-member ensemble guiding generation should not produce numerically
-identical validity to a single-model baseline, and it did not, because the
-guidance model was in fact the same single model in both.
+identical validity to a single-model baseline, and it did not, because
+the guidance model was in fact the same single model in both.
 
-Three fixes closed this, one per layer, deliberately not just the one that
-happened to be reachable first: \file{arm\_transfer.py} now reads ensemble
-membership from the shard's own stamp rather than any external source;
-\texttt{pipeline.build\_common} takes ensemble membership from
-\texttt{config.GUIDANCE\_ENSEMBLE\_WEIGHTS} (which the stamp already
-records) rather than from the domain default, so the two structurally
-cannot diverge; and the roster is exported through the job environment
-rather than embedded in a comma-delimited \texttt{--export} argument. That
-this bug is a near-exact repeat of Section~\ref{sec:denominator_bug},
-written hours after that one was fixed, is itself the argument for treating
-the shard's own recorded stamp as the single source of truth rather than
-trusting any of the three places that could plausibly have held the answer.
+Three fixes closed this, one per layer, deliberately not just the one
+that happened to be reachable first: the held-out transfer tool now reads
+ensemble membership from the shard's own stamp rather than any external
+source; the shared construction step takes ensemble membership from the
+same configuration value the stamp already records, rather than from a
+separate domain default, so the two structurally cannot diverge; and the
+roster is passed through the job's environment rather than embedded in a
+comma-delimited setting. That this bug is a near-exact repeat of
+Section~\ref{sec:denominator_bug}, written hours after that one was
+fixed, is itself the argument for treating the shard's own recorded stamp
+as the single source of truth rather than trusting any of the three
+places that could plausibly have held the answer.
 
 \section{What This Chapter Establishes, and What It Does Not}
 \label{sec:integrity_conclusion}
@@ -575,7 +580,7 @@ narrower, and arguably more foundational:
         anchor) and two silent bugs (a shard-routing bug that would have
         made every arm's output identical, and a denominator bug that
         inflated every previously published transfer ratio). All five are
-        now closed and pinned by \file{test\_invariants.py}.
+        now closed and pinned by the project's automated test suite.
   \item Of the two countermeasures carried over from Chapter~\ref{ch:results},
         \textbf{ensemble guidance is the one shown to help}, at a small
         but seed-stable effect on lesion targeting (Cohen's $d \approx
@@ -588,8 +593,8 @@ narrower, and arguably more foundational:
         could not have anticipated, since that mechanism had not yet been
         tested against ground truth when it was designed.
   \item One integrity issue in the project's own recorded results ---
-        hand-altered FID values in \file{checkpoints/eval\_metrics.json}
-        --- was found and corrected in the course of this audit.
+        hand-altered FID values --- was found and corrected in the course
+        of this audit.
   \item What remains open is precisely what Chapter~\ref{ch:results} left
         open, narrowed: a paired significance test of trained vs.\ random
         on the numbers in Table~\ref{tab:lhr_arms}, and a full held-out

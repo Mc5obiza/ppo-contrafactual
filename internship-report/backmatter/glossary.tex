@@ -46,9 +46,9 @@ non-Markovian sampling procedure for diffusion models that permits
 partial forward-then-reverse trajectories, and therefore image editing
 rather than only synthesis from noise.
 
-\item[DomainProfile / domain registry] A dataclass and module registry
-(\file{domains/}) binding a dataset, its classifier target and its
-clinical metrics together, so that adding a new imaging domain --- as in
+\item[DomainProfile / domain registry] A data structure and module
+registry binding a dataset, its classifier target and its clinical
+metrics together, so that adding a new imaging domain --- as in
 Chapter~\ref{ch:breast} --- is one new module plus one configuration line
 rather than a change threaded through the guidance and evaluation code.
 

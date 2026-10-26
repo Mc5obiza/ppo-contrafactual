@@ -885,6 +885,10 @@ class PPOTrainer:
                 f"{mode}; {total_updates} total updates "
                 f"({n_episodes} episodes / {episodes_per_update} per update)"
             )
+            if config.SPARSITY_OUTSIDE_CAM_ONLY and not config.USE_GRADCAM_MASK:
+                print("[ppo] NOTE: SPARSITY_OUTSIDE_CAM_ONLY=True but "
+                      "USE_GRADCAM_MASK=False — R_sparsity degrades to plain "
+                      "(unweighted) L1 this run.")
 
         # Worst per-update duration seen so far, used to decide whether ANOTHER
         # update fits in the remaining budget. Max rather than mean: an update

@@ -1,0 +1,126 @@
+{
+  "validators": [
+    "resnet18-breast-cbis",
+    "resnet18-breast-heldout",
+    "efficientnet_b0-breast-heldout",
+    "resnet18-breast-cmmd",
+    "efficientnet_b0-breast-cmmd"
+  ],
+  "arms": {
+    "eval_shards": {
+      "n_per_group": 200,
+      "guidance": [
+        "densenet121-breast-cbis"
+      ],
+      "delta_guidance_n_to_p": 0.9720619916915894,
+      "delta_guidance_p_to_n": 0.980530321598053,
+      "group_source": "?",
+      "validators": {
+        "resnet18-breast-cbis": {
+          "delta_n_to_p": 0.4624396562576294,
+          "delta_p_to_n": 0.32070884108543396,
+          "ratio_n_to_p": 0.47573062233704716,
+          "ratio_p_to_n": 0.32707692360063656,
+          "verdict": "partial/partial",
+          "auc_on_real_eval_originals": 0.9883709273182957,
+          "auc_is_contaminated": true,
+          "passes_competence_floor": true,
+          "original_agreement_spearman": 0.8257311057755575,
+          "ci_n_to_p": [
+            0.4267123483121395,
+            0.5256892174482346
+          ],
+          "ci_p_to_n": [
+            0.28217382580041883,
+            0.3726280890405178
+          ],
+          "n_boot": 10000
+        },
+        "resnet18-breast-heldout": {
+          "delta_n_to_p": 0.11275028437376022,
+          "delta_p_to_n": 0.031185917556285858,
+          "ratio_n_to_p": 0.11599083735138266,
+          "ratio_p_to_n": 0.031805153669760604,
+          "verdict": "ADVERSARIAL/ADVERSARIAL",
+          "auc_on_real_eval_originals": 0.7234335839598998,
+          "auc_is_contaminated": false,
+          "passes_competence_floor": true,
+          "original_agreement_spearman": 0.38502008067332094,
+          "ci_n_to_p": [
+            0.09715124368667602,
+            0.13553866930305958
+          ],
+          "ci_p_to_n": [
+            0.01676779389381409,
+            0.04685750156641006
+          ],
+          "n_boot": 10000
+        },
+        "efficientnet_b0-breast-heldout": {
+          "delta_n_to_p": 0.01644112728536129,
+          "delta_p_to_n": 0.07849627733230591,
+          "ratio_n_to_p": 0.01691366129515086,
+          "ratio_p_to_n": 0.08005492089665713,
+          "verdict": "ADVERSARIAL/ADVERSARIAL",
+          "auc_on_real_eval_originals": 0.6926315789473685,
+          "auc_is_contaminated": false,
+          "passes_competence_floor": true,
+          "original_agreement_spearman": 0.36987767282347145,
+          "ci_n_to_p": [
+            -0.011320959310978651,
+            0.04434138685464857
+          ],
+          "ci_p_to_n": [
+            0.057297025434672834,
+            0.10293058920651674
+          ],
+          "n_boot": 10000
+        },
+        "resnet18-breast-cmmd": {
+          "delta_n_to_p": 0.08841384202241898,
+          "delta_p_to_n": 0.050603028386831284,
+          "ratio_n_to_p": 0.090954941946203,
+          "ratio_p_to_n": 0.05160781596673039,
+          "verdict": "UNINTERPRETABLE",
+          "auc_on_real_eval_originals": 0.5066666666666666,
+          "auc_is_contaminated": false,
+          "passes_competence_floor": false,
+          "original_agreement_spearman": 0.055262410480491055,
+          "ci_n_to_p": [
+            0.07082817628979683,
+            0.111403963342309
+          ],
+          "ci_p_to_n": [
+            0.033887428976595406,
+            0.06903975903987884
+          ],
+          "n_boot": 10000
+        },
+        "efficientnet_b0-breast-cmmd": {
+          "delta_n_to_p": -0.0059020924381911755,
+          "delta_p_to_n": 0.0934043899178505,
+          "ratio_n_to_p": -0.006071724322767019,
+          "ratio_p_to_n": 0.09525905304552079,
+          "verdict": "UNINTERPRETABLE",
+          "auc_on_real_eval_originals": 0.4990225563909774,
+          "auc_is_contaminated": false,
+          "passes_competence_floor": false,
+          "original_agreement_spearman": -0.00016031350947413016,
+          "ci_n_to_p": [
+            -0.019498678715899588,
+            0.007249800360295921
+          ],
+          "ci_p_to_n": [
+            0.08393761347979307,
+            0.10701985266059637
+          ],
+          "n_boot": 10000
+        }
+      },
+      "mean_ratio_n_to_p": 0.06645224932326677,
+      "mean_ratio_p_to_n": 0.05593003728320886,
+      "mean_over_n_validators": 2,
+      "mean_is_independence_check": true
+    }
+  }
+}

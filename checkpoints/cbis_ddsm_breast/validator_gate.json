@@ -1,0 +1,93 @@
+{
+  "n_eval_originals": 400,
+  "n_benign": 190,
+  "n_malignant": 210,
+  "min_acceptable_auc": 0.65,
+  "eval_images_in_guidance_train": 336,
+  "validators": [
+    {
+      "weights": "resnet18-breast-cbis",
+      "members": [
+        "resnet18-breast-cbis"
+      ],
+      "kind": "same corpus, same train fold as guidance",
+      "independent": false,
+      "auc_on_cbis_eval_originals": 0.9883709273182957,
+      "passes_floor": true,
+      "auc_is_contaminated": true,
+      "n": 400
+    },
+    {
+      "weights": "resnet18-breast-heldout",
+      "members": [
+        "resnet18-breast-heldout-f0",
+        "resnet18-breast-heldout-f1",
+        "resnet18-breast-heldout-f2",
+        "resnet18-breast-heldout-f3",
+        "resnet18-breast-heldout-f4"
+      ],
+      "kind": "same corpus, patient-disjoint from guidance train and from every eval image",
+      "independent": true,
+      "train_corpus": "cbis_ddsm_breast",
+      "oof_auc_on_own_corpus": 0.6159001542438791,
+      "auc_on_cbis_eval_originals": 0.7234335839598998,
+      "passes_floor": true,
+      "auc_is_contaminated": false,
+      "n": 400
+    },
+    {
+      "weights": "efficientnet_b0-breast-heldout",
+      "members": [
+        "efficientnet_b0-breast-heldout-f0",
+        "efficientnet_b0-breast-heldout-f1",
+        "efficientnet_b0-breast-heldout-f2",
+        "efficientnet_b0-breast-heldout-f3",
+        "efficientnet_b0-breast-heldout-f4"
+      ],
+      "kind": "same corpus, patient-disjoint from guidance train and from every eval image",
+      "independent": true,
+      "train_corpus": "cbis_ddsm_breast",
+      "oof_auc_on_own_corpus": 0.6331711238078686,
+      "auc_on_cbis_eval_originals": 0.6926315789473685,
+      "passes_floor": true,
+      "auc_is_contaminated": false,
+      "n": 400
+    },
+    {
+      "weights": "resnet18-breast-cmmd",
+      "members": [
+        "resnet18-breast-cmmd-f0",
+        "resnet18-breast-cmmd-f1",
+        "resnet18-breast-cmmd-f2",
+        "resnet18-breast-cmmd-f3",
+        "resnet18-breast-cmmd-f4"
+      ],
+      "kind": "external corpus (CMMD): no shared patients, scanner or curation",
+      "independent": true,
+      "train_corpus": "cmmd_breast",
+      "oof_auc_on_own_corpus": 0.6239939711014975,
+      "auc_on_cbis_eval_originals": 0.5066666666666666,
+      "passes_floor": false,
+      "auc_is_contaminated": false,
+      "n": 400
+    },
+    {
+      "weights": "efficientnet_b0-breast-cmmd",
+      "members": [
+        "efficientnet_b0-breast-cmmd-f0",
+        "efficientnet_b0-breast-cmmd-f1",
+        "efficientnet_b0-breast-cmmd-f2",
+        "efficientnet_b0-breast-cmmd-f3",
+        "efficientnet_b0-breast-cmmd-f4"
+      ],
+      "kind": "external corpus (CMMD): no shared patients, scanner or curation",
+      "independent": true,
+      "train_corpus": "cmmd_breast",
+      "oof_auc_on_own_corpus": 0.6351131972649946,
+      "auc_on_cbis_eval_originals": 0.4990225563909774,
+      "passes_floor": false,
+      "auc_is_contaminated": false,
+      "n": 400
+    }
+  ]
+}

@@ -4,8 +4,8 @@
 This chapter presents the computational infrastructure, software
 frameworks, pretrained models and data-access tooling used to design,
 train and evaluate the system. Only components actually used in the
-project are described; version numbers are those pinned in
-\file{requirements.lock.txt}.
+project are described, at the exact dependency versions pinned for the
+project's environment.
 
 \section{Computing Infrastructure}
 
@@ -17,13 +17,11 @@ Management)~\cite{yoo2003slurm}, an open-source batch scheduler that
 allocates compute nodes to queued jobs according to resource requests and
 fair-share priority.
 
-Every entry point of the project has a corresponding batch script
-(\file{run_ppo.slurm}, \file{run_eval_ppo.slurm},
-\file{run_heldout_validation.slurm}, \file{run_classifier.slurm},
-\file{run_smoke_test.slurm}, \file{run_smoke_test_eval.slurm}). Each
-requests one GPU, 8 CPU cores and 64\,GB of system memory on the
-\texttt{publicgpu} partition, and differs mainly in its walltime request
---- a parameter that, as Section~\ref{sec:walltime} of
+Every stage of the pipeline --- training, evaluation, held-out validation,
+classifier probing, and small-scale smoke testing --- runs as its own
+batch job, each requesting one GPU, 8 CPU cores and 64\,GB of system
+memory on the cluster's GPU partition, and differing mainly in its
+walltime request --- a parameter that, as Section~\ref{sec:walltime} of
 Chapter~\ref{ch:tasks} describes, turned out to matter a great deal.
 
 Two properties of this environment drove most of the engineering
@@ -31,11 +29,9 @@ decisions in Chapter~\ref{ch:tasks}:
 
 \begin{itemize}[leftmargin=*]
   \item \textbf{Compute nodes have no internet access.} Any model weight
-        or dataset must be downloaded in advance on the login node.
-        All batch scripts therefore export
-        \file{HF_HUB_OFFLINE=1}, \file{TRANSFORMERS_OFFLINE=1} and
-        \file{YOLO_OFFLINE=1}, converting what would otherwise be a
-        silent network hang into an immediate, legible failure.
+        or dataset must be downloaded in advance on the login node, and
+        every job is configured to fail immediately, rather than hang
+        silently, if it ever attempts a network call it should not need.
   \item \textbf{Jobs are non-interactive and are killed at walltime.} A
         job that exceeds its requested time limit is terminated
         unconditionally, whatever it was doing.
@@ -45,14 +41,13 @@ decisions in Chapter~\ref{ch:tasks}:
 
 The cluster is heterogeneous, and the GPU model assigned to a job depends
 on which node the scheduler allocates. Two devices were observed across
-this project's runs, with measured throughput recorded in the batch
-scripts:
+this project's runs, with measured throughput recorded in the job logs:
 
 \begin{table}[h]
 \centering
-\caption[GPU hardware and measured runtimes]{GPU hardware observed across project runs, with measured wall-clock
-cost of the two main pipeline halves (figures recorded in
-\file{run_ppo.slurm} and \file{run_eval_ppo.slurm}).}
+\caption[GPU hardware and measured runtimes]{GPU hardware observed across
+project runs, with measured wall-clock cost of the two main pipeline
+halves.}
 \label{tab:hardware}
 \begin{tabular}{@{}lrrr@{}}
 \toprule
@@ -64,20 +59,17 @@ Quadro RTX 5000   & 16\,GB & $\sim$12.5\,h & $\sim$2.5\,h \\
 \end{tabular}
 \end{table}
 
-The generator's own memory footprint is modest --- the pipeline logs a
-VRAM estimate of $1826$\,MB for the VAE and UNet combined --- so the
-16\,GB devices available were never the binding constraint. Wall-clock
-time was.
+The generator's own memory footprint is modest --- the VAE and UNet
+combined occupy an estimated $1826$\,MB --- so the 16\,GB devices
+available were never the binding constraint. Wall-clock time was.
 
 \subsection{Environment Provisioning}
 
-\file{setup_env.sh} is a login-node script that creates the Python
-virtual environment, installs the pinned dependency set, and --- most
-importantly --- \emph{prefetches} every pretrained weight the compute
-nodes will later need, including the several TorchXRayVision DenseNet
-checkpoints. Dependencies are tracked in two files:
-\file{requirements.txt} declares loose minimum versions for
-readability, while \file{requirements.lock.txt} pins exact versions
+A single provisioning step, run once on the login node, creates the
+Python virtual environment, installs the pinned dependency set, and ---
+most importantly --- \emph{prefetches} every pretrained weight the
+compute nodes will later need, including the several TorchXRayVision
+DenseNet checkpoints. Dependencies are pinned to exact versions
 (\texttt{torch==2.5.1+cu121}, \texttt{diffusers==0.38.0},
 \texttt{peft==0.19.1}, \texttt{torchxrayvision==1.5.2},
 \texttt{ultralytics==8.4.83}) so that a run months later reproduces the
@@ -93,15 +85,13 @@ a structural requirement: the counterfactual guidance mechanism
 differentiates the frozen classifier's loss \emph{with respect to an
 intermediate latent inside the diffusion sampling loop}, a gradient path
 that must be constructed dynamically at each denoising step. Models run
-in \texttt{float16} on GPU (\texttt{config.DTYPE}), with selected
-parameters upcast to \texttt{float32} where numerical stability requires
-it.
+in half precision on GPU, with selected parameters upcast to full
+precision where numerical stability requires it.
 
 \subsection{Diffusers and Stable Diffusion 1.5}
 
-The generator is built on \textbf{Stable Diffusion~1.5}
-(\texttt{runwayml/stable-diffusion-v1-5}), a latent diffusion
-model~\cite{rombach2022} loaded through the Hugging Face
+The generator is built on \textbf{Stable Diffusion~1.5}, a latent
+diffusion model~\cite{rombach2022} loaded through the Hugging Face
 \texttt{diffusers} library. Rather than training a diffusion model from
 scratch on a comparatively small medical dataset, the project reuses
 SD1.5's pretrained VAE and UNet and adapts only a small parameter subset.
@@ -121,15 +111,13 @@ Full fine-tuning of the SD1.5 UNet (866~million parameters) was out of
 scope for the available compute. \textbf{LoRA}~\cite{hu2021lora}, applied
 through the Hugging Face \texttt{peft} library, instead freezes the
 pretrained weights and injects trainable low-rank matrix pairs into
-selected projections --- here the attention layers'
-\texttt{to\_q}, \texttt{to\_k}, \texttt{to\_v} and \texttt{to\_out.0}
-(\texttt{config.LORA\_TARGETS}), at rank 16 with $\alpha=16$ and dropout
-$0.05$.
+selected projections --- here the attention layers' query, key, value and
+output projections, at rank 16 with $\alpha=16$ and dropout $0.05$.
 
-The pipeline log records the resulting parameter economy exactly:
-\textbf{6{,}782{,}976 trainable parameters out of 866{,}303{,}940}, or
-\textbf{0.78\%} of the model. This is what made domain adaptation
-feasible within the internship's compute budget.
+The resulting parameter economy is exact: \textbf{6{,}782{,}976 trainable
+parameters out of 866{,}303{,}940}, or \textbf{0.78\%} of the model. This
+is what made domain adaptation feasible within the internship's compute
+budget.
 
 \section{Pretrained Model Zoo}
 
@@ -144,13 +132,12 @@ X-ray datasets and pretrained models with a standardised preprocessing
 convention. It supplies two distinct components here:
 
 \begin{itemize}[leftmargin=*]
-  \item \textbf{Classifiers} --- DenseNet-121 models trained on different
-        chest X-ray corpora and exposed under a common interface
-        (\texttt{densenet121-res224-rsna}, \texttt{-chex},
-        \texttt{-nih}, \texttt{-mimic\_ch}, \texttt{-pc}). The
-        availability of \emph{multiple independently trained} classifiers
-        over a shared label space is what makes the held-out validation
-        of Chapter~\ref{ch:results} possible at all; this is the single
+  \item \textbf{Classifiers} --- DenseNet-121 models trained independently
+        on different chest X-ray corpora (RSNA, CheXpert, NIH, MIMIC-CXR,
+        PadChest) and exposed under a common interface. The availability
+        of \emph{multiple independently trained} classifiers over a
+        shared label space is what makes the held-out validation of
+        Chapter~\ref{ch:results} possible at all; this is the single
         most consequential tooling choice in the project.
   \item \textbf{Segmentation} --- a \textbf{PSPNet} providing per-anatomy
         masks. The lung channels gate where editing is permitted; the
@@ -160,13 +147,13 @@ convention. It supplies two distinct components here:
 
 \subsection{YOLOv8}
 
-\textbf{YOLOv8}~\cite{jocher2023yolov8} (nano variant, weights in
-\file{yolov8n.pt}, loaded via \texttt{ultralytics}) is used not as a
-detector but as a \emph{frozen feature extractor}. Its backbone
-embedding of an image serves as a coarse proxy for structural and
-foreign-object content: penalising drift in this embedding discourages
-the generator from destroying tubes, leads and other hardware. It also
-underlies the costophrenic-recess proxy metric.
+\textbf{YOLOv8}~\cite{jocher2023yolov8} (nano variant, loaded via
+\texttt{ultralytics}) is used not as a detector but as a \emph{frozen
+feature extractor}. Its backbone embedding of an image serves as a
+coarse proxy for structural and foreign-object content: penalising drift
+in this embedding discourages the generator from destroying tubes, leads
+and other hardware. It also underlies the costophrenic-recess proxy
+metric.
 
 The report is explicit that this is an approximation. YOLOv8n is
 pretrained on COCO, a natural-image corpus, and is not a
@@ -177,14 +164,13 @@ discusses the consequences.
 
 \textbf{Grad-CAM}~\cite{selvaraju2017gradcam} produces class-discriminative
 localisation maps by weighting convolutional feature maps with the
-gradients flowing into them. A single shared implementation
-(\file{src/gradcam.py}) serves two distinct roles in this project:
+gradients flowing into them. A single shared implementation serves two
+distinct roles in this project:
 
 \begin{itemize}[leftmargin=*]
-  \item \textbf{Diagnostic} --- \file{check_classifier_localization.py}
-        renders Grad-CAM overlays to check whether the guidance
-        classifier attends to lung pathology or to a global
-        brightness/contrast shortcut.
+  \item \textbf{Diagnostic} --- rendering Grad-CAM overlays to check
+        whether the guidance classifier attends to lung pathology or to
+        a global brightness/contrast shortcut.
   \item \textbf{Constraint} --- the same map, thresholded and feathered,
         restricts the region in which the PPO agent is permitted to edit
         (Chapter~\ref{ch:tasks}, Section~\ref{sec:gradcam_mask}).
@@ -193,17 +179,17 @@ gradients flowing into them. A single shared implementation
 \section{Data Access}
 
 The \textbf{RSNA Pneumonia Detection Challenge} dataset~\cite{rsna2018}
-is retrieved programmatically through \texttt{kagglehub}
-(\file{ingestion.py}), which handles authentication and local caching so
-that a compute node can later read the data with no network access.
-Images arrive as DICOM and are decoded with \texttt{pydicom}
-(with \texttt{pylibjpeg} for JPEG-compressed transfer syntaxes),
-min--max normalised to $[0,1]$ and resized to $256\times256$.
+is retrieved programmatically through \texttt{kagglehub}, which handles
+authentication and local caching so that a compute node can later read
+the data with no network access. Images arrive as DICOM and are decoded
+with \texttt{pydicom} (with \texttt{pylibjpeg} for JPEG-compressed
+transfer syntaxes), min--max normalised to $[0,1]$ and resized to
+$256\times256$.
 
-The ingestion log records the corpus actually loaded:
-\textbf{26{,}684 studies}, of which \textbf{6{,}012 are pneumonia-positive}
-and \textbf{20{,}672 negative} --- a $22.5\%$ positive rate whose
-consequences for training are discussed in Chapter~\ref{ch:tasks}.
+The corpus actually loaded comprises \textbf{26{,}684 studies}, of which
+\textbf{6{,}012 are pneumonia-positive} and \textbf{20{,}672 negative} ---
+a $22.5\%$ positive rate whose consequences for training are discussed
+in Chapter~\ref{ch:tasks}.
 
 \section{Toolchain Summary}
 
@@ -217,7 +203,7 @@ consequences for training are discussed in Chapter~\ref{ch:tasks}.
 \midrule
 Compute infrastructure & SLURM batch scheduler; Tesla P100-PCIE-16GB and
 Quadro RTX 5000 GPU nodes; offline (no-internet) compute nodes \\
-Numerical framework & PyTorch 2.5.1 + CUDA 12.1, \texttt{float16} inference \\
+Numerical framework & PyTorch 2.5.1 + CUDA 12.1, half-precision inference \\
 Generative model & Stable Diffusion 1.5 via \texttt{diffusers} 0.38.0; DDIM sampling \\
 Parameter-efficient tuning & LoRA via \texttt{peft} 0.19.1 (rank 16, $\alpha$ 16) \\
 Pretrained medical models & TorchXRayVision 1.5.2 (DenseNet-121 classifiers, PSPNet segmenter) \\

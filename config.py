@@ -62,15 +62,69 @@ DIFFUSION_MODEL_ID = "runwayml/stable-diffusion-v1-5"
 # ─────────────────────────────────────────────
 # Selects the images, the xrv pathology head f(.) targets, the guidance /
 # validator weight sets and which clinical metrics apply — all four move
-# together. See domains/base.py. Registered: "rsna_pneumonia", "node21_nodule".
+# together. See domains/base.py. Registered: "rsna_pneumonia", "node21_nodule",
+# "cbis_ddsm_breast", "cmmd_breast".
 #
 # Adding a dataset is a new module in domains/ plus a line in domains._REGISTRY.
 # It is NOT an edit to ingestion.py, src/xrv_classifier.py or src/metrics.py.
-DATASET_DOMAIN = "rsna_pneumonia"
+# PPO_DOMAIN overrides this from the environment, following the same pattern as
+# PPO_CKPT_DIR below. Scoring one domain's shards must not require editing this
+# file, because that edit silently changes CKPT_DIR for every other job on the
+# node and shows up in the run manifest as a dirty tree.
+DATASET_DOMAIN = os.environ.get("PPO_DOMAIN", "rsna_pneumonia")
 
 # Root of an extracted NODE21 release (grand-challenge registration required,
 # so there is no auto-download). Only read by domains/node21_nodule.py.
 NODE21_ROOT = ""
+
+# ─────────────────────────────────────────────
+# Breast / mammography domain (cbis_ddsm_breast)
+# ─────────────────────────────────────────────
+# Root of the extracted CBIS-DDSM Kaggle mirror
+# (awsaf49/cbis-ddsm-breast-cancer-image-dataset). setup_env.sh downloads it on
+# the login node and prints the path to put here. Expected layout:
+#     <root>/csv/{dicom_info,mass_case_description_train_set,...}.csv
+#     <root>/jpeg/<SeriesUID>/<n>.jpg
+CBIS_DDSM_ROOT = (
+    "/home2020/home/insa/arbaoui/.cache/kagglehub/datasets/awsaf49/"
+    "cbis-ddsm-breast-cancer-image-dataset/versions/1"
+)
+
+# Where train_breast_classifier.py and train_breast_validator.py write, and
+# where src/breast_classifier.py reads from. Separate from CKPT_DIR because
+# these are INPUTS to a run (frozen f(.)), not outputs of one — they are
+# trained once and reused across every PPO run and ablation arm.
+BREAST_CKPT_DIR = "checkpoint/breast"
+
+# Backbones train_breast_classifier.py trains. The first two become the
+# guidance ensemble and the third the same-corpus validator; see
+# domains/cbis_ddsm_breast.py, which is the authority on that split. densenet121
+# is deliberately first: GRADCAM_TARGET_LAYER="features" resolves cleanly on it,
+# and it is the ensemble's cam_member.
+#
+# These three all trained on ONE patient-level split of CBIS-DDSM (seed 0,
+# val_frac 0.2 -> 1168 train patients / 292 val), so the third is a weak
+# independence check. train_breast_validator.py trains the genuinely
+# patient-disjoint ones; see BREAST_VALIDATOR_* below.
+BREAST_BACKBONES = ["densenet121", "efficientnet_b0", "resnet18"]
+
+# The disjoint held-out validators train_breast_validator.py produces. Their
+# training pool is the 292 patients NO guidance backbone was fit on, minus
+# every patient appearing in the eval groups — so they have seen neither the
+# guidance models' training data nor the images they are asked to score.
+BREAST_VALIDATOR_ARCHS = ["resnet18", "efficientnet_b0"]
+BREAST_VALIDATOR_FOLDS = 5
+
+# Root of the extracted CMMD (Chinese Mammography Database) Kaggle mirror
+# (nguynththanhho/cmmd-mammography). Read only by domains/cmmd_breast.py, which
+# is a VALIDATION-ONLY domain: nothing is ever generated on it. It is the one
+# mammography corpus available here that shares no patients, no scanner and no
+# curation with CBIS-DDSM, which is what makes a validator trained on it
+# independent in the sense the chest domain's nih/pc/mimic_ch validators are.
+CMMD_ROOT = (
+    "/home2020/home/insa/arbaoui/.cache/kagglehub/datasets/nguynththanhho/"
+    "cmmd-mammography/versions/1"
+)
 
 # ─────────────────────────────────────────────
 # Train / test split
@@ -138,9 +192,20 @@ EVAL_GROUP_SOURCE = "classifier"
 # Turn on only to investigate a specific nondeterminism.
 STRICT_DETERMINISM = False
 
-# The weight sets below are the rsna_pneumonia defaults, kept for backwards
-# compatibility. The ACTIVE values come from the domain profile — see
-# pipeline.build_common — so switching DATASET_DOMAIN switches them too.
+# THIS LIST IS THE ACTIVE ONE, not the domain profile's ensemble_weights —
+# pipeline.build_common uses `config.GUIDANCE_ENSEMBLE_WEIGHTS or
+# domain.ensemble_weights`, so a non-empty list here always wins (see
+# pipeline.py:147-155's comment on why membership is deliberately
+# config-driven, not domain-driven). Keep domains/rsna_pneumonia.py's
+# ensemble_weights in sync anyway — arm_transfer.py's default validator
+# resolution and the disjointness check both read the domain's copy.
+#
+# Committed default (2-member). A 3-member variant [rsna, chex, mimic_nb]
+# was trained and evaluated for the gap-2 experiment (checkpoints_ens3/,
+# see internship-report ch7, "A Trained 3-Model Ensemble") and reverted
+# back to this default afterward — see that section for the results and
+# domains/rsna_pneumonia.py's git history for the matching validator-set
+# revert.
 GUIDANCE_ENSEMBLE_WEIGHTS = [
     "densenet121-res224-rsna",
     "densenet121-res224-chex",
@@ -219,7 +284,16 @@ BG_MASK_FEATHER  = 1.0    # Gaussian sigma (latent cells) for seam feathering
 # named_modules() and silently returns members.0's `features`, producing an
 # rsna-only CAM labelled as the ensemble's. Verified behaviour, not a guess.
 # Watch the degenerate-CAM rate PPOTrainer.train reports at the end of a run.
-USE_GRADCAM_MASK = False   # REVERTED 2026-08-07 (was ARM 2)
+#
+# REVERTED again after a second, isolated attempt: GRADCAM_TARGET_LAYER=
+# features.denseblock3 was trained for real (checkpoints_gradcam_fix/, see
+# internship-report ch7, "A Trained Grad-CAM-Fix Arm") to test whether the
+# finer layer actually helps a trained policy, not just the offline
+# diagnostic. It does not — CV collapsed to 0.017 (from 0.838), LHR lift
+# dropped to 1.636 (d=1.205 vs the default, the largest paired effect size
+# measured anywhere in this project), and held-out transfer fell across
+# all three validators. Confirmed, not merely diagnosed: this is not a fix.
+USE_GRADCAM_MASK = False
 
 # Grad-CAM hook target inside the FROZEN classifier. Spatial resolution of the
 # xrv DenseNet-121 at its 224 input (cell size quoted for IMG_SIZE=256):
@@ -394,7 +468,12 @@ ENV_REFINEMENT_PASSES = 2
 # uniform baseline (top-5% of pixels' share of |Δ|), i.e. mostly diffuse.
 # PPOTrainer used to log "the annealing schedule is inert" at startup; that
 # line should stop firing now.
-USE_SPARSITY_REWARD    = False   # REVERTED 2026-08-07 (was ARM 3)
+# Committed default (off). Re-enabled once, isolated, for the gap-4 retrain
+# (checkpoints_sparsity/, see internship-report ch7, "A Trained
+# Sparsity-Reward Arm") — result: did not concentrate edits and measurably
+# hurt LHR lift (p=4.7e-9, d=0.512) and p→n transfer. Reverted back to
+# False afterward; see that section for the full numbers.
+USE_SPARSITY_REWARD    = False   # REVERTED (gap-4 retrain complete)
 USE_SPARSITY_ANNEALING = True
 
 # Target weight. Same scale as LAM_FID, which is worth noting: R_fid is already

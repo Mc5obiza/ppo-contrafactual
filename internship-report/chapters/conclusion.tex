@@ -65,6 +65,87 @@ partial countermeasure, not a solved problem --- the same falsification
 discipline this report has applied to every favourable number applied to
 its own fix, and did not let it pass uncontested.
 
+Chapter~\ref{ch:closing} was later extended twice more, each time
+retraining a real policy rather than trusting a cheaper proxy for it.
+A genuine 3-member ensemble (\texttt{[rsna, chex, mimic\_nb]}, previously
+only tested through the no-policy path) improved held-out transfer on
+\texttt{pc} for real but left \texttt{nih} statistically unresolved at
+this sample size. An annealed sparsity reward, built specifically to
+address the diffuse-edit finding and left inert since 2026-08-07, was
+switched on for an isolated retrain and produced a clear negative result:
+it did not concentrate edits --- its entire purpose --- and it measurably
+hurt lesion targeting (Cohen's $d=0.512$, $p=4.7\times10^{-9}$). The
+Grad-CAM constraint's diagnosis was closed the same way: a finer target
+layer that looked promising in an offline probe was trained for real and
+produced the single largest paired effect size measured anywhere in this
+project ($d=1.205$) --- in the wrong direction, collapsing Counterfactual
+Validity from $0.838$ to $0.017$.
+
+\begin{table}[h]
+\centering
+\caption{All five trained-and-evaluated arms, same protocol throughout.
+Bold marks the most performant technique by the evidence this report
+holds itself to --- a paired significance test or bootstrap CI, not a
+point estimate.}
+\label{tab:conclusion_five_arm}
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+\textbf{Arm} & \textbf{LHR lift (\pton{})} & \textbf{Mean transfer} & \textbf{Verdict vs.\ default} \\
+\midrule
+Single-classifier            & 2.293          & 0.230 / 0.146 & confirmed worse ($d=0.482$) \\
+\textbf{2-model ensemble (default)} & \textbf{2.673} & 0.282 / 0.293 & --- \\
+3-model ensemble             & 2.492          & 0.350 / 0.276\textsuperscript{*} & inconclusive on LHR ($n=12$) \\
+Sparsity reward              & 2.398          & 0.311 / 0.212 & confirmed worse ($d=0.512$) \\
+Grad-CAM fix                 & 1.636          & 0.161 / 0.103 & confirmed much worse ($d=1.205$) \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3em}
+\footnotesize\textsuperscript{*}scored on the reduced, leak-free validator
+set \texttt{\{nih, pc\}}; not directly comparable to the other rows' 3-validator mean.
+\end{table}
+
+Read against every paired test this report actually ran rather than the
+point estimates alone, \textbf{the committed 2-model ensemble default
+remains the most performant technique found among the system's own five
+arms}: it is a confirmed improvement over the single-classifier baseline
+it replaced, and none of the three later, more ambitious attempts to
+improve on it --- a larger ensemble, a sparsity penalty, a finer Grad-CAM
+layer --- beat it on the evidence this project holds itself to. Two of
+those three are confirmed worse, not merely unproven. That the simplest
+tested intervention is also the strongest one is itself a finding worth
+stating plainly, in a project whose central methodological lesson is not
+to round a hopeful number up to a demonstrated one.
+
+That same default is also the strongest technique against the external
+prior-work baselines evaluated earlier under the Singla~\emph{et
+al.}~\cite{singla2022} protocol: an unguided \textbf{Vanilla CycleGAN}
+(no classifier guidance, no background lock) and \textbf{GANterfactual},
+Singla~\emph{et al.}'s own conditional GAN-based counterfactual
+generator~\cite{singla2022}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{chart_baseline_comparison.png}
+\caption{Counterfactual Validity and FID: Vanilla CycleGAN vs.\
+GANterfactual vs.\ this project's committed default, under the identical
+evaluation protocol.}
+\label{fig:conclusion_baseline_chart}
+\end{figure}
+
+The unguided CycleGAN validates least reliably of the three (mean CV
+$0.385$) and produces the least realistic images (FID $55.0$/$45.0$) ---
+neither gradient guidance nor the background lock is optional. GANterfactual
+reaches marginally higher validity in the easier \ntop{} direction
+($0.998$ vs.\ $0.980$) but trails in \pton{} ($0.872$ vs.\ $0.950$), and
+its images are markedly less realistic: FID $4$--$6\times$ worse than
+this project's default in both directions ($25.0$ vs.\ $5.67$; $20.0$
+vs.\ $3.20$). Taken together with the internal five-arm comparison above,
+every technique this project either trained or compared itself
+against --- two external baselines, five internal arms --- points to the
+same conclusion: the committed 2-model ensemble default is the strongest
+technique found overall, not merely the one shipped by default.
+
 Technically, the project provided sustained exposure to latent diffusion
 models, parameter-efficient fine-tuning, reinforcement learning with
 continuous action spaces and shaped rewards, and the practical discipline
@@ -76,17 +157,27 @@ enough to fail fast.
 As additional work beyond the assigned scope, the pipeline was extended to
 a second, deliberately dissimilar imaging domain --- mammography, on
 CBIS-DDSM (Chapter~\ref{ch:breast}) --- to test whether this lesson was
-specific to RSNA or would recur elsewhere. It recurred: a mean
-Counterfactual Validity of $1.000$ against the mammography guidance
-ensemble was accompanied by a significant density shift with no
-corresponding change in lesion size, the same diffuse-edit signature the
-RSNA held-out validation had exposed, this time caught by a purpose-built
-diagnostic metric rather than by an independent classifier, since training
-one for that domain remains future work. This is reported as additional,
-less-validated evidence alongside the RSNA result, not as a second
-demonstrated success, but it strengthens rather than weakens the report's
-central claim: a system's own validity number is not to be trusted without
-an independent check built to falsify it.
+specific to RSNA or would recur elsewhere. It recurred, and two
+independent measurements agree that it did. A mean Counterfactual Validity
+of $1.000$ against the mammography guidance classifier was accompanied by a
+significant density shift with no corresponding change in lesion size ---
+the same diffuse-edit signature the RSNA held-out validation had exposed,
+caught first by a purpose-built diagnostic metric. Independent validators
+trained afterwards, on the CBIS-DDSM patients the guidance model had never
+seen and excluding every image they were asked to score, put the held-out
+transfer ratio at $0.066$ and $0.056$, with all four bootstrap intervals
+below the $0.15$ adversarial threshold --- more adversarial than any RSNA
+arm.
+
+That domain also supplied the sharpest instance of the report's central
+warning. Its designated held-out validator was a different architecture
+trained on the \emph{same} patient split as the guidance model, and so on
+84\% of the very images it was meant to adjudicate; scoring the
+counterfactuals with it would have returned $0.476/0.327$, four to ten
+times the honest figure, and the pipeline's anti-circularity check would
+have raised nothing, because it compares model identity and never compared
+training data. A check can be present, enforced in code, and still be
+measuring nothing.
 
 The methodological lesson runs deeper than any of those techniques. The
 most dangerous metric in a machine learning project is the one the system

@@ -1,0 +1,89 @@
+run manifest
+================================================================
+written        : 2026-08-15T18:37:55+02:00
+job            : ppo-eval-reduce-17702135
+node           : hpc-n871
+slurm partition: publicgpu
+
+-- git ---------------------------------------------------------
+commit         : 35f0ea7c7d3c86269627fbe0c5b477ab5121644a
+branch         : evaluation-integrity
+tree           : DIRTY — the commit above does not describe this run
+                  M arm_transfer.py
+                  M check_classifier_localization.py
+                  M checkpoints/smoke_all/guidance_diagnostics_n_to_p.json
+                  M checkpoints/smoke_all/guidance_diagnostics_p_to_n.json
+                  M checkpoints_ens_default/eval_metrics.json
+                  M config.py
+                  M factory/ppo.py
+                  M internship-report/backmatter/glossary.tex
+                  M internship-report/chapters/ch2_environment.tex
+                  M internship-report/chapters/ch3_tasks.tex
+                  M internship-report/chapters/ch4_results.tex
+                  M internship-report/chapters/ch5_breast.tex
+                  M internship-report/chapters/ch6_evaluation_integrity.tex
+                  M internship-report/chapters/ch7_closing_the_loop.tex
+                  M report/report.pdf
+                  M report/report.tex
+                 ?? .claude/
+                 ?? checkpoints/smoke_baseline/
+                 ?? checkpoints_ens3/
+                 ?? checkpoints_sparsity/
+                 ?? internship-report/figures/counterfactual_diff_n_to_p_ensemble.png
+                 ?? internship-report/figures/counterfactual_diff_p_to_n_ensemble.png
+                 ?? logs/ppo-counterfactual-17700222_0.manifest
+                 ?? logs/ppo-counterfactual-17700222_1.manifest
+                 ?? logs/ppo-counterfactual-17701295_0.manifest
+                 ?? logs/ppo-counterfactual-17701295_1.manifest
+                 ?? logs/ppo-eval-cf-17700783_0.manifest
+                 ?? logs/ppo-eval-cf-17700783_1.manifest
+                 ?? logs/ppo-eval-cf-17700783_2.manifest
+                 ?? logs/ppo-eval-cf-17700783_3.manifest
+                 ?? logs/ppo-eval-cf-17700783_4.manifest
+                 ?? logs/ppo-eval-cf-17700783_5.manifest
+                 ?? logs/ppo-eval-cf-17700783_6.manifest
+                 ?? logs/ppo-eval-cf-17700783_7.manifest
+                 ?? logs/ppo-eval-cf-17702127_0.manifest
+                 ?? logs/ppo-eval-cf-17702127_1.manifest
+                 ?? logs/ppo-eval-cf-17702127_2.manifest
+                 ?? logs/ppo-eval-cf-17702127_3.manifest
+                 ?? logs/ppo-eval-cf-17702127_4.manifest
+                 ?? logs/ppo-eval-cf-17702127_5.manifest
+                 ?? logs/ppo-eval-cf-17702127_6.manifest
+                 ?? logs/ppo-eval-cf-17702127_7.manifest
+                 ?? logs/ppo-eval-reduce-17700791.manifest
+                 ?? outputs/gradcam_check/degeneracy_log.json
+
+-- environment -------------------------------------------------
+python         : Python 3.12.8
+torch          : 2.5.1+cu121 cuda 12.1
+gpu            : Quadro RTX 6000, 23040 MiB
+n/a
+
+-- config.py ---------------------------------------------------
+sha256         : cda22868dc4dc0b9e315565232c309552b74fb2cb17709b26567f1d2925ae8dd
+  DATASET_DOMAIN          = rsna_pneumonia
+  CKPT_DIR                = checkpoints_sparsity
+  DEVICE                  = cuda
+  DTYPE                   = torch.float16
+  IMG_SIZE                = 256
+  USE_SPLIT               = True
+  SPLIT_SEED              = 0
+  TEST_FRAC               = 0.2
+  EVAL_GROUP_SOURCE       = classifier
+  TRAIN_SEED              = 0
+  STRICT_DETERMINISM      = False
+  USE_GUIDANCE_ENSEMBLE   = True
+  USE_GRADCAM_MASK        = False
+  USE_SPARSITY_REWARD     = True
+  USE_SPARSITY_ANNEALING  = True
+  FIXED_EPISODE_LENGTH    = False
+  EDIT_BUDGET_L1          = inf
+  BUDGET_T                = 25
+  N_EPISODES              = 800
+  N_DENOISE_EPOCHS        = 30
+  T_DIFF                  = 50
+  POLICY_TRUNK            = mlp
+  LORA_R                  = 8
+  ALPHA_CLS               = 4.0
+  ALPHA_PRES              = 0.05

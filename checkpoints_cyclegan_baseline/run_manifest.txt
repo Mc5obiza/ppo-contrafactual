@@ -1,0 +1,145 @@
+run manifest
+================================================================
+written        : 2026-08-25T01:28:58+02:00
+job            : cyclegan-baseline-17734148
+node           : hpc-n977
+slurm partition: publicgpu
+
+-- git ---------------------------------------------------------
+commit         : 35f0ea7c7d3c86269627fbe0c5b477ab5121644a
+branch         : mammo-heldout-transfer
+tree           : DIRTY — the commit above does not describe this run
+                  M arm_transfer.py
+                  M check_classifier_localization.py
+                  M checkpoints/smoke_all/guidance_diagnostics_n_to_p.json
+                  M checkpoints/smoke_all/guidance_diagnostics_p_to_n.json
+                  M checkpoints_ens_default/eval_metrics.json
+                  M config.py
+                 MM domains/__init__.py
+                 M  domains/base.py
+                 A  domains/cbis_ddsm_breast.py
+                  M factory/ppo.py
+                  M internship-report/backmatter/glossary.tex
+                  M internship-report/chapters/ch2_environment.tex
+                  M internship-report/chapters/ch3_tasks.tex
+                  M internship-report/chapters/ch4_results.tex
+                  M internship-report/chapters/ch5_breast.tex
+                  M internship-report/chapters/ch6_evaluation_integrity.tex
+                  M internship-report/chapters/ch7_closing_the_loop.tex
+                  M internship-report/chapters/conclusion.tex
+                  M report/report.pdf
+                  M report/report.tex
+                 A  run_breast_classifier.slurm
+                  M social_media/linkedin_before_after_normal_to_pneumonia.png
+                  M social_media/linkedin_before_after_pneumonia_to_normal.png
+                 AM src/breast_classifier.py
+                 AM train_breast_classifier.py
+                 ?? .claude/
+                 ?? CVPR_2026_Submission_Template/
+                 ?? PPO-CF_CVPR_Paper/
+                 ?? breast_shard_audit.py
+                 ?? breast_validator_gate.py
+                 ?? checkpoints/cbis_ddsm_breast/eval_group_index.json
+                 ?? checkpoints/cbis_ddsm_breast/eval_metrics.json
+                 ?? checkpoints/cbis_ddsm_breast/heldout_transfer.json
+                 ?? checkpoints/cbis_ddsm_breast/validator_gate.json
+                 ?? checkpoints/smoke_baseline/
+                 ?? checkpoints/smoke_mask/
+                 ?? checkpoints_ens3/
+                 ?? checkpoints_gradcam_fix/
+                 ?? checkpoints_sparsity/
+                 ?? domains/cmmd_breast.py
+                 ?? eval_cyclegan_baseline.py
+                 ?? internship-report/figures/chart_baseline_comparison.png
+                 ?? internship-report/figures/chart_edit_concentration.png
+                 ?? internship-report/figures/chart_lhr_lift.png
+                 ?? internship-report/figures/chart_transfer_ratio.png
+                 ?? internship-report/figures/counterfactual_diff_n_to_p_ensemble.png
+                 ?? internship-report/figures/counterfactual_diff_p_to_n_ensemble.png
+                 ?? interview_answers.md
+                 ?? interview_questions.md
+                 ?? logs/ppo-counterfactual-17700222_0.manifest
+                 ?? logs/ppo-counterfactual-17700222_1.manifest
+                 ?? logs/ppo-counterfactual-17701295_0.manifest
+                 ?? logs/ppo-counterfactual-17701295_1.manifest
+                 ?? logs/ppo-counterfactual-17702339_0.manifest
+                 ?? logs/ppo-counterfactual-17702339_1.manifest
+                 ?? logs/ppo-counterfactual-17704444_0.manifest
+                 ?? logs/ppo-eval-cf-17700783_0.manifest
+                 ?? logs/ppo-eval-cf-17700783_1.manifest
+                 ?? logs/ppo-eval-cf-17700783_2.manifest
+                 ?? logs/ppo-eval-cf-17700783_3.manifest
+                 ?? logs/ppo-eval-cf-17700783_4.manifest
+                 ?? logs/ppo-eval-cf-17700783_5.manifest
+                 ?? logs/ppo-eval-cf-17700783_6.manifest
+                 ?? logs/ppo-eval-cf-17700783_7.manifest
+                 ?? logs/ppo-eval-cf-17702127_0.manifest
+                 ?? logs/ppo-eval-cf-17702127_1.manifest
+                 ?? logs/ppo-eval-cf-17702127_2.manifest
+                 ?? logs/ppo-eval-cf-17702127_3.manifest
+                 ?? logs/ppo-eval-cf-17702127_4.manifest
+                 ?? logs/ppo-eval-cf-17702127_5.manifest
+                 ?? logs/ppo-eval-cf-17702127_6.manifest
+                 ?? logs/ppo-eval-cf-17702127_7.manifest
+                 ?? logs/ppo-eval-cf-17705866_0.manifest
+                 ?? logs/ppo-eval-cf-17705866_1.manifest
+                 ?? logs/ppo-eval-cf-17705866_2.manifest
+                 ?? logs/ppo-eval-cf-17705866_3.manifest
+                 ?? logs/ppo-eval-cf-17705866_4.manifest
+                 ?? logs/ppo-eval-cf-17705866_5.manifest
+                 ?? logs/ppo-eval-cf-17705866_6.manifest
+                 ?? logs/ppo-eval-cf-17705866_7.manifest
+                 ?? logs/ppo-eval-reduce-17700791.manifest
+                 ?? logs/ppo-eval-reduce-17702135.manifest
+                 ?? logs/ppo-eval-reduce-17705875.manifest
+                 ?? outputs/best_counterfactual_candidates/
+                 ?? outputs/gradcam_check/degeneracy_log.json
+                 ?? pick_best_counterfactual.py
+                 ?? report/paper_cvpr.pdf
+                 ?? report/paper_cvpr.tex
+                 ?? run_breast_validator.slurm
+                 ?? run_breast_validator_cmmd.slurm
+                 ?? run_cyclegan_baseline.slurm
+                 ?? social/
+                 ?? social_media/chart_baseline_comparison.png
+                 ?? social_media/chart_edit_concentration.png
+                 ?? social_media/chart_lhr_lift.png
+                 ?? social_media/chart_transfer_ratio.png
+                 ?? social_media/guidance_arm_comparison.html
+                 ?? src/cyclegan.py
+                 ?? train_breast_validator.py
+                 ?? train_cyclegan_baseline.py
+
+-- environment -------------------------------------------------
+python         : Python 3.12.8
+torch          : 2.5.1+cu121 cuda 12.1
+gpu            : NVIDIA H200, 143771 MiB
+n/a
+
+-- config.py ---------------------------------------------------
+sha256         : 131b64b6b6ae225bb21e4b13d063f88416fa96ff1c43b7f7066258b4907088ae
+  DATASET_DOMAIN          = rsna_pneumonia
+  CKPT_DIR                = checkpoints
+  DEVICE                  = cuda
+  DTYPE                   = torch.float16
+  IMG_SIZE                = 256
+  USE_SPLIT               = True
+  SPLIT_SEED              = 0
+  TEST_FRAC               = 0.2
+  EVAL_GROUP_SOURCE       = classifier
+  TRAIN_SEED              = 0
+  STRICT_DETERMINISM      = False
+  USE_GUIDANCE_ENSEMBLE   = True
+  USE_GRADCAM_MASK        = False
+  USE_SPARSITY_REWARD     = False
+  USE_SPARSITY_ANNEALING  = True
+  FIXED_EPISODE_LENGTH    = False
+  EDIT_BUDGET_L1          = inf
+  BUDGET_T                = 25
+  N_EPISODES              = 800
+  N_DENOISE_EPOCHS        = 30
+  T_DIFF                  = 50
+  POLICY_TRUNK            = mlp
+  LORA_R                  = 8
+  ALPHA_CLS               = 4.0
+  ALPHA_PRES              = 0.05

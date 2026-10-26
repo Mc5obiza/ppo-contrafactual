@@ -38,48 +38,54 @@ Visual Counterfactual Explanations in Chest Radiography}}
 \maketitle
 
 \begin{abstract}
-Post-hoc visual explanation methods for medical image classifiers
-(saliency maps, Grad-CAM) indicate \emph{where} a model is looking but not
-\emph{what minimal, realistic change} would flip its decision. Counterfactual
-image generation addresses this directly: given an image $x$ and a target
-class $c$, it produces $x_c$ such that a classifier $f$ predicts $f(x_c)
-\approx c$ while $x_c$ remains a plausible, patient-identity-preserving
-radiograph. We present a system that combines a LoRA-fine-tuned Stable
-Diffusion latent generator with a Proximal Policy Optimization (PPO) agent
-that \emph{controls} the diffusion sampling process step-by-step —
-choosing per-step noise strength, classifier- and preservation-guidance
-scales, the number of refinement passes, and when to stop — rather than
-generating a counterfactual in one shot with fixed hyperparameters. Editing
-is spatially constrained to the lung field via a segmentation-mask-gated,
-RePaint-style background lock, so anatomy outside the thorax is guaranteed
-to reconstruct to the identity floor of the autoencoder. Two directional
-policies are trained independently, one per class-flip direction
-(normal$\to$pneumonia and pneumonia$\to$normal), following the protocol of
-Singla~\emph{et al.}~\cite{singla2022}. On the RSNA Pneumonia Detection
-Challenge dataset, the trained system achieves a mean Counterfactual
-Validity of $0.965$ (n$\to$p: $0.975$, p$\to$n: $0.955$ at $\tau=0.8$), an
-XRV-DenseNet FID of $5.67$ / $3.20$ for the two directions, and produces
-statistically significant, clinically-directional shifts in two independent
-radiological proxy metrics (Cardio-Thoracic Ratio, Costophrenic-recess
-score) under paired $t$-tests ($p<10^{-3}$ in both cases). We report the
-full evaluation suite, analyze a persistent asymmetry between the two edit
-directions, and discuss the reward-shaping and background-locking design
-decisions that resolved earlier failure modes (diffuse whole-image edits,
-degenerate reward scaling). As additional work, we generalize the system
-behind a dataset-agnostic domain-registry abstraction and report a
-preliminary extension to a second, dissimilar imaging domain — mammography
-on CBIS-DDSM — where a purpose-built diagnostic metric surfaces evidence of
-the same diffuse-edit failure mode without yet having an independent
-classifier available to confirm it (Section~\ref{sec:breast}). A later
-audit of the evaluation apparatus itself — patient-level splitting,
-seeding, control and countermeasure arms, and the held-out-transfer
-machinery — found and closed a routing bug and a denominator bug that
-would each have silently invalidated an arm comparison, corrected a set of
-hand-altered values in the recorded results, and, on a lesion-annotation
-metric anchored to ground truth rather than to any classifier, shows
-ensemble guidance (replicated across three seeds) as the one tested
-countermeasure that helps while a Grad-CAM spatial constraint measurably
-hurts (Section~\ref{sec:integrity}).
+Counterfactual Validity (CV) — the fraction of generated counterfactuals
+that flip a classifier's decision — is the standard headline metric for
+visual counterfactual generation, but when CV is scored with the same
+classifier (or classifier family) used to \emph{guide} generation, a
+system can improve CV by exploiting that classifier's blind spots rather
+than by producing a genuinely better counterfactual, and CV alone cannot
+tell the two apart. This report's main contribution is a
+system-and-evaluation pair that makes this failure mode visible and
+partially closes it: a Proximal Policy Optimization (PPO) agent that
+\emph{controls} a LoRA-fine-tuned Stable Diffusion sampling process
+step-by-step (per-step noise strength, classifier- and
+preservation-guidance scales, refinement passes, stopping decision) under
+a segmentation-mask-gated background lock, evaluated not just with CV but
+with a lesion-annotation-anchored Lesion Hit Rate (LHR) metric that does
+not depend on the guidance classifier at all, plus a held-out-transfer
+protocol scored on classifier backbones excluded from guidance. Run
+across five trained arms (no countermeasure, single- and multi-model
+ensemble guidance, a Grad-CAM spatial constraint, and combinations), the
+two evaluation families diverge sharply: guidance-ensemble countermeasures
+that raise LHR lift and held-out transfer \emph{lower} mean CV (to
+$0.838$) relative to the no-countermeasure baseline, exactly the direction
+a CV-only evaluation would read as a regression. Two further arms produce
+confirmed, not merely unproven, negative results under paired testing — a
+sparsity-reward retrain (Cohen's $d=0.512$) and a Grad-CAM-constrained
+retrain (Cohen's $d=1.205$, the largest paired effect size measured
+anywhere in this project) are both significantly worse than the
+2-model-ensemble default — which we read as evidence that the LHR/transfer
+protocol has discriminative power CV lacks, not as a weakness of the
+underlying system. A separate audit of the evaluation apparatus itself
+(patient-level splitting, seeding, control and countermeasure arms, and
+the held-out-transfer machinery) found and closed a routing bug and a
+denominator bug that would each have silently invalidated an arm
+comparison, and corrected a set of hand-altered values discovered in the
+recorded results (Section~\ref{sec:integrity}). On the RSNA Pneumonia
+Detection Challenge dataset, following Singla~\emph{et
+al.}~\cite{singla2022}'s protocol, the system separately achieves a mean
+CV of $0.940$ (n$\to$p: $0.980$, p$\to$n: $0.900$ at $\tau=0.8$), an
+XRV-DenseNet FID of $20.02$ / $5.63$ against each direction's real target
+class, and, on two clinical proxy metrics (Cardio-Thoracic Ratio,
+Costophrenic-recess score), no significant shift in this evaluation run —
+CTR's within-image delta is not distinguishable from zero ($p=0.69$/
+$0.44$) and SCP's own computation flags itself as degenerate. We report
+the full evaluation suite, analyze a persistent asymmetry between the two
+edit directions, and discuss the reward-shaping and background-locking
+design decisions that resolved earlier failure modes (diffuse whole-image
+edits, degenerate reward scaling). Appendix~\ref{sec:breast} reports
+exploratory, not-yet-validated work extending the same pipeline to a
+second, dissimilar imaging domain (mammography, CBIS-DDSM).
 \end{abstract}
 
 \tableofcontents
@@ -129,17 +135,38 @@ signal that explicitly trades off classification progress against
 preservation and realism, the agent can learn an image-adaptive editing
 policy.
 
-We evaluate the system with the metric suite of
+A second, equally central concern of this report is that the standard way
+of \emph{evaluating} such a system is weaker than it looks. Counterfactual
+Validity is scored by re-running a classifier on the generated image, and
+when that scoring classifier is drawn from the same family as the
+classifier used to \emph{guide} generation, a countermeasure that pushes
+CV up can be doing so by exploiting a shared blind spot rather than by
+producing a more genuine edit — CV alone cannot distinguish the two.
+Section~\ref{sec:integrity} makes this concrete with a five-arm ablation:
+countermeasures that raise a lesion-annotation-anchored Lesion Hit Rate
+(LHR, independent of the guidance classifier) and a held-out transfer
+ratio (scored on classifier backbones excluded from guidance) can
+\emph{lower} mean CV relative to a no-countermeasure baseline — the
+opposite of what a CV-only read would conclude — and two further arms
+produce confirmed, large-effect-size negative results under paired
+testing, which we treat as evidence the LHR/transfer protocol has
+discriminative power CV lacks, not as a weakness of the underlying
+system.
+
+We evaluate the RSNA chest-radiography system with the metric suite of
 Singla~\emph{et al.}~\cite{singla2022} — Counterfactual Validity (CV),
 Fr\'echet Inception Distance (FID), and Foreign-Object Preservation (FOP)
 — plus a model-free Identity Preservation (IP) score introduced here as a
-practical substitute for FOP, and two clinically motivated proxy metrics,
+practical substitute for FOP, two clinically motivated proxy metrics,
 Cardio-Thoracic Ratio (CTR) and Costophrenic-recess score (SCP), each
-tested with paired $t$-tests between real and counterfactual populations.
-RSNA chest radiography is the focus of this report and the domain on which
-every design decision above was made and validated; Section~\ref{sec:breast}
-reports, as additional work, a preliminary extension of the same pipeline to
-a second, unrelated imaging domain.
+tested with paired $t$-tests between real and counterfactual populations,
+and, in Section~\ref{sec:integrity}, the classifier-independent LHR and
+held-out-transfer protocol that this report treats as its primary
+evaluation contribution. RSNA chest radiography is the focus of this
+report and the domain on which every design decision above was made and
+validated; Appendix~\ref{sec:breast} reports, as exploratory work kept out
+of the main body for the reasons given there, a preliminary extension of
+the same pipeline to a second, unrelated imaging domain.
 
 % ═════════════════════════════════════════════════════════════════════════
 \section{Related Work}
@@ -450,11 +477,11 @@ Table~\ref{tab:results} reports the full metric suite computed by
 \toprule
 \textbf{Metric} & \textbf{Definition} & \textbf{n$\to$p} & \textbf{p$\to$n} \\
 \midrule
-CV      & fraction valid ($\tau=0.8$)               & 0.975  & 0.955 \\
-        & \textit{mean}                              & \multicolumn{2}{c}{0.965} \\
-FID     & XRV-DenseNet features, lower = better       & 5.67   & 3.20 \\
-IP      & MS-SSIM                                     & 0.758  & 0.770 \\
-IP      & HF-corr                                     & 0.899  & 0.793 \\
+CV      & fraction valid ($\tau=0.8$)               & 0.980  & 0.900 \\
+        & \textit{mean}                              & \multicolumn{2}{c}{0.940} \\
+FID     & XRV-DenseNet features, vs.\ real target class, lower = better & 20.02 & 5.63 \\
+IP      & MS-SSIM                                     & 0.920  & 0.880 \\
+IP      & HF-corr                                     & 0.949  & 0.919 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -468,51 +495,63 @@ on the real$\,\to\,$counterfactual delta.}
 \toprule
 & \textbf{$X_n$} & \textbf{$X_c^{n\to p}$} & $\Delta$ ($t$, $p$) & \\
 \midrule
-CTR & $0.479 \pm 0.001$ & $0.480 \pm 0.001$ & $t=-4.65$, $p=6.0\!\times\!10^{-6}$ & \\
-SCP & $0.424 \pm 0.055$ & $0.379 \pm 0.133$ & $t=3.49$,  $p=6.3\!\times\!10^{-4}$ & \\
+CTR & $0.417 \pm 0.054$ & $0.417 \pm 0.057$ & $t=0.40$, $p=0.69$ & \\
+SCP & $0.479 \pm 0.001$ & $0.480 \pm 0.001$ & degenerate$^{\ddagger}$ & \\
 \midrule
 & \textbf{$X_p$} & \textbf{$X_c^{p\to n}$} & $\Delta$ ($t$, $p$) & \\
 \midrule
-CTR & $0.479 \pm 0.001$ & $0.479 \pm 0.001$ & $t=-4.48$, $p=1.3\!\times\!10^{-5}$ & \\
-SCP & $0.452 \pm 0.101$ & $0.395 \pm 0.146$ & $t=5.14$,  $p=1.1\!\times\!10^{-6}$ & \\
+CTR & $0.463 \pm 0.107$ & $0.534 \pm 1.104$ & $t=-0.77$, $p=0.44$ & \\
+SCP & $0.479 \pm 0.001$ & $0.480 \pm 0.001$ & degenerate$^{\ddagger}$ & \\
 \bottomrule
 \end{tabular}
+
+\vspace{0.3em}
+\footnotesize$^{\ddagger}$SCP's four group means span a relative spread
+of 0.21\% (\texttt{checkpoints/eval\_metrics.json}); the source metrics
+code itself flags this as degenerate and withholds the delta/$t$-test,
+noting they "were computed on a constant and must not be reported." Group
+means are retained above for completeness; no SCP shift claim is made.
 \end{table}
 
-Both clinical deltas are statistically significant ($p < 10^{-3}$) in both
-directions. The SCP delta is directionally consistent with the intended
-semantics — mean SCP drops as images move \emph{toward} pneumonia (SCP is
-a proxy for a \emph{healthy}, un-blunted costophrenic recess) and drops
-further, by a larger margin, when moving \emph{toward} normal ($p\to n$),
-which is the counter-intuitive direction: a plausible reading is that SCP,
-as a coarse YOLO-feature-norm proxy rather than a dedicated
-recess detector, is picking up general post-edit texture change more than
-recess-specific blunting, and should be interpreted qualitatively (as
-evidence that the edit is not clinically inert) rather than as
-literal blunting measurement. CTR's absolute shift is tiny in both
-directions ($<0.001$) despite reaching significance, consistent with
-sample size ($n\!\approx\!200$) driving significance at a CTR scale where
-the lung/heart segmentation masks are largely stable under a
-lung-field-only edit — exactly what the background lock is designed to
-guarantee, since cardiac silhouette lies mostly outside the pure lung
-mask used to gate edits.
+Neither clinical proxy metric reaches significance in the current
+evaluation run. CTR's within-image delta is not statistically
+distinguishable from zero in either direction ($p=0.69$ for n$\to$p,
+$p=0.44$ for p$\to$n) — consistent with the background lock holding the
+cardiac silhouette essentially untouched, but this run does not support a
+claim of a \emph{detected}, significant CTR shift, only that no CTR effect
+was measurable at $n\!\approx\!200$. SCP's own computation flags itself as
+degenerate in this run (relative spread 0.21\% across all four groups,
+i.e.\ effectively constant), so its delta and $t$-test are withheld rather
+than reported — the previously stated "SCP drops, directionally
+consistent with expected blunting" finding does not hold in this run's
+data and has been retracted rather than reinterpreted. This is a weaker
+clinical-proxy result than earlier drafts of this report claimed; it does
+not by itself indicate the counterfactuals are clinically inert, since CTR
+and SCP are coarse proxies for a narrow pair of findings (cardiomegaly,
+pleural effusion) that need not respond to every edit, but it means this
+evaluation run offers no statistical evidence either way, and it should
+be re-run and reconciled with Table~\ref{tab:results}'s $n_{\text{eval}}$
+before either metric is asserted again.
 
 \subsection{Comparison with baseline methods}
 \label{sec:baseline_comparison}
 
 Table~\ref{tab:baseline_comparison} places \method{} alongside two
-baselines evaluated under the identical protocol of
-Section~\ref{sec:baseline_comparison_protocol}: a \textbf{Vanilla
+baselines, discussed further in Section~\ref{sec:baseline_comparison_protocol}:
+a \textbf{Vanilla
 CycleGAN} (an unconditional, unguided image-to-image baseline with no
 classifier or preservation guidance) and \textbf{GANterfactual}, the
 conditional GAN-based counterfactual generator of
-Singla~\emph{et al.}~\cite{singla2022}. \method{} is competitive with
-GANterfactual on Counterfactual Validity (mean CV $0.970$ vs.\ $0.9725$)
+Singla~\emph{et al.}~\cite{singla2022}. \method{} trails GANterfactual
+slightly on mean Counterfactual Validity (mean CV $0.940$ vs.\ $0.9725$)
 while producing a substantially more realistic distribution of generated
-images, cutting FID by roughly $4$--$6\times$ in both directions ($5.67$
-vs.\ $25.0$ for n$\to$p; $3.20$ vs.\ $20.0$ for p$\to$n) and improving
-HF-corr identity preservation in the n$\to$p direction ($0.90$ vs.\
-$0.75$). The unguided Vanilla CycleGAN baseline, lacking any
+images: FID (against each direction's real target class) of $20.02$
+vs.\ $25.0$ for n$\to$p ($1.25\times$ better) and $5.63$ vs.\ $20.0$ for
+p$\to$n ($3.6\times$ better) — a real but direction-dependent gap, not the
+uniform "$4$--$6\times$" previously claimed. \method{} also improves
+HF-corr identity preservation in both directions ($0.95$ n$\to$p / $0.92$
+p$\to$n vs.\ GANterfactual's $0.75$ / $0.73$). The unguided Vanilla
+CycleGAN baseline, lacking any
 classifier-guidance or background-locking mechanism, validates far less
 reliably (mean CV $0.385$) and produces markedly less realistic images
 (FID $55.0$/$45.0$), confirming that gradient guidance and the background
@@ -524,7 +563,14 @@ bulk of the validity and realism gains.
 \caption{Comparison with baseline counterfactual generation methods.
 CV and FID are computed as in Sections~\ref{sec:baseline_comparison} and
 above; IP is reported as MS-SSIM~/~HF-corr. Best value per column in
-\textbf{bold}.}
+\textbf{bold}. \method{}'s CV, FID, and IP columns are read directly from
+\texttt{checkpoints/eval\_metrics.json} (CV mean $=(0.980+0.900)/2=0.940$;
+FID from the \texttt{n\_to\_p\_vs\_real\_positive} /
+\texttt{p\_to\_n\_vs\_real\_negative} fields — the cross-group FID against
+each direction's real target class, i.e.\ the realism test proper, as
+opposed to the same-group \texttt{negative\_group}/\texttt{positive\_group}
+fields). $^{\dagger}$Mean CV of $0.940$ is below GANterfactual's printed
+$0.947$; the bold mark moves accordingly.}
 \label{tab:baseline_comparison}
 \begin{tabular}{@{}lccccccc@{}}
 \toprule
@@ -533,27 +579,32 @@ above; IP is reported as MS-SSIM~/~HF-corr. Best value per column in
 \textbf{Method} & n$\to$p & p$\to$n & n$\to$p & p$\to$n & n$\to$p & p$\to$n & \textbf{Mean CV} \\
 \midrule
 Vanilla CycleGAN            & 0.424 & 0.346 & 55.0 & 45.0 & 0.55 / 0.58 & 0.52 / 0.56 & 0.385 \\
-GANterfactual~\cite{singla2022} & \textbf{0.998} & 0.872 & 25.0 & 20.0 & 0.72 / 0.75 & \textbf{0.74} / 0.73 & 0.947 \\
-\textbf{\method{} (ours)}   & 0.980 & \textbf{0.950} & \textbf{5.67} & \textbf{3.20} & \textbf{0.76} / \textbf{0.90} & 0.77 / \textbf{0.79} & \textbf{0.970} \\
+GANterfactual~\cite{singla2022} & \textbf{0.998} & 0.872 & 25.0 & 20.0 & 0.72 / 0.75 & 0.74 / 0.73 & \textbf{0.947} \\
+\textbf{\method{} (ours)}   & 0.980 & \textbf{0.900} & \textbf{20.02} & \textbf{5.63} & \textbf{0.92} / \textbf{0.95} & \textbf{0.88} / \textbf{0.92} & 0.940$^{\dagger}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 Table~\ref{tab:baseline_clinical} extends the comparison to the two
 clinical proxy metrics, reporting the mean within-image delta and its
-paired $t$-test significance for each direction. \method{}'s CTR deltas
-are an order of magnitude smaller than either baseline's while remaining
-significant, consistent with the background lock's design goal of
-confining edits to the lung field and leaving the cardiac silhouette
-essentially untouched; GANterfactual and, in particular, the unguided
-Vanilla CycleGAN shift CTR by a much larger — and, for an unconstrained
-generator, less clinically defensible — margin. All three methods produce
-significant, directionally consistent SCP shifts.
+paired $t$-test significance for each direction. \method{}'s CTR shift is
+not statistically significant in this evaluation run ($p=0.69$ n$\to$p,
+$p=0.44$ p$\to$n) — unlike the two baselines, which both shift CTR
+significantly. This is consistent with the background lock's design goal
+of confining edits to the lung field and leaving the cardiac silhouette
+essentially untouched, but it means \method{}'s CTR result here is an
+absence of a detected effect, not a small-but-significant one as earlier
+drafts of this report stated. \method{}'s SCP metric is flagged degenerate
+in this run (Table~\ref{tab:clinical}) and no delta is reported for it;
+both baselines' SCP shifts are taken as given (Section~\ref{sec:baseline_comparison_protocol}).
 
 \begin{table}[h]
 \centering
 \caption{Comparison of clinical proxy-metric shifts across methods: mean
-paired delta ($t$, $p$) by direction.}
+paired delta ($t$, $p$) by direction. \method{}'s row is measured from
+this project's own per-image data (Table~\ref{tab:clinical}); the Vanilla
+CycleGAN and GANterfactual rows are taken as given
+(Section~\ref{sec:baseline_comparison_protocol}).}
 \label{tab:baseline_clinical}
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}lrrrr@{}}
@@ -564,10 +615,15 @@ paired delta ($t$, $p$) by direction.}
 \midrule
 Vanilla CycleGAN & $0.030$ ($t=2.0$, $p=0.05$) & $0.040$ ($t=2.3$, $p=0.02$) & $-0.0060$ ($t=-8.0$, $p\!=\!1\!\times\!10^{-7}$) & $-0.0070$ ($t=-8.5$, $p\!=\!1\!\times\!10^{-8}$) \\
 GANterfactual & $0.070$ ($t=4.2$, $p\!=\!3\!\times\!10^{-5}$) & $0.090$ ($t=5.5$, $p\!=\!5\!\times\!10^{-7}$) & $-0.0030$ ($t=-6.5$, $p\!=\!1\!\times\!10^{-6}$) & $-0.0035$ ($t=-7.0$, $p\!=\!5\!\times\!10^{-7}$) \\
-\textbf{\method{} (ours)} & $0.041$ ($t=3.49$, $p\!=\!6.3\!\times\!10^{-4}$) & $0.072$ ($t=5.14$, $p\!=\!1.1\!\times\!10^{-6}$) & $-0.00026$ ($t=-4.65$, $p\!=\!6.0\!\times\!10^{-6}$) & $-0.00034$ ($t=-4.48$, $p\!=\!1.3\!\times\!10^{-5}$) \\
+\textbf{\method{} (ours)} & $+0.0014$ ($t=0.40$, $p=0.69$) & $-0.0643$ ($t=-0.77$, $p=0.44$) & degenerate$^{\ddagger}$ & degenerate$^{\ddagger}$ \\
 \bottomrule
 \end{tabular}%
 }
+
+\vspace{0.3em}
+\footnotesize$^{\ddagger}$See Table~\ref{tab:clinical}'s footnote —
+\method{}'s SCP delta/$t$-test are withheld as degenerate in this run,
+not zero or absent by design.
 \end{table}
 
 \subsection{Qualitative counterfactuals}
@@ -602,8 +658,10 @@ quantitative $X_n$/$X_p$ groups).
   absolute difference heatmap. Change is concentrated bilaterally over
   both lung fields (consistent with opacity removal) with a lower overall
   magnitude than the n$\to$p case (MAE $=0.051$ vs.\ $0.064$, max
-  $\Delta=0.485$ vs.\ $0.586$), matching the higher IP MS-SSIM/HF-corr and
-  lower FID observed quantitatively for this direction.}
+  $\Delta=0.485$ vs.\ $0.586$), matching the lower FID observed
+  quantitatively for this direction (Table~\ref{tab:results}); IP
+  (MS-SSIM/HF-corr) is in fact higher for n$\to$p, not p$\to$n — see
+  Section~\ref{sec:asymmetry}.}
   \label{fig:p2n}
 \end{figure}
 
@@ -644,16 +702,23 @@ Section~\ref{sec:asymmetry}).
 \subsection{The n$\to$p / p$\to$n asymmetry}
 \label{sec:asymmetry}
 
-Across every metric, p$\to$n is the easier direction: lower FID
-($3.20$ vs.\ $5.67$), higher IP (HF-corr $0.793$ vs.\ ... — note MS-SSIM
-is close, $0.770$ vs.\ $0.758$), and qualitatively less diffuse edits
-(Figures~\ref{fig:n2p}--\ref{fig:p2n}). A plausible generative explanation
-is that \emph{removing} a pathology pattern from a lung field (p$\to$n)
-is closer to a denoising/inpainting operation the SD1.5 prior already
+The picture is mixed rather than uniform: p$\to$n has substantially lower
+FID against its real target class ($5.63$ vs.\ $20.02$, Table~\ref{tab:results})
+and qualitatively less diffuse edits (Figures~\ref{fig:n2p}--\ref{fig:p2n}),
+but n$\to$p has \emph{higher} IP on both components (MS-SSIM $0.920$ vs.\
+$0.880$; HF-corr $0.949$ vs.\ $0.919$) — the reverse of what an earlier
+draft of this report claimed. Read together, FID says p$\to$n counterfactuals
+land closer to the real target-class manifold, while IP says n$\to$p
+counterfactuals disturb the source image's own high-frequency detail
+less; these are different properties and need not point the same way. A
+plausible generative explanation for the FID asymmetry specifically is
+that \emph{removing} a pathology pattern from a lung field (p$\to$n) is
+closer to a denoising/inpainting operation the SD1.5 prior already
 performs well, whereas \emph{synthesizing} a plausible, spatially coherent
 opacity pattern from a clean lung (n$\to$p) is a harder, more
 under-constrained generative task, especially at the scale of RSNA's
-fine-tuning budget.
+fine-tuning budget; the IP asymmetry would need a separate explanation,
+since it runs the other way.
 
 This asymmetry was known early in development and originally addressed
 with a \texttt{direction\_scale} $=2.25\times$ boost applied to the n$\to$p
@@ -699,22 +764,33 @@ statistics saved alongside each policy checkpoint
 
 FID estimates with $N\!\sim\!200$ samples (vs.\ the $\gg$feature-dimension
 sample counts FID nominally requires) carry high variance, particularly
-for the 1024-d XRV-DenseNet feature space used here; the reported $5.67$
-/ $3.20$ values should be read as directionally informative rather than
-tightly bounded, and increasing \texttt{n\_eval} is the first lever to
-pull for a more precise estimate if compute allows.
+for the 1024-d XRV-DenseNet feature space used here; the reported $20.02$
+/ $5.63$ values (\texttt{checkpoints/eval\_metrics.json}'s
+\texttt{n\_to\_p\_vs\_real\_positive} / \texttt{p\_to\_n\_vs\_real\_negative}
+fields — the cross-group FID against each direction's real target class,
+the realism test proper) should be read as directionally informative
+rather than tightly bounded, and increasing \texttt{n\_eval} is the first
+lever to pull for a more precise estimate if compute allows. The same
+file's \texttt{negative\_group}/\texttt{positive\_group} fields ($99.86$/
+$55.70$) are the same-group FID (counterfactual vs.\ its own source
+class) — ambiguous on their own since a large value there can mean either
+a genuine class change or an off-manifold edit — and are not the number
+reported in Table~\ref{tab:results}.
 
 \subsection{Baseline comparison protocol}
 \label{sec:baseline_comparison_protocol}
 
-Both baselines in Section~\ref{sec:baseline_comparison} are evaluated
-under the same $X_n$/$X_p$ splitting, $n_{\text{eval}} \le 200$-per-group
-protocol described in Section~\ref{sec:baseline_comparison} above, with
-CV computed at the same $\tau=0.8$ threshold and FID computed against the
-same XRV-DenseNet feature extractor, so that the comparison in
-Table~\ref{tab:baseline_comparison} isolates differences attributable to
-the generation method itself rather than to evaluation-protocol
-mismatches.
+No training, evaluation, checkpoint, or log artifact for either baseline
+(Vanilla CycleGAN or GANterfactual) exists in this repository — a
+targeted search of all \texttt{.py}, \texttt{.slurm}, \texttt{.json},
+\texttt{.log}, and \texttt{.yaml} files for "cyclegan" or "ganterfactual"
+(case-insensitive) turns up nothing but a citation in a docstring
+(\texttt{src/metrics.py}). The Vanilla CycleGAN and GANterfactual figures
+in Table~\ref{tab:baseline_comparison} and Table~\ref{tab:baseline_clinical}
+are therefore taken as given reference numbers rather than reproduced
+locally under this project's own $X_n$/$X_p$-splitting,
+$n_{\text{eval}} \le 200$-per-group pipeline; \method{}'s own numbers are
+the ones computed by that pipeline (Section~\ref{sec:baseline_comparison}).
 
 % ═════════════════════════════════════════════════════════════════════════
 \section{Limitations}
@@ -743,6 +819,23 @@ mismatches.
         from the easier one, but requires a larger environment refactor
         (randomized target $c$ per episode, dual far-index pools) not
         undertaken in this iteration.
+  \item \textbf{Baseline figures are reference numbers, not local
+        reruns.} As detailed in Section~\ref{sec:baseline_comparison_protocol},
+        no Vanilla CycleGAN or GANterfactual training/evaluation artifact
+        exists in this repository; the baseline figures in
+        Table~\ref{tab:baseline_comparison} and
+        Table~\ref{tab:baseline_clinical} are taken as given rather than
+        reproduced under this project's own $X_n$/$X_p$-splitting,
+        $n_{\text{eval}} \le 200$-per-group pipeline.
+  \item \textbf{CTR/SCP show no significant effect in this run.} CTR's
+        within-image delta is not distinguishable from zero at
+        $n\!\approx\!200$ ($p=0.69$ n$\to$p, $p=0.44$ p$\to$n), and SCP's
+        own computation flags itself as degenerate (relative spread
+        0.21\% across all four groups) and withholds its test. This
+        contradicts an earlier draft's "statistically significant,
+        clinically-directional shifts" claim, which has been retracted
+        (Table~\ref{tab:clinical}); the clinical proxies should be
+        re-run before being cited as evidence either way.
 \end{itemize}
 
 % ═════════════════════════════════════════════════════════════════════════
@@ -985,30 +1078,28 @@ Section~\ref{sec:closing} closes both.
 \subsection{Closing the loop: real ensemble training and full re-validation}
 \label{sec:closing}
 
-\texttt{config.py}'s \texttt{USE\_GUIDANCE\_ENSEMBLE} default was flipped
-from \texttt{False} to \texttt{True} — every trained-policy result above,
-including Table~\ref{tab:results} and the "trained" arm of
-Table~\ref{tab:lhr_arms}, was produced under single-classifier guidance,
-despite this section already having shown ensemble guidance helps. Two
-precautions preceded retraining. First, \texttt{PPOTrainer} resumes from
-\texttt{ppo\_latest.pt} and, finding the target episode count already
-reached, silently re-saves the old checkpoint without training a step — a
-first smoke test (job 17693158) demonstrated exactly this trap, loading the
-new ensemble classifier correctly while re-stamping a two-day-old,
-single-classifier-trained policy. \texttt{checkpoints/n\_to\_p/} and
-\texttt{checkpoints/p\_to\_n/} were therefore archived, not deleted, before
-resubmitting; a second smoke test confirmed fresh training with no
-resumable state found. Second, \texttt{run\_eval\_cf.slurm} defaults to the
-same shard directory the paired significance test below depends on, so
-generation and reduction were tagged \texttt{ens\_default} throughout,
-leaving the original trained-arm shards untouched.
+Ensemble guidance was made the default for training, not only for
+evaluation — every trained-policy result above, including
+Table~\ref{tab:results} and the "trained" arm of Table~\ref{tab:lhr_arms},
+was produced under single-classifier guidance, despite this section
+already having shown ensemble guidance helps. Two precautions preceded
+retraining. First, the training loop resumes from its last saved state
+and, finding the target episode count already reached, silently re-saves
+the old checkpoint without training a step — a preliminary test run
+demonstrated exactly this trap, loading the new ensemble classifier
+correctly while re-stamping a two-day-old, single-classifier-trained
+policy. The previous checkpoints were therefore archived, not deleted,
+before resubmitting; a repeat of the same test confirmed genuinely fresh
+training with no prior state found to resume from. Second, the evaluation
+pipeline defaults to the same output location the paired significance test
+below depends on, so the new run was tagged and routed separately,
+leaving the original trained-arm results untouched.
 
-\texttt{run\_ppo.slurm} (job 17694482) then trained both directions from
-scratch under ensemble guidance — 800 episodes each, confirmed by the
-domain banner and loaded-model log with no "resuming" message in either
-task; n$\to$p finished in 8h40m, p$\to$n in 11h00m, both within budget.
-Re-evaluating (jobs 17695832/17695840) gives, as expected, a mixed
-guidance-side picture: mean CV \emph{fell} to 0.8375 (n$\to$p 0.960,
+Both directions were then trained from scratch under ensemble guidance —
+800 episodes each, confirmed by the domain banner and loaded-model log
+with no "resuming" message in either direction; n$\to$p finished in 8h40m,
+p$\to$n in 11h00m, both within budget. Re-evaluating gives, as expected, a
+mixed guidance-side picture: mean CV \emph{fell} to 0.8375 (n$\to$p 0.960,
 p$\to$n 0.715 — a harder joint criterion, not a weaker policy), while
 ground-truth LHR \emph{rose} to a 2.67$\times$ lift ($t=24.19$,
 $p=4.2\times10^{-53}$, $n=148$), above the single-classifier trained arm's
@@ -1042,42 +1133,480 @@ Mean transfer rose on both directions, p$\to$n nearly doubling, and two of
 three validators (\texttt{pc}, \texttt{mimic\_ch}) improved on both counts.
 \texttt{nih} — the most independent validator — improved on p$\to$n
 (0.100$\to$0.186) but \emph{worsened} on n$\to$p (0.080$\to$0.046),
-staying flatly ADVERSARIAL by \texttt{arm\_transfer.py}'s own verdict on
-both counts. Read honestly: ensemble guidance is a real, partial
-countermeasure, not a closed case — two validators out of three agree it
-helps, and the hardest one does not confirm that story in the direction
-that matters least favorably for the claim.
+staying clearly in the adversarial range on both counts. Read honestly:
+ensemble guidance is a real, partial countermeasure, not a closed case —
+two validators out of three agree it helps, and the hardest one does not
+confirm that story in the direction that matters least favorably for the
+claim.
 
-The paired significance test needed no new training: \texttt{paired\_arm\_test.py}
-against the existing \texttt{trained}/\texttt{random} shards (the same 183
-images behind Table~\ref{tab:lhr_arms}'s control-arm row) gives a paired
-lift difference of $+0.090$ (95\% CI $[+0.021, +0.160]$), $t=2.551$,
+\subsection{Is the \texttt{nih} regression real, or noise?}
+\label{sec:transfer_ci}
+
+The single-run point estimates above cannot answer that on their own, so a
+percentile bootstrap (10,000 resamples of the $n=200$ per-group images,
+resampling numerator and denominator jointly to preserve within-image
+pairing) was run on the \texttt{nih} ratio for both policies. n$\to$p: old
+policy $0.080$, 95\% CI $[0.048, 0.114]$; new policy $0.046$, 95\% CI
+$[0.007, 0.084]$ — the two intervals overlap substantially, so the apparent
+worsening is \emph{not} distinguishable from noise at this sample size.
+Both intervals sit entirely below the $0.15$ adversarial threshold, so what
+\emph{is} established is that n$\to$p stays confidently adversarial under
+both policies — just not that ensemble guidance made it worse. p$\to$n
+tells a different story: old policy $0.100$, CI $[0.076, 0.126]$; new
+policy $0.186$, CI $[0.155, 0.216]$ — these do not overlap, so that
+improvement is real. Each policy's CI is reported on its own rather than as
+a joint difference-of-ratios bootstrap, because the two policies' Xn/Xp
+groups are not the same images: the classifier used to sort images into
+those groups changed between runs, and the two groups share only
+$\approx$70\% (n$\to$p) and $\approx$24\% (p$\to$n) of their members, so a
+paired resample would synthesize a pairing that is not actually there.
+
+The paired significance test needed no new training: run against the
+existing trained and random arms (the same 183 images behind
+Table~\ref{tab:lhr_arms}'s control-arm row), it gives a paired lift
+difference of $+0.090$ (95\% CI $[+0.021, +0.160]$), $t=2.551$,
 $p=0.0116$, Wilcoxon $p=0.0147$, Cohen's $d=0.189$, trained better on
 105/183 images. The gap survives at $p<0.05$ by both tests — a real,
 small effect, not noise.
 
-Both items this section's earlier revision left open now have numbers
-rather than open questions attached to them. Neither is closed in the
-sense of settling the project's central claim: what remains, unchanged, is
-diagnosing why the Grad-CAM constraint hurts rather than helps, and whether
-a larger trained ensemble would close the \texttt{nih} gap specifically.
-The old single-classifier policies and shards were archived, not
-overwritten, so this comparison stays reproducible.
+\subsection{Diagnosing the Grad-CAM degradation}
+\label{sec:gradcam_diagnosis}
+
+The Grad-CAM spatial mask (\texttt{USE\_GRADCAM\_MASK}) lowered
+lesion-targeting lift instead of raising it (2.057 $\to$ 1.534/1.531,
+Table~\ref{tab:lhr_arms}) — the opposite of its design intent, and never
+diagnosed. A code comment in the training loop speculated that the
+\texttt{rsna} ensemble member degenerates far more often than
+\texttt{chex}, concentrated near predicted probability $\approx$0.5, via
+Grad-CAM's all-negative-contribution edge case rather than output
+saturation. An extended run of \texttt{check\_classifier\_localization.py}
+— 150 images sampled across the full probability range, plus 150
+known-positive boxed images, scored under the exact ensemble Grad-CAM path
+\texttt{compute\_gradcam\_latent\_mask} uses during PPO — tests this
+directly and finds the opposite on every count:
+
+\begin{table}[h]
+\centering
+\caption{Grad-CAM degeneracy diagnostic, 263 member-image observations,
+target layer \texttt{features} (the trained default).}
+\label{tab:gradcam_degeneracy}
+\begin{tabular}{@{}lrl@{}}
+\toprule
+Member & Degenerate & Where \\
+\midrule
+\texttt{rsna} & 1/263 (0.4\%) & negligible at every probability \\
+\texttt{chex} & 66/263 (25.1\%) & concentrated near $p\approx0$ (64\% at
+$[0,0.1)$, falling to 0\% by $[0.7,0.9)$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+It is \texttt{chex}, not \texttt{rsna}, that degenerates, at a materially
+higher rate (25\% of episodes) than the earlier training-log spot-check
+suggested, and it is concentrated at \emph{low} probability, not near 0.5
+— consistent with the original explanation already on record in
+\texttt{gradcam.py} (output saturation zeroing the gradient), not the
+newer all-negative-contribution hypothesis. Whenever \texttt{chex}
+degenerates, the averaged mask falls back toward \texttt{rsna} alone —
+the least-constrained, 2-head, easiest-to-fool member — and CAM-lesion
+overlap drops with it: mean lift $2.052$ ($n=127$) on clean episodes
+versus $1.347$ ($n=23$) on partially-degenerate ones, scored against real
+radiologist boxes. Switching to the finer target layer
+(\texttt{features.denseblock3}) that \texttt{config.py} suggested as the
+first remedy for a too-coarse mask essentially eliminates the degeneracy
+(\texttt{chex} 0\%, \texttt{rsna} 0.4\%) but at a cost that makes it worse,
+not better, as a fix: baseline CAM-lesion lift on clean episodes falls to
+$1.196$ ($n=149$), barely above the $1.0$ chance floor — the finer layer's
+own localisation is markedly worse even when nothing degenerates. Read
+honestly: the Grad-CAM mask is both partially unreliable (a real, now
+quantified degeneracy problem, at roughly a quarter of episodes under the
+trained configuration) and, even at its best, only loosely aligned with
+the true lesion — and the one remedy already on record for either problem
+does not deliver on its promise.
+
+\subsection{A trained 3-model ensemble}
+\label{sec:ensemble3_retrain}
+
+The 3-member ensemble in Table~\ref{tab:ensemble_sweep} was only ever
+tested through the cheap no-policy path — no PPO policy had actually been
+trained under it. Both directions were retrained from scratch (800
+episodes each, fresh state confirmed by the training log) under
+\texttt{[rsna, chex, mimic\_nb]} guidance, everything else held at the
+committed default (no Grad-CAM mask, no sparsity reward — isolating the
+ensemble-size change alone). \texttt{mimic\_nb} shares its MIMIC-CXR
+corpus with the \texttt{mimic\_ch} validator, so held-out transfer is
+scored on the reduced, leak-free set \texttt{\{nih, pc\}} only, matching
+the no-policy sweep's own convention.
+
+\begin{table}[h]
+\centering
+\caption{Held-out transfer ratio, 2- vs.\ 3-model ensemble-guided
+\emph{trained} policies, $n=200$ per group, leak-free validators
+\texttt{\{nih, pc\}}.}
+\label{tab:ensemble3_transfer}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+& \multicolumn{2}{c}{nih} & \multicolumn{2}{c}{pc} & \multicolumn{2}{c}{mean} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+Policy & n$\to$p & p$\to$n & n$\to$p & p$\to$n & n$\to$p & p$\to$n \\
+\midrule
+2-model ensemble & 0.046 & 0.186 & 0.462 & 0.308 & 0.254 & 0.247 \\
+3-model ensemble & 0.076 & 0.251 & \textbf{0.623} & 0.301 & \textbf{0.350} & \textbf{0.276} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The mean rose on both directions, but the two validators tell different
+stories. \texttt{pc} n$\to$p moved from 0.462 to 0.623 — bootstrap CIs
+$[0.433, 0.491]$ vs.\ $[0.597, 0.648]$ do not overlap, a real gain, and
+the verdict itself changes from ``partial'' to ``TRANSFERS''.
+\texttt{nih} moved in the right direction on both counts (n$\to$p
+0.046$\to$0.076, p$\to$n 0.186$\to$0.251), but the CIs overlap on both
+($[0.007,0.084]$ vs.\ $[0.033,0.119]$; $[0.155,0.216]$ vs.\
+$[0.167,0.337]$) — not distinguishable from noise at $n=200$, though both
+policies stay confidently below the $0.15$ adversarial threshold on
+n$\to$p either way. CV fell further, to a mean of $0.624$ (n$\to$p
+$0.685$, p$\to$n $0.563$), consistent with the pattern already
+established: a harder joint criterion as the ensemble grows, not a
+weaker policy. LHR lift was $2.492$ versus the 2-model arm's $2.673$, but
+on a much smaller annotated overlap ($n=27$ vs.\ $148$ pairs) — the harder
+consensus criterion shrinks the classifier-negative-but-clinically-positive
+group this metric depends on, so this difference is a sample-size
+caveat, not a confident regression claim.
+
+Read honestly: a real, trained 3-model ensemble buys a genuine
+improvement on \texttt{pc} and moves \texttt{nih} in the right direction
+without closing the gap in a way this sample size can confirm. It does
+not fully close the \texttt{nih} adversarial gap, but nothing here
+suggests it makes anything worse either.
+
+\subsection{A trained sparsity-reward arm}
+\label{sec:sparsity_retrain}
+
+Edit concentration has stayed diffuse (0.25–0.32 against a 0.05 uniform
+baseline) in every arm measured, never approaching the $\sim$0.5 that
+would indicate a focal, lesion-shaped edit. \texttt{USE\_SPARSITY\_REWARD}
+was built to address this directly but has sat disabled since 2026-08-07,
+which left \texttt{USE\_SPARSITY\_ANNEALING}'s ramp inert — the term
+never actually fired in any reported result. It was re-enabled, isolated
+against the committed default (2-model ensemble, no Grad-CAM mask, so
+\texttt{SPARSITY\_OUTSIDE\_CAM\_ONLY} degrades to plain unweighted L1,
+flagged explicitly rather than left silent), and both directions
+retrained from scratch (800 episodes each, fresh state confirmed).
+
+\begin{table}[h]
+\centering
+\caption{Committed default vs.\ trained sparsity-reward arm.}
+\label{tab:sparsity_results}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Metric} & \textbf{Default} & \textbf{+ sparsity reward} \\
+\midrule
+EditConcentration n$\to$p & 0.253 & 0.264 \\
+EditConcentration p$\to$n & 0.318 & 0.299 \\
+CV mean & 0.838 & 0.830 \\
+LHR lift (p$\to$n) & 2.673 & 2.398 \\
+Mean transfer n$\to$p & 0.282 & 0.311 \\
+Mean transfer p$\to$n & 0.293 & 0.212 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{It did not achieve its own goal.} Edit concentration moved by
+less than 0.02 in either direction and \texttt{frac\_changed} (share of
+pixels touched) stayed within 0.01 of the default (0.650$\to$0.661,
+0.633$\to$0.632) — nowhere near the $\sim$0.5 focal threshold, despite
+the term now genuinely being active (confirmed in the training log:
+$\lambda_{\text{sparsity}}$ ramped to its target of 2.0).
+
+\textbf{It made lesion targeting measurably worse.} A paired test on the
+same 148 annotated images both arms share gives a lift gap of $+0.275$
+favoring the arm \emph{without} the sparsity reward (95\% CI
+$[+0.188, +0.363]$), $t=6.229$, $p=4.7\times10^{-9}$, Wilcoxon
+$p=1.2\times10^{-8}$, Cohen's $d=0.512$ — a medium effect, markedly
+larger than the trained-vs-random gap earlier in this section
+($d=0.189$). The default arm was better on 104/148 images.
+
+\textbf{It made held-out transfer worse in the p$\to$n direction.} Mean
+p$\to$n transfer fell from 0.293 to 0.212, driven by real, non-overlapping-CI
+drops on two of three validators: \texttt{pc} ($0.308\to0.216$, CIs
+$[0.282,0.336]$ vs.\ $[0.192,0.242]$) and \texttt{mimic\_ch}
+($0.384\to0.252$, CIs $[0.343,0.422]$ vs.\ $[0.212,0.292]$). n$\to$p
+transfer moved slightly up on average (+0.029) but no single validator's
+CI shift is clearly outside overlap.
+
+Read plainly: enabling the sparsity reward for real, rather than leaving
+its annealing ramp inert, does not concentrate edits — its designed
+purpose — and instead costs lesion-targeting lift and p$\to$n transfer, both
+by a real, measured margin. A plain (non-CAM-weighted) L1 penalty
+discourages edit mass uniformly rather than specifically off-target mass,
+which may explain why it competes with precise editing without
+succeeding at its own goal; whether a working spatial mask (unresolved by
+this project's Grad-CAM diagnosis above) would change that is untested.
+
+\subsection{A trained Grad-CAM-fix arm}
+\label{sec:gradcam_fix_retrain}
+
+The Grad-CAM diagnosis above (\S\ref{sec:gradcam_diagnosis}) was an
+\emph{offline} probe: Grad-CAM computed on real images, scored against
+ground-truth lesion boxes, with no PPO policy or generated counterfactual
+in the loop. It found that \texttt{features.denseblock3} nearly eliminates
+ensemble degeneracy but at a cost to the CAM's own baseline lesion
+overlap — suggestive that the layer swap is not a fix, but not proof at
+the level this report holds every other claim to. To close that gap, a
+policy was actually trained under it: \texttt{USE\_GRADCAM\_MASK=True},
+\texttt{GRADCAM\_TARGET\_LAYER=features.denseblock3}, everything else at
+the committed default (2-model ensemble, no sparsity reward), both
+directions retrained from scratch and fully evaluated.
+
+\begin{table}[h]
+\centering
+\caption{Committed default vs.\ trained Grad-CAM-fix arm.}
+\label{tab:gradcam_fix_results}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Metric} & \textbf{Default} & \textbf{+ Grad-CAM fix} \\
+\midrule
+CV mean & 0.838 & \textbf{0.017} \\
+LHR lift (p$\to$n) & 2.673 & 1.636 \\
+Mean transfer n$\to$p & 0.282 & 0.161 \\
+Mean transfer p$\to$n & 0.293 & 0.103 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This is unambiguous. CV collapsed from a mean of $0.838$ to $0.017$ — the
+policy essentially stopped succeeding at the base task (flipping the
+guidance ensemble) under this constrained action space. The paired LHR
+test on the shared 148 annotated images gives a lift gap of $+1.037$
+favoring the arm \emph{without} the Grad-CAM constraint (95\% CI
+$[+0.900, +1.178]$), $t=14.660$, $p=1.5\times10^{-30}$, Wilcoxon
+$p=1.7\times10^{-22}$, Cohen's $d=1.205$ — the largest paired effect size
+measured anywhere in this project (against $d=0.189$ for trained-vs-random
+and $d=0.512$ for the sparsity-reward arm), and the default arm was
+better on 141 of 148 images. Held-out transfer fell across all three
+validators, with \texttt{nih} and \texttt{mimic\_ch} moving into or
+staying in the \texttt{ADVERSARIAL} band on both counts.
+
+Read plainly: this is not a fix, confirmed rather than merely diagnosed.
+Constraining the action space to a finer, less confident CAM region does
+not trade a manageable degeneracy problem for a manageable localisation
+problem — it makes learning the base task substantially harder, and every
+downstream metric that depends on the policy succeeding at that task
+degrades with it. \texttt{USE\_GRADCAM\_MASK} stays off in the committed
+configuration.
+
+Six items across this section now have numbers rather than open
+questions attached to them: the two originally left open, why the
+Grad-CAM constraint hurts (diagnosed), whether a larger trained ensemble
+would help \texttt{nih} (partial, honest: yes for \texttt{pc}, not
+conclusively for \texttt{nih}), whether the sparsity reward would
+concentrate edits (no, and it costs targeting accuracy), and whether the
+one Grad-CAM remedy already on record actually fixes the constraint when
+a real policy is trained under it (no — confirmed, not just suspected).
+None is closed in the sense of settling the project's central claim: what
+remains is whether \emph{any} Grad-CAM mask can help rather than hurt,
+whether \texttt{nih} specifically would need a larger annotated sample or
+a different guidance composition to move past noise, and whether edit
+diffuseness is fixable at all within this gradient-guidance approach. The
+old single-classifier policies and shards were archived, not overwritten,
+so this comparison stays reproducible.
+
+\subsection{Comparing all five arms}
+\label{sec:five_arm_comparison}
+
+Five checkpoint directories now hold a fully trained, fully evaluated
+policy under this section's protocol: the archived single-classifier
+baseline, the committed 2-model-ensemble default, and the three isolated
+retrains above (3-model ensemble, sparsity reward, Grad-CAM fix). Every
+number below comes from that same 800-episode-per-direction,
+200-image-per-group pipeline — none is a no-policy countermeasure sweep
+or an offline proxy.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{./social_media/chart_lhr_lift.png}
+\caption{Lesion Hit Rate lift (p$\to$n) across all five trained arms. Dashed
+lines mark chance (1.0) and the no-policy label-protocol baseline (2.057).}
+\label{fig:five_arm_lhr}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.49\textwidth]{./social_media/chart_transfer_ratio.png}
+\hfill
+\includegraphics[width=0.49\textwidth]{./social_media/chart_edit_concentration.png}
+\caption{Held-out transfer ratio (left) and edit concentration (right) across
+all five arms. The 3-model ensemble's transfer figure is scored on the
+reduced validator set \texttt{\{nih, pc\}} only and is not directly
+comparable to the other four arms' 3-validator mean.}
+\label{fig:five_arm_transfer_concentration}
+\end{figure}
+
+Reading the three figures together against the paired significance tests
+run for each pair (this section, throughout): the single-classifier
+$\to$ 2-model-ensemble step is a confirmed real gain ($d=0.482$,
+$p=7.1\times10^{-5}$, $n=76$ shared annotated images); the
+2-model $\to$ 3-model-ensemble step is not statistically resolved on LHR
+(only 12 images are shared between those two arms' annotated sets — the
+paired CI is $[-0.298, +0.482]$) even though \texttt{pc} transfer improved
+for real; and both the sparsity-reward and Grad-CAM-fix retrains are
+confirmed worse than the default, the latter by the largest paired effect
+size measured anywhere in this project ($d=1.205$). No arm has moved edit
+concentration meaningfully toward the $\sim$0.5 focal threshold — every
+bar in the right-hand panel sits in the same 0.21--0.32 band regardless
+of what changed underneath it.
 
 % ═════════════════════════════════════════════════════════════════════════
-\section{Additional Work: Extension to a Second Domain (Mammography)}
+\section{Conclusion}
+% ═════════════════════════════════════════════════════════════════════════
+
+This report's central finding is about evaluation, not just generation:
+Counterfactual Validity, scored with the same classifier family used to
+guide generation, is a weak and at times misleading signal for whether a
+countermeasure actually improves a counterfactual system, and this
+project's own five-arm study (Section~\ref{sec:integrity}) demonstrates
+it directly rather than arguing it in the abstract. On a
+lesion-annotation-anchored Lesion Hit Rate (LHR) and a held-out-transfer
+ratio scored on classifier backbones excluded from guidance — both
+independent of the guidance classifier in a way CV is not — ensemble
+guidance is the one tested countermeasure that helps, replicated across
+three seeds, while it simultaneously \emph{lowers} mean CV relative to
+the no-countermeasure baseline ($0.838$ vs.\ higher), exactly the
+direction a CV-only evaluation would misread as a regression. Two further
+retrains sharpen the case: an annealed sparsity reward, switched on for
+the first time, failed to concentrate edits — its entire purpose — and
+measurably hurt lesion targeting ($d=0.512$), and a finer Grad-CAM target
+layer that looked promising offline produced the largest paired effect
+size measured anywhere in this project once trained for real ($d=1.205$),
+collapsing Counterfactual Validity from $0.838$ to $0.017$ in the wrong
+direction. Both are confirmed negative results under paired testing, not
+merely unproven ideas, and both argue for the discriminative power of the
+LHR/transfer protocol rather than against the underlying system. A
+related audit of the evaluation apparatus itself closed two bugs that
+would have silently invalidated any control-arm or countermeasure
+comparison and corrected a set of hand-altered values found in the
+recorded results (Section~\ref{sec:integrity}).
+
+We also presented the PPO-controlled, LoRA-fine-tuned latent diffusion
+pipeline itself, with a hard segmentation-mask-gated background lock
+ensuring edits stay confined to the lung field. Evaluated with the
+Singla~\emph{et al.} protocol plus a model-free identity-preservation
+score and two clinical proxy metrics, the system reaches high
+counterfactual validity in both edit directions (mean CV $=0.940$), while
+surfacing — and, through two documented reward-bug fixes, partially
+correcting — a persistent generative asymmetry between adding and
+removing pathology evidence. Its two clinical proxy metrics, CTR and SCP,
+did not detect a significant shift in this evaluation run (CTR $p=0.69$/
+$0.44$; SCP flagged degenerate), which an earlier draft of this report
+had mischaracterized as significant. Head-to-head comparison against a
+GAN-based counterfactual baseline and an unguided CycleGAN baseline
+(Section~\ref{sec:baseline_comparison}) shows the system trails GAN-based
+mean counterfactual validity slightly while generating substantially more
+realistic images. Appendix~\ref{sec:breast} reports exploratory,
+not-yet-validated work extending the pipeline architecturally to a
+second, dissimilar domain (mammography, CBIS-DDSM), where the same
+purpose-built-diagnostic discipline surfaced a diffuse-edit concern
+without an independent classifier yet available to confirm or refute it.
+That evaluation-integrity work was closed out with three further isolated
+retrains, each a real policy trained and fully evaluated rather than a
+cheaper proxy: a genuine 3-model ensemble improved held-out transfer on
+one of two remaining validators for real but left the hardest,
+\texttt{nih}, statistically unresolved at this sample size; the sparsity
+reward and Grad-CAM retrains already summarized above are the other two.
+
+\begin{table}[h]
+\centering
+\caption{All five trained-and-evaluated arms, same protocol throughout.
+Bold marks the most performant technique by paired significance test or
+bootstrap CI, not point estimate.}
+\label{tab:conclusion_five_arm}
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+\textbf{Arm} & \textbf{LHR lift (p$\to$n)} & \textbf{Mean transfer} & \textbf{Verdict vs.\ default} \\
+\midrule
+Single-classifier            & 2.293          & 0.230 / 0.146 & confirmed worse ($d=0.482$) \\
+\textbf{2-model ensemble (default)} & \textbf{2.673} & 0.282 / 0.293 & --- \\
+3-model ensemble             & 2.492          & 0.350 / 0.276\textsuperscript{*} & inconclusive on LHR ($n=12$) \\
+Sparsity reward              & 2.398          & 0.311 / 0.212 & confirmed worse ($d=0.512$) \\
+Grad-CAM fix                 & 1.636          & 0.161 / 0.103 & confirmed much worse ($d=1.205$) \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3em}
+\footnotesize\textsuperscript{*}scored on the reduced, leak-free validator
+set \{nih, pc\}; not directly comparable to the other rows' 3-validator mean.
+\end{table}
+
+The committed 2-model ensemble default remains the most performant
+technique this project measured among its own five arms: a confirmed
+improvement over the single-classifier baseline, beaten by none of the
+three later, more ambitious attempts to improve on it — two of which are
+confirmed worse, not merely unproven.
+
+That same default is also the best-performing technique against the
+external baselines from Section~\ref{sec:baseline_comparison}
+(Table~\ref{tab:baseline_comparison}), where it is the only method that
+does not trade validity for realism or the reverse.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{./social_media/chart_baseline_comparison.png}
+\caption{Counterfactual Validity and FID, Vanilla CycleGAN vs.\
+GANterfactual~\cite{singla2022} vs.\ our committed default — the same
+numbers as Table~\ref{tab:baseline_comparison}. \textbf{[CHECK: CHART
+STALE]}: this chart's \method{} FID bars were rendered from the
+previously printed $5.67$/$3.20$ values; the corrected values are $20.02$
+(n$\to$p) / $5.63$ (p$\to$n) per \texttt{checkpoints/eval\_metrics.json}
+(Section~\ref{sec:integrity}) — the chart needs regenerating from these
+numbers.}
+\label{fig:conclusion_baseline_chart}
+\end{figure}
+
+The unguided Vanilla CycleGAN validates least reliably of the three (mean
+CV $0.385$) and produces the least realistic images (FID $55.0$/$45.0$),
+confirming that neither gradient guidance nor the background lock is
+optional. GANterfactual reaches marginally higher validity in the easier
+n$\to$p direction ($0.998$ vs.\ $0.980$) but trails in p$\to$n
+($0.872$ vs.\ $0.900$). GANterfactual's realism gap relative to ours is
+direction-dependent, not the uniform "$4$--$6\times$" claimed in an
+earlier draft: FID $25.0$ vs.\ $20.02$ for n$\to$p ($1.25\times$ better)
+and $20.0$ vs.\ $5.63$ for p$\to$n ($3.6\times$ better). Taken together
+with the internal comparison above,
+the evidence across every technique this project tested or compared
+against — two external baselines and five internally trained arms —
+points to the same conclusion: the committed 2-model ensemble default is
+the strongest technique found, not merely the one shipped by default. The
+clearest next
+steps for the core system are scaling PPO training
+compute (particularly for the harder n$\to$p direction), replacing the
+SCP and IP proxies with dedicated, purpose-trained detectors if annotated
+data becomes available, and increasing FID evaluation sample size for
+tighter realism estimates.
+
+\appendix
+% ═════════════════════════════════════════════════════════════════════════
+\section{Supplementary: Extension to a Second Domain (Mammography)}
 \label{sec:breast}
 % ═════════════════════════════════════════════════════════════════════════
 
-Everything above concerns a single domain: binary pneumonia classification
-on RSNA chest radiographs. As additional, exploratory work beyond the core
-project, the pipeline was generalized behind a domain-registry abstraction
-(\texttt{domains/}) binding a dataset, its classifier target, and its
-clinical metrics, so that a new imaging domain is one module plus one
-configuration line rather than an edit threaded through the guidance and
-evaluation code. This section reports the result of exercising that
-abstraction on a second, deliberately dissimilar domain: mammography, on
-the CBIS-DDSM dataset~\cite{lee2017cbisddsm}.
+This appendix reports exploratory work outside the core RSNA chest-radiography
+system evaluated in the main body above, kept out of the main body because
+its central number (mean CV $1.000$) is exactly the same-corpus-validator
+artifact the core system's own five-arm study (Section~\ref{sec:integrity})
+warns against, and is flagged as such below rather than presented as a
+second result on a par with the main-body findings.
+
+Everything in the main body concerns a single domain: binary pneumonia
+classification on RSNA chest radiographs. As additional, exploratory work
+beyond the core project, the pipeline was generalized behind a
+domain-registry abstraction (\texttt{domains/}) binding a dataset, its
+classifier target, and its clinical metrics, so that a new imaging domain
+is one module plus one configuration line rather than an edit threaded
+through the guidance and evaluation code. This appendix reports the
+result of exercising that abstraction on a second, deliberately
+dissimilar domain: mammography, on the CBIS-DDSM
+dataset~\cite{lee2017cbisddsm}.
 
 \textbf{What had to be rebuilt.} TorchXRayVision supplies no breast model
 of any kind, so this domain brings its own classifier $f$ (trained from
@@ -1106,15 +1635,26 @@ to \emph{look} benign to the classifier, not that disease was removed.
 \begin{table}[h]
 \centering
 \caption{Mammography-domain evaluation, $n_{\text{eval}} \le 200$ per
-group (\texttt{checkpoints/cbis\_ddsm\_breast/eval\_metrics.json}).}
+group (\texttt{checkpoints/cbis\_ddsm\_breast/eval\_metrics.json};
+transfer rows from \texttt{.../heldout\_transfer.json}). The CV row and
+the held-out transfer row are deliberately in the same table: CV is
+computed against the classifier that guided generation and means nothing
+on its own.}
 \label{tab:breast_results}
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}llrr@{}}
 \toprule
 \textbf{Metric} & \textbf{Definition} & \textbf{ben.$\to$mal.} & \textbf{mal.$\to$ben.} \\
 \midrule
-CV   & fraction valid ($\tau=0.8$)      & 1.000 & 1.000 \\
+CV   & fraction valid ($\tau=0.8$), \emph{against the guidance model} & 1.000 & 1.000 \\
      & \textit{mean}                     & \multicolumn{2}{c}{1.000} \\
+\addlinespace
+\textbf{Transfer} & \textbf{independent validators, mean} $\Delta_{\text{val}}/\Delta_{\text{guid}}$ & \textbf{0.066} & \textbf{0.056} \\
+     & \quad resnet18-heldout (AUC 0.723)   & 0.116 & 0.032 \\
+     & \quad effnet-b0-heldout (AUC 0.693)  & 0.017 & 0.080 \\
+     & \quad \textit{same-corpus validator (AUC 0.988$^{\dagger}$)} & \textit{0.476} & \textit{0.327} \\
+     & \quad \textit{CMMD external (AUC 0.507/0.499 --- uninterpretable)} & \textit{0.091 / $-$0.006} & \textit{0.052 / 0.095} \\
+\addlinespace
 FID  & breast-domain features, lower better & 163.6 & 193.8 \\
 IP   & MS-SSIM / HF-corr                 & 0.891 / 0.932 & 0.886 / 0.946 \\
 EditConcentration & top-5\% mass (uniform $=0.05$) / \% pixels changed & 0.367 / 38.2\% & 0.332 / 40.6\% \\
@@ -1122,6 +1662,44 @@ MOP  & marker preservation                & 0.930 & 0.872 \\
 LLR $\Delta$ & ($t$, $p$)                 & $+0.00014$ (0.04, 0.970) & $-0.00107$ ($-0.34$, 0.732) \\
 MSI $\Delta$ & ($t$, $p$)                 & $-0.082$ ($-1.39$, 0.165) & $-0.055$ ($-1.68$, 0.094) \\
 BDC $\Delta$ & ($t$, $p$)                 & $+0.0014$ (0.29, 0.773) & $+0.0154$ (2.46, $0.015^{\ast}$) \\
+\bottomrule
+\end{tabular}%
+}
+
+\smallskip
+{\footnotesize $^{\dagger}$\,\texttt{resnet18-breast-cbis}, the backbone the
+domain profile reserves as its held-out validator, was trained on the same
+patient split as the guidance model and therefore on 336 of these 400 eval
+images (84\%). Its AUC of $0.988$ measures memorisation, and its transfer
+ratio is an upper bound, not an independence check --- which is why it is
+excluded from the mean.}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Mammography held-out transfer ratio per validator and direction,
+$n=200$ per group, percentile bootstrap over 10,000 resamples with
+numerator and denominator resampled jointly to preserve within-image
+pairing. Verdict thresholds are \texttt{arm\_transfer.py}'s:
+$<0.15$ adversarial, $<0.5$ partial. AUC is measured on the 400 real
+originals (190 benign / 210 malignant) against radiologist pathology
+labels; $\rho$ is rank agreement with the guidance model on those same
+unedited images.}
+\label{tab:breast_transfer}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+\textbf{Validator} & \textbf{Independence} & \textbf{AUC} & \textbf{$\rho$} & \textbf{ben.$\to$mal.\ (95\% CI)} & \textbf{mal.$\to$ben.\ (95\% CI)} \\
+\midrule
+\multicolumn{6}{@{}l}{\textit{Independent and competent --- these are the result}} \\
+resnet18-heldout    & patient-disjoint & 0.723 & $+0.385$ & $0.116$ $[0.097, 0.136]$ & $0.032$ $[0.017, 0.047]$ \\
+effnet-b0-heldout   & patient-disjoint & 0.693 & $+0.370$ & $0.017$ $[-0.011, 0.044]$ & $0.080$ $[0.057, 0.103]$ \\
+\textbf{mean}       &                  &       &          & $\mathbf{0.066}$ & $\mathbf{0.056}$ \\
+\midrule
+\multicolumn{6}{@{}l}{\textit{Reported for contrast --- not independence checks}} \\
+resnet18-cbis       & same train fold  & 0.988 & $+0.826$ & $0.476$ $[0.427, 0.526]$ & $0.327$ $[0.282, 0.373]$ \\
+resnet18-cmmd       & external corpus  & 0.507 & $+0.055$ & $0.091$ $[0.071, 0.111]$ & $0.052$ $[0.034, 0.069]$ \\
+effnet-b0-cmmd      & external corpus  & 0.499 & $-0.000$ & $-0.006$ $[-0.019, 0.007]$ & $0.095$ $[0.084, 0.107]$ \\
 \bottomrule
 \end{tabular}%
 }
@@ -1143,71 +1721,114 @@ BDC $\Delta$ & ($t$, $p$)                 & $+0.0014$ (0.29, 0.773) & $+0.0154$ 
 \end{figure}
 
 \textbf{This is not a second validated success, and should not be read as
-one.} A mean CV of $1.000$ against the guidance ensemble looks, on its
-face, like an even stronger number than the RSNA result; but no
-independent held-out re-scoring was run for mammography within the time
-available, and the guidance ensemble and the reserved validator backbone
-here were all trained on the \emph{same} $\sim$3{,}500-image dataset and
-differ only in architecture, so any future held-out check on this domain
-would be a weaker, same-corpus test rather than a cross-corpus one. More
-tellingly, the metrics that \emph{were} computed already show a
-diffuse-edit signature directly, without needing an independent
-classifier to surface it: in the malignant$\to$benign direction, BDC
-shifts significantly ($p=0.015$) while LLR — the metric that would move
-if a lesion actually shrank — does not ($p=0.732$), and edit
-concentration (0.33--0.37 against a uniform baseline of $0.05$, with
-38--41\% of all pixels changed) is well short of what a focal,
-lesion-confined edit would produce. The most defensible reading is that
-the classifier is being moved substantially by a diffuse density change
-rather than by a change to the segmented lesion itself. What this
-extension demonstrates is that the domain-registry architecture
-generalizes to a modality sharing essentially nothing with chest
-radiography, and that the same purpose-built-diagnostic discipline used
-throughout this project catches a plausible adversarial shortcut on a
-new domain without requiring a second classifier ensemble to be trained
-first; it does not yet demonstrate that the mammography counterfactuals
-carry genuine, lesion-specific disease signal, and completing an
-independent validator for this domain is the natural next step.
+one.} A mean CV of $1.000$ against the guidance classifier looks, on its
+face, like an even stronger number than the RSNA result. It is not a
+result at all: it is measured against the model whose gradient produced
+the edits. The held-out re-scoring reported alongside it in
+Table~\ref{tab:breast_results} is what that number has to be read next
+to, and the two disagree by an order of magnitude.
 
-% ═════════════════════════════════════════════════════════════════════════
-\section{Conclusion}
-% ═════════════════════════════════════════════════════════════════════════
+\textbf{Verdict: adversarial, in both directions, distinguishable from
+noise.} Against validators that never saw the guidance model's training
+data and never saw a single one of the 400 images they are scoring, the
+counterfactuals reproduce a mean $6.6\%$ (benign$\to$malignant) and
+$5.6\%$ (malignant$\to$benign) of the guidance model's own score shift.
+Every one of the four bootstrap intervals in
+Table~\ref{tab:breast_transfer} lies entirely below the $0.15$ adversarial
+threshold --- the largest upper bound is $0.136$ --- so this is not a
+small sample failing to resolve a real effect; at $n=200$ per group the
+data positively establishes the adversarial regime. In the
+benign$\to$malignant direction the EfficientNet validator's interval
+$[-0.011, 0.044]$ includes zero outright, meaning that for that validator
+the edits carry no detectable malignancy signal whatsoever. For
+comparison, the chest domain's worst arm transfers at $0.230/0.146$ and
+its committed default at $0.282/0.293$: mammography is markedly
+\emph{more} adversarial than any RSNA arm, not less.
 
-We presented a PPO-controlled, LoRA-fine-tuned latent diffusion pipeline
-for generating class-conditional visual counterfactuals on chest
-radiographs, with a hard segmentation-mask-gated background lock ensuring
-edits stay confined to the lung field. Evaluated with the
-Singla~\emph{et al.} protocol plus a model-free identity-preservation
-score and two clinical proxy metrics, the system reaches high
-counterfactual validity in both edit directions (mean CV $=0.965$) with
-statistically significant, directionally sensible shifts in clinical
-proxy metrics, while surfacing — and, through two documented reward-bug
-fixes, partially correcting — a persistent generative asymmetry between
-adding and removing pathology evidence. Head-to-head comparison against a
-GAN-based counterfactual baseline and an unguided CycleGAN baseline
-(Section~\ref{sec:baseline_comparison}) shows the system matches
-GAN-based counterfactual validity while generating substantially more
-realistic images. As additional work, we showed the pipeline generalizes
-architecturally to a second, dissimilar domain (mammography, CBIS-DDSM,
-Section~\ref{sec:breast}), where a purpose-built density diagnostic
-surfaced the same diffuse-edit concern found on RSNA; validating those
-counterfactuals against an independent classifier, as done here for chest
-radiographs, remains open work specific to that domain. A later audit of
-the evaluation apparatus itself (Section~\ref{sec:integrity}) closed two
-bugs that would have silently invalidated any control-arm or
-countermeasure comparison, corrected a set of hand-altered values in the
-recorded results, and — on a lesion-annotation metric anchored to ground
-truth — showed ensemble guidance to be the one tested countermeasure that
-helps, replicated across three seeds, while a Grad-CAM spatial constraint
-measurably hurts; a full re-validation of ensemble guidance against
-held-out classifiers, at the larger ensemble size the sweep in
-Section~\ref{sec:integrity} suggests is worth pursuing, remains the item
-that work did not close. The clearest next
-steps for the core system are scaling PPO training
-compute (particularly for the harder n$\to$p direction), replacing the
-SCP and IP proxies with dedicated, purpose-trained detectors if annotated
-data becomes available, and increasing FID evaluation sample size for
-tighter realism estimates.
+\textbf{The reserved validator was never an independence check, and the
+gap quantifies what that cost.} \texttt{resnet18-breast-cbis}, which
+\texttt{domains/cbis\_ddsm\_breast.py} designates as this domain's
+held-out validator, was trained on the same patient split
+(\texttt{seed}~0, \texttt{val\_frac}~0.2) as the guidance model, and
+therefore on 336 of the 400 eval images --- 84\%, across 304 of 362
+patients. Its AUC of $0.988$ on those images is memorisation, against
+$0.723$ and $0.693$ for validators that have not seen them. Had its
+transfer ratio been reported as the domain's independence check, it would
+have read $0.476/0.327$ --- ``partial'' on this project's own scale, and
+between four and ten times the honest figure. The anti-circularity check
+in \texttt{DomainProfile.validate()} passes here, because it compares
+model \emph{identity}; nothing in the pipeline was comparing training
+\emph{data}, and that is the gap this measurement closes.
+
+\textbf{An external corpus was tried and did not survive its own sanity
+check --- and both its in-domain and cross-domain AUC are reported, not just
+the failing one.} A validator trained on CMMD --- a different country, a
+different scanner generation, no possible patient overlap --- would in
+principle have been the strongest available independence claim. On its
+\emph{own} held-out CMMD patients it reaches out-of-fold AUC $0.624$
+(ResNet-18) / $0.635$ (EfficientNet-B0): above chance, but already below
+this project's $0.65$ floor before CBIS-DDSM is involved at all. Scored on
+real CBIS-DDSM images it drops further, to $0.507$ / $0.499$ ---
+indistinguishable from chance --- with rank agreement $\rho=+0.055$ and
+$\rho=-0.000$ against the guidance model on the unedited originals. The
+scores are not degenerate (std $0.108$, unimodal over $[0.18,0.82]$), and
+label mapping and pixel preprocessing are byte-identical to CBIS-DDSM's;
+what differs is framing --- CMMD's mirror ships pre-cropped lesion patches
+(34.5\% near-black background) against CBIS-DDSM's full mammograms
+(54.7\%) --- consistent with the classifier keying on something
+framing-specific rather than on transferable malignancy signal. This was a
+mediocre validator on its own data before the domain shift compounded it.
+Its transfer ratios ($0.091$, $-0.006$) are therefore reported as
+\emph{uninterpretable} and excluded from the mean, because a classifier
+that cannot separate real malignant from real benign would not follow a
+genuine disease edit either --- a low ratio from it would be evidence
+about the validator, not about the counterfactuals. That distinction is
+the reason every validator here is gated on AUC before its ratio is read.
+
+\textbf{Two independent lines of evidence now agree.} The clinical proxy
+metrics reached this conclusion first and without a classifier: in the
+malignant$\to$benign direction BDC shifts significantly ($p=0.015$) while
+LLR --- the metric that would move if a lesion actually shrank --- does
+not ($p=0.732$), and edit concentration (0.33--0.37 against a uniform
+baseline of $0.05$, with 38--41\% of all pixels changed) is far short of
+a focal, lesion-confined edit. The held-out transfer ratio is a second,
+methodologically unrelated instrument --- an independently trained
+classifier rather than a segmentation-derived statistic --- and it points
+the same way. The convergence matters more than either result alone:
+a diffuse density wash that moves a density-sensitive classifier without
+altering the lesion is precisely an edit that a classifier trained on
+different patients would not follow, and that is exactly what is observed.
+
+Two caveats keep this honest in the other direction. The independent
+validators are competent but not strong (AUC $0.69$--$0.72$), so they set
+a floor on how much real signal an edit must carry to register, and a
+subtle genuine lesion change could fall below it; the ratio is evidence
+of a large adversarial component, not proof that the signal is exactly
+zero. And BDC's $p=0.015$ does not survive Bonferroni correction across
+the six clinical tests ($0.05/6 = 0.0083$), a caveat that applies to the
+clinical-metric line of evidence and not to the transfer ratio, which is
+one pre-specified measurement rather than a family of six. Neither
+caveat disturbs the main finding, but the exact scope of ``disjoint''
+does need stating. These validators are disjoint from the guidance
+model's \emph{training} fold and from every image they score. They are
+trained on its \emph{validation} fold --- CBIS-DDSM splits 1{,}168 /
+292 patients, so excluding both folds would leave zero to train on ---
+and they are not disjoint from the PPO rollout pool, which no subset of
+this corpus can be, since the far-pool scan drew on all 2{,}857 images
+(1{,}603 plus 1{,}254, exactly the corpus). The validation-fold overlap
+biases \emph{against} the reported result: a validator sharing images
+with the guidance checkpoint's selection criterion should agree with it
+more, not less, so $0.066/0.056$ is a conservative figure.
+
+What this extension demonstrates, then, is stronger than the
+architecture-generalises claim it was originally written to support. The
+domain-registry abstraction did carry to a modality sharing nothing with
+chest radiography. But the substantive finding is that a counterfactual
+system reporting perfect validity against its own guidance classifier
+reproduced, on a second modality, the same adversarial shortcut that
+held-out validation exposed on the first --- and that the check which was
+supposed to catch it had been quietly disabled by a shared training
+split rather than by a shared model.
 
 % ═════════════════════════════════════════════════════════════════════════
 \begin{thebibliography}{9}
