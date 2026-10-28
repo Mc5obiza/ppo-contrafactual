@@ -1,0 +1,188 @@
+[manifest] wrote logs/ppo-eval-reduce-17702135.manifest
+[manifest] wrote checkpoints_sparsity/run_manifest.txt
+[slurm] arm=trained  cm=none  tag=none
+[slurm] shard_dir=checkpoints_sparsity/eval_shards  out_dir=checkpoints_sparsity
+=== Eval reduce started on hpc-n871 at Sat Aug 15 18:38:04 CEST 2026 ===
+shards present: 8 / 8
+name, memory.total [MiB], memory.used [MiB]
+Quadro RTX 6000, 23040 MiB, 0 MiB
+Quadro RTX 6000, 23040 MiB, 0 MiB
+Quadro RTX 6000, 23040 MiB, 0 MiB
+[preflight] Quadro RTX 6000 -> sm_75
+[preflight] torch 2.5.1+cu121 kernels: ['sm_50', 'sm_60', 'sm_70', 'sm_75', 'sm_80', 'sm_86', 'sm_90']
+[preflight] OK
+[eval] loaded 8 shards from 'checkpoints_sparsity/eval_shards' — Xn=200 Xp=200 Xc_n→p=200 Xc_p→n=200
+======================================================================
+STEP 1 — Dataset ingestion
+======================================================================
+[domain] rsna_pneumonia: f(.) targets 'Pneumonia' | guidance=densenet121-res224-rsna | ensemble=['densenet121-res224-rsna', 'densenet121-res224-chex'] | validators=['densenet121-res224-nih', 'densenet121-res224-pc', 'densenet121-res224-mimic_ch'] | clinical metrics: CTR, SCP
+[domain] Baseline domain. NOTE both clinical metrics are weak here: CTR is a cardiomegaly measure and SCP's sigmoid(-||yolo_feat||/50) proxy was measured degenerate (0.21% relative spread) in the last eval. Neither is pneumonia-specific.
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+[split] rsna_pneumonia: 21347 train / 5337 test (20.0% held out, seed=0)  [loaded]
+
+======================================================================
+STEP 2 — Loading pretrained models
+======================================================================
+[models] loaded ENSEMBLE classifier as f(·), head='Pneumonia': [rsna, chex] (2 members, mean probability)
+[models]   NOTE: f(·) is an ensemble — CV, far-pool sizes and the Xn/Xp group split are NOT comparable to single-classifier runs.
+[models] loaded PSPNet | lung channels: [4, 5]
+[models] loaded YOLOv8 backbone from yolov8n.pt
+
+======================================================================
+STEP 3 — Building generator with LoRA
+======================================================================
+[generator] loading VAE ...
+[generator] loading UNet ...
+trainable params: 1,594,368 || all params: 861,115,332 || trainable%: 0.1852
+[generator] VRAM estimate — VAE=160 MB, UNet=1645 MB, total=1806 MB
+
+======================================================================
+STEP 4 — Restoring trained checkpoints
+======================================================================
+[pipeline] loading fine-tuned generator from 'checkpoints_sparsity/n_to_p/'
+[pipeline]   → unet_finetuned.pt + cond_proj.pt
+
+----------------------------------------------------------------------
+Loading trained policy  [n_to_p, target_c=1.0]
+----------------------------------------------------------------------
+[env] 3052/5337 images are > 0.5 away from target_c=1.0  [training fold only]
+[env] far pool split: 3028 train / 24 held out for the CV probe (CV resolution 4.2 pts/image)
+[n_to_p] obs_dim = 73731
+[n_to_p] loaded policy from 'checkpoints_sparsity/n_to_p/ppo_policy.pt' (37,885,462 params)
+
+----------------------------------------------------------------------
+Loading trained policy  [p_to_n, target_c=0.0]
+----------------------------------------------------------------------
+[env] 2285/5337 images are > 0.5 away from target_c=0.0  [training fold only]
+[env] far pool split: 2261 train / 24 held out for the CV probe (CV resolution 4.2 pts/image)
+[p_to_n] obs_dim = 73731
+[p_to_n] loaded policy from 'checkpoints_sparsity/p_to_n/ppo_policy.pt' (37,885,462 params)
+
+======================================================================
+STEP 6 — Evaluation (metrics over precomputed counterfactuals)
+======================================================================
+
+======================================================================
+EVALUATION — Singla et al. (2022) metrics
+  (using PPO-guided generation)
+======================================================================
+[metrics] using PRECOMPUTED counterfactuals — skipping scan and generation. Xn=200  Xp=200
+[metrics] computing FID ...
+[metrics] computing FOP (TorchXRayVision Support Devices detector) ...
+[metrics] WARNING: 'Support Devices' head absent from weights='densenet121-res224-chex' (available heads: ['Atelectasis', 'Consolidation', '', 'Pneumothorax', 'Edema', '', '', 'Effusion', 'Pneumonia', '', 'Cardiomegaly', '', '', '', 'Lung Lesion', 'Fracture', 'Lung Opacity', 'Enlarged Cardiomediastinum']). FOP will be skipped (reported as N/A).
+[metrics] computing IP (MS-SSIM + high-freq detail preservation) ...
+[metrics] computing edit concentration ...
+[metrics] computing CTR ...
+[metrics] computing SCP ...
+[metrics] computing LHR (lesion hit rate, p→n) ...
+
+──────────────────────────────────────────────────────────────────────
+  METRIC SUMMARY  (Singla et al., 2022 — Table 1 / Fig. 9 style)
+──────────────────────────────────────────────────────────────────────
+
+► Counterfactual Validity (CV)   [τ = 0.8]
+    Xn → Xp : 0.9350
+    Xp → Xn : 0.7250
+    mean     : 0.8300
+
+► FID score  (lower = more realistic CFs)
+  vs SOURCE class — ambiguous: high can mean real class change OR artifact
+    FID(Xn,  Xc_n→p) : 91.50
+    FID(Xp,  Xc_p→n) : 55.03
+  vs TARGET class — the realism test, LOWER IS BETTER
+    FID(Xp,  Xc_n→p) : 15.56
+    FID(Xn,  Xc_p→n) : 4.86
+    (high on BOTH rows = off-manifold edit, not a class change)
+
+► Edit concentration  [model-free; top-5% of pixels' share of |Δ|]
+    Xn → Xp : 0.264  (uniform baseline 0.05) | MAE=0.0340 | changed=66.1%
+    Xp → Xn : 0.299  (uniform baseline 0.05) | MAE=0.0308 | changed=63.2%
+    >~0.5 = focal edit. Near the baseline = diffuse, i.e. adversarial-shaped.
+
+► Lesion Hit Rate (LHR)  [Xp → Xn, vs radiologist boxes — GROUND TRUTH]
+    edit mass inside lesion : 0.379 ± 0.195
+    chance baseline (area)  : 0.174 ± 0.111
+    LIFT                    : 2.40×  [t=23.82, p=2.56e-52, n=148]
+    1.0 = the edit ignores the annotation (adversarial-shaped). >1 = it targets the lesion.
+    Xn → Xp : N/A by construction — negative sources have no annotation.
+
+► Identity Preservation (IP)  [model-free FOP replacement, higher = better]
+    Xn → Xp : MS-SSIM=0.9037  HF-corr=0.9475
+    Xp → Xn : MS-SSIM=0.9021  HF-corr=0.9129
+
+► CTR — Cardiomegaly clinical metric
+    mean CTR(Xn)     = 0.4212 ± 0.0527
+    mean CTR(Xp)     = 0.4399 ± 0.1059
+    mean CTR(Xc_n→p) = 0.4097 ± 0.0614
+    mean CTR(Xc_p→n) = 0.4442 ± 0.1315
+    Δ CTR(Xn − Xc_n→p) = 0.0115 ± 0.0541  [t=3.01, p=0.0030]
+    Δ CTR(Xp − Xc_p→n) = -0.0001 ± 0.1477  [t=-0.01, p=0.9913]
+
+► SCP — Pleural Effusion clinical metric
+    ⚠ DEGENERATE — relative spread 0.19% across all four groups (< 2%).
+    The sigmoid(-‖yolo_feat‖/50) proxy is saturated, so SCP is effectively a constant
+    (0.4795 ± 0.0008) and its paired t-tests are testing numerical noise.
+    Group means are retained in eval_metrics.json; the deltas and t-tests are withheld
+    from it (see _strip_unreportable). Fix the proxy (a real CP-recess detector) or drop SCP.
+──────────────────────────────────────────────────────────────────────
+
+[metrics] results saved to 'checkpoints_sparsity/eval_metrics.json'
+Evaluation metrics: CV=0.8300 (n→p=0.9350, p→n=0.7250) | FID_neg=91.4975 | FID_pos=55.0277
+Identity Preservation (IP): n→p MS-SSIM=0.9037/HF=0.9475 | p→n MS-SSIM=0.9021/HF=0.9129
+
+======================================================================
+STEP 6B — Counterfactual diff plots (n→p and p→n, PPO-guided)
+======================================================================
+
+[diff_viz] generating n→p counterfactual (normal → pneumonia) ...
+[diff_viz] saved figure to 'checkpoints_sparsity/counterfactual_diff_n_to_p.png'
+
+── Counterfactual difference summary ───────────────────────────
+  MAE (L1)          : 0.044542
+  MSE (L2)          : 0.005102
+  Max pixel change  : 0.402417
+  Pixels changed    : 76.50%  (threshold > 0.01)
+────────────────────────────────────────────────────────────────
+
+
+── Counterfactual difference summary (n→p) ─────────────────────
+  MAE (L1)          : 0.044542
+  MSE (L2)          : 0.005102
+  Max pixel change  : 0.402417
+  Pixels changed    : 76.50%  (threshold > 0.01)
+────────────────────────────────────────────────────────────────
+
+
+[diff_viz] generating p→n counterfactual (pneumonia → normal) ...
+[diff_viz] saved figure to 'checkpoints_sparsity/counterfactual_diff_p_to_n.png'
+
+── Counterfactual difference summary ───────────────────────────
+  MAE (L1)          : 0.030943
+  MSE (L2)          : 0.002961
+  Max pixel change  : 0.736311
+  Pixels changed    : 65.65%  (threshold > 0.01)
+────────────────────────────────────────────────────────────────
+
+
+── Counterfactual difference summary (p→n) ─────────────────────
+  MAE (L1)          : 0.030943
+  MSE (L2)          : 0.002961
+  Max pixel change  : 0.736311
+  Pixels changed    : 65.65%  (threshold > 0.01)
+────────────────────────────────────────────────────────────────
+
+
+── n→p vs p→n diff comparison ─────────────────────────────────
+  metric                 n→p         p→n
+  MAE                 0.0445      0.0309
+  MSE                 0.0051      0.0030
+  max Δ               0.4024      0.7363
+  % changed            76.5%       65.7%
+────────────────────────────────────────────────────────────────
+
+[eval] saved: checkpoints_sparsity/counterfactual_diff_n_to_p.png, checkpoints_sparsity/counterfactual_diff_p_to_n.png
+
+✓ Evaluation complete.
+=== Eval reduce finished at Sat Aug 15 18:46:04 CEST 2026 ===
