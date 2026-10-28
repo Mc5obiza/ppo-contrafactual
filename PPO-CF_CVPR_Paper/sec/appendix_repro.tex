@@ -1,0 +1,259 @@
+% =============================================================================
+% appendix_repro.tex -- Reproducibility appendix (supplementary material).
+%
+% SOURCE OF EVERY VALUE: the last recorded revision of the code repository
+% (no uncommitted changes to tracked code). Each table row ends with a comment
+% giving the file:line it was read from. Nothing here comes from logs of the
+% committed runs: those runs (2-model guidance ensemble) were trained after the
+% last recorded revision under code/config that is not in the repository.
+%
+% Marks (explained in the text below):
+%   no mark       unchanged across all recorded revisions since 800 episodes
+%                 per direction was set
+%   $^{\ast}$     changed during development; value used by the committed runs
+%                 NOT recorded
+%   $^{\ddagger}$ known to differ from the committed runs
+% =============================================================================
+
+\section*{R. Reproducibility Appendix}
+\label{sec:appendix-repro}
+\setcounter{table}{0}
+\renewcommand{\thetable}{R\arabic{table}}
+
+\noindent\fbox{\parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{\small\textbf{Read first.} All values in this appendix are from the last recorded configuration, not from the committed (2-model ensemble) runs. Starred ($^{\ast}$) rows may differ for the committed runs; see Sec.~R5.}}
+
+Every value in this appendix is read from the code and configuration. The committed runs of the main paper (2-model guidance ensemble) were trained after the last recorded configuration, under a configuration that was not recorded in full (Sec.~R5). Marks: an unmarked value is unchanged in every recorded revision of the code from the one that set 800 episodes per direction to the last one; $^{\ast}$ marks a value that changed during development and whose setting in the committed runs is not recorded; $^{\ddagger}$ marks a value known to differ from the committed runs. Unmarked values are the best available evidence for the committed runs, not a guarantee. \TODO{not found} marks a setting we could not find.
+
+% -----------------------------------------------------------------------------
+\subsection*{R1. Reward}
+\label{sec:repro-reward}
+
+Notation: $x$ is the episode's original image (fixed for the episode), $x_{t+1}$ the image after policy step $t$, $d_t = |f(x_t) - c|$ with $f$ the guidance classifier, $S$ the soft lung mask of $x$ (computed once per episode, Table~\ref{tab:repro-gen}), and $p_O(\cdot)$ the softmax, clamped to $[10^{-8}, 1]$, of the frozen YOLOv8n feature vector (Table~\ref{tab:repro-gen}). Means and sums run over the $256 \times 256$ pixels. The per-step reward is
+\begin{equation*}
+r_t = k_c \textstyle\sum_j \lambda_j R_j,
+\end{equation*}
+with $k_c = 2.25$ for n$\to$p ($c = 1$) and $k_c = 1$ for p$\to$n ($c = 0$), applied to every term.
+% factory/environment.py:360, :458
+
+\begin{table*}[t]
+\centering
+\caption{Reward terms as implemented. $B$ is an $L_1$ edit budget on validity; with $B = \infty$ validity depends on $d_{t+1}$ alone.}
+\label{tab:repro-reward}
+\small
+\begin{tabular}{@{}l p{0.60\linewidth} l@{}}
+\toprule
+Term & Implemented formula & Weight $\lambda_j$ \\
+\midrule
+$R_{\text{prog}}$ (progress) & $d_t - d_{t+1}$ & 1.5 \\ % environment.py:362; config.py:291
+$R_{\text{val}}$ (distance) & $-d_{t+1}$ & 2.0 \\ % environment.py:363; config.py:292
+$R_{\text{close2}}$ (squared distance) & $-d_{t+1}^2$ & 2.5 \\ % environment.py:364; config.py:302
+$R_{\text{fid}}$ (fidelity) & $-\operatorname{mean}_p |x_{t+1} - x|$ (mean pixel $L_1$)$^{\ast}$ & 2.0$^{\ast}$ \\ % environment.py:376,387; config.py:297
+$R_{\text{pres}}$ (preservation) & $-\Big(\dfrac{\sum_p S\,|x_{t+1} - x|}{\sum_p S + 10^{-8}} + \eta\,\mathrm{KL}\big(p_O(x)\,\|\,p_O(x_{t+1})\big)\Big)$, $\eta = 0.5$; KL summed over feature dimensions & 3.0$^{\ast}$ \\ % environment.py:369-371,410-417; config.py:251,298
+$R_{\text{bud}}$ (per-step cost) & $-1$ & 0.1 \\ % environment.py:419; config.py:299
+$R_{\text{hit}}$ (validity bonus) & $\mathbf{1}\big[d_{t+1} < \epsilon_{\text{stop}} \wedge \operatorname{mean}_p|x_{t+1} - x| < B\big]$, $\epsilon_{\text{stop}} = 0.08$, $B = \infty^{\ast}$; validity also ends the episode$^{\ast}$, so this is paid at most once, on the last step & 2.0$^{\ast}$ \\ % environment.py:429-432,555-559; config.py:247,250,269,301
+$R_{\text{stop}}$ (stop bonus) & $R_{\text{hit}} \cdot \mathbf{1}[\tau_t > 0.5]$, $\tau_t = \sigma(a_3)$ & 2.0$^{\ast}$ \\ % environment.py:433; config.py:300
+$R_{\text{sp}}$ (sparsity arm only) & $-\operatorname{mean}_p |x_{t+1} - x|$; $(1 - \text{CAM})$-weighted and normalized by the weight sum when a Grad-CAM mask is active & $\lambda_{\text{sp}}(u)$ \\ % environment.py:398-408,456
+\bottomrule
+\end{tabular}
+\end{table*}
+
+$\lambda_{\text{sp}}(u) = 0$ outside the sparsity arm. In that arm it is 0 for updates $u < \mathrm{round}(0.2U)$, rises linearly to 2.0 at $u = \mathrm{round}(0.6U)$ and stays there ($U = 100$ updates). A safeguard measures CV every 10 updates, from 10 updates before the ramp until its end, on 24 held-out far-pool images with the deterministic policy and a budget of $\min(4, T)$ steps. If CV falls more than 0.08 below its pre-ramp value, it freezes $\lambda_{\text{sp}}$ for the rest of training at the value of the last probe that passed.
+% config.py:327-328,338,348-350,365,381,388,394-395; factory/ppo.py:482-522,528-631
+
+% -----------------------------------------------------------------------------
+\subsection*{R2. Action mapping}
+\label{sec:repro-action}
+
+The actor outputs the mean $\mu$ of a 9-dimensional diagonal Gaussian over a raw, unbounded vector $a \in \mathbb{R}^9$. During training $a$ is sampled; at evaluation $a = \mu$. Each control is a fixed transform of $a$, with $\sigma$ the logistic sigmoid (Table~\ref{tab:repro-action}). The raw vector is never clipped. Ranges are open intervals, because $\sigma$ never reaches 0 or 1.
+% factory/ppo.py:271-276; factory/environment.py:479-498
+
+\emph{Discrete controls.} No Bernoulli distribution is used. $a_4$ and $a_5$ are Gaussian like the other dimensions and are thresholded deterministically, $e_i = \mathbf{1}[\sigma(a) > 0.5] = \mathbf{1}[a > 0]$, identically in training and evaluation. The PPO log-probability is that of the raw Gaussian sample, with no correction for the sigmoid or the threshold. Stochasticity in $e_1, e_2$ comes only from Gaussian exploration during training.
+% factory/environment.py:489-490; factory/ppo.py:273-275,746-747
+
+\begin{table*}[t]
+\centering
+\caption{Raw-action-to-control mapping, checked cell by cell against Table~1 of the main paper.}
+\label{tab:repro-action}
+\small
+\begin{tabular}{@{}l l l l l@{}}
+\toprule
+Dim. & Control & Mapping & Range & Main-paper Table~1 \\
+\midrule
+$a_0$ & DDIM strength $s$ (base value) & $0.20 + 0.50\,\sigma(a_0)$ & $(0.20, 0.70)$ & matches \\ % environment.py:479
+$a_1$ & classifier-guidance scale $g_c$ & $0.30 + 0.90\,\sigma(a_1)$$^{\ast}$ & $(0.30, 1.20)$ & matches \\ % environment.py:486
+$a_2$ & preservation-guidance scale $g_p$ & $0.30 + 1.20\,\sigma(a_2)$ & $(0.30, 1.50)$ & matches \\ % environment.py:487
+$a_3$ & stop signal $\tau$ & $\sigma(a_3)$ & $(0, 1)$ & matches \\ % environment.py:488
+$a_4, a_5$ & extra passes $e_1, e_2$ & $\mathbf{1}[\sigma(a) > 0.5]$ & $\{0, 1\}$ & matches \\ % environment.py:489-490
+$a_6$ & strength boost $\beta$ & $0.85 + 0.30\,\sigma(a_6)$ & $(0.85, 1.15)$ & matches \\ % environment.py:491
+$a_7$ & guidance bias $b$ & $0.70 + 0.60\,\sigma(a_7)$ & $(0.70, 1.30)$ & matches \\ % environment.py:492
+$a_8$ & ramp start fraction $r$ & $0.10 + 0.40\,\sigma(a_8)$ & $(0.10, 0.50)$ & matches \\ % environment.py:498
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\emph{Per-pass schedule.} Each policy step runs $n = 2 + e_1 + e_2$ chained generator passes, each taking the previous pass's output as its input. Pass $k = 0, \dots, n-1$ uses
+\begin{align*}
+s_k &= \min\big(0.9,\ s\,\beta\,(1 + 0.15k)\big), \\
+g_{c,k} &= g_c\, b\,(1 + 0.35k), \\
+g_{p,k} &= g_p\, \max(1/b,\ 0.6)\, \max(1 - 0.15k,\ 0.4),
+\end{align*}
+and the same ramp start $r$. The applied strength $s_k$ therefore ranges over $(0.17, 0.9]$ rather than Table~1's $(0.20, 0.70)$. Neither floor in $g_{p,k}$ binds: $1/b > 0.769$ and $1 - 0.15k \geq 0.55$ for $k \leq 3$.
+% environment.py:499,507-508,517-531; config.py:305
+
+% -----------------------------------------------------------------------------
+\subsection*{R3. PPO}
+\label{sec:repro-ppo}
+
+\begin{table*}[t]
+\centering
+\caption{PPO settings. One policy per direction, trained independently with identical settings.}
+\label{tab:repro-ppo}
+\small
+\begin{tabular}{@{}l p{0.68\linewidth}@{}}
+\toprule
+Setting & Value \\
+\midrule
+Episodes per direction & 800 \\ % config.py:492; main.py:259
+Episodes per update & 8 (100 updates) \\ % factory/ppo.py:812,843
+Minibatch & full batch: one gradient step per epoch on all transitions of the update ($\leq 8T$); no minibatching \\ % factory/ppo.py:723-725,743-795
+PPO epochs per update & 4 \\ % factory/ppo.py:719
+Optimizer & AdamW, learning rate $3 \times 10^{-4}$, constant; other arguments at PyTorch defaults \\ % factory/ppo.py:356; config.py:413
+Clip $\epsilon$ & 0.2 \\ % config.py:407
+GAE & $\gamma = 0.99$, $\lambda_{\text{GAE}} = 0.95$; no bootstrap past episode end; advantages normalized to zero mean and unit variance over the update \\ % config.py:400-401; factory/ppo.py:314-330
+Value loss & weight 0.5; MSE to the shaped target $r_t + 0.2\,A_t$ if $\tau_t \leq 0.5$, else $r_t$, where $A_t$ is the unnormalized GAE advantage (not the GAE return) \\ % config.py:402,408; factory/ppo.py:326-328,763
+Entropy bonus & weight 0.01; entropy of the raw 9-d Gaussian, summed over dimensions \\ % config.py:409; factory/ppo.py:748
+Auxiliary heads & weight 0.1 each. Feasibility: sigmoid, BCE to $\mathbf{1}[\hat R_t > 0]$ ($\hat R_t$ the GAE return). Progress: linear, MSE to $r_t + \gamma V_{t+1}$ ($V_{t+1} = 0$ at episode end). Stop: sigmoid, BCE to $\mathbf{1}[\tau_t > 0.5]$ \\ % config.py:410-412; factory/ppo.py:726-740,765-768
+Saturation penalty$^{\ast}$ & $0.01 \cdot \operatorname{mean}\,\mathrm{ReLU}(|\mu| - 3)^2$ over raw actor means \\ % config.py:447-448; factory/ppo.py:779-781
+Gradient clipping & global norm 0.5 \\ % factory/ppo.py:794
+Policy std & state-independent learnable per-dimension $\log\sigma$, initialized to $-0.5$; $\sigma$ floored at $10^{-3}$ \\ % factory/ppo.py:137,158,236
+Trunk$^{\ast}$ & MLP $73{,}731 \to 512 \to 256$, ReLU; 37{,}885{,}462 policy parameters in total. The alternative convolutional trunk has 197{,}910 \\ % config.py:470; factory/ppo.py:143-163,200-214 (counts: arithmetic on layer shapes)
+Heads & linear from the 256-d trunk feature: actor (9), value (1), feasibility, progress, stop (1 each) \\ % factory/ppo.py:157-163
+Observation & $[z_x,\ z_{x_t},\ t/T,\ d_t,\ c,\ S(x_t)]$: two VAE-posterior samples ($2 \times 4{,}096$), 3 scalars, and the $256^2$ lung mask of $x_t$; 73{,}731 entries \\ % factory/environment.py:335-347; generator.py:134
+Step budget $T$$^{\ast}$ & 25, in training and evaluation \\ % config.py:223; main.py:246; environment.py:649
+Termination$^{\ast}$ & $d_{t+1} < \epsilon_{\text{stop}} = 0.08$ (with $B = \infty$) or $t = T$ \\ % config.py:247,250,269; environment.py:555-559
+Training images & drawn uniformly with replacement, one per episode, from images with $|f(x) - c| > 0.5$, excluding the first 24 of that pool, which are held out for the sparsity-arm probe in every arm$^{\ast}$ \\ % config.py:252,381; environment.py:164-171,243-249
+Final policy & weights after the last update; no checkpoint selection \\ % main.py:257-281
+Evaluation & mean action ($a = \mu$), same $T$ and termination; per-image seed $=$ global image index ($+10^6$ for p$\to$n) \\ % environment.py:586-671; src/inference.py:28,130; eval_main.py:260-267
+Training random seeds & \TODO{not found} (no seed is set in the training code) \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+% -----------------------------------------------------------------------------
+\subsection*{R4. Generator, LoRA, and background lock}
+\label{sec:repro-gen}
+
+\begin{table*}[t]
+\centering
+\caption{Generator settings. $x_a$ is the anchor image: the episode's original image$^{\ast}$.}
+\label{tab:repro-gen}
+\small
+\begin{tabular}{@{}l p{0.70\linewidth}@{}}
+\toprule
+Setting & Value \\
+\midrule
+Backbone & SD v1.5 (\texttt{runwayml/stable-diffusion-v1-5}) VAE and UNet, fp16, frozen except LoRA. Text encoder unused. $256^2$ grayscale input replicated to 3 channels and mapped to $[-1, 1]$; $4 \times 32 \times 32$ latent drawn from the VAE posterior (sample, not mean) \\ % config.py:16,38,107-109; generator.py:72-89,130-135
+Conditioning MLP & $[c,\ \text{latent average-pooled to 64}] \in \mathbb{R}^{65} \to 256 \to 768$, SiLU; one cross-attention token; 214{,}272 parameters, fp32, trained jointly with LoRA \\ % generator.py:92-99,154-161,683-685 (count: arithmetic on layer shapes)
+LoRA & rank 8$^{\ast}$, $\alpha = 16$, dropout 0.05, on \texttt{to\_q}, \texttt{to\_k}, \texttt{to\_v}, \texttt{to\_out.0}$^{\ast}$ (1{,}594{,}368 LoRA parameters, according to a comment in the configuration) \\ % config.py:543,560-563; generator.py:670-676
+LoRA fine-tuning & $\epsilon$-prediction MSE only; timestep uniform over the 50 DDIM timesteps; 30 epochs$^{\ast}$, batch 8, AdamW with learning rate $10^{-4}$; class-balanced sampling with replacement; fp16 autocast with gradient scaling; gradient-norm clip 1.0. Training images: \TODO{not found} (the recorded code fine-tunes on the full dataset) \\ % config.py:508,524,526; finetuning.py:75-102,241-298; generator.py:356-369
+DDIM & SD1.5 scheduler configuration, $T_{\text{diff}} = 50$ timesteps; pass $k$ keeps the last $\max(1, \lfloor 50\, s_k \rfloor)$ and starts from the pass input's latent, forward-noised to the first kept timestep. DDIM $\eta$ (sampler stochasticity): not set in code, library default, value \TODO{not found} \\ % config.py:115; generator.py:87-89,475-482,525
+Guidance losses & $\mathcal{L}_{\text{cls}} = \mathrm{BCE}(f(D(\hat z_0)), c)$; $\mathcal{L}_{\text{pres}} = \dfrac{\sum S\,|D(\hat z_0) - x_a|}{\sum S + 10^{-8}} + \eta\,\mathrm{MSE}\big(O(D(\hat z_0)), O(x_a)\big)$, $\eta = 0.5$ (the reward uses KL on softmaxed features instead, Table~\ref{tab:repro-reward}) \\ % generator.py:537-544; config.py:251
+Guidance update & $z_{t-1} \leftarrow z_{t-1} - w(i)\, m \odot \big(1.15\,\alpha_{\text{cls}}\, g_{c,k} \nabla_{\hat z_0}\mathcal{L}_{\text{cls}} + \alpha_{\text{pres}}\, g_{p,k} \nabla_{\hat z_0}\mathcal{L}_{\text{pres}}\big)$, $\alpha_{\text{cls}} = 4.0$, $\alpha_{\text{pres}} = 0.05$; gradients through the VAE decoder $D$, one backward pass per loss \\ % config.py:116-117; generator.py:574-583
+Trade-off in Eq.~1 & classification vs.\ preservation, no single fixed weight: set per pass by $1.15\,\alpha_{\text{cls}}\, g_{c,k}$ against $\alpha_{\text{pres}}\, g_{p,k}$ (above), and in the reward by $\lambda_{\text{fid}}$ and $\lambda_{\text{pres}}^{R}$ (Table~\ref{tab:repro-reward}) \\ % config.py:119 LAM_PRES_D=0.5 is defined but never read anywhere in the repository -- do NOT quote it
+Guidance ramp & $w(i) = \mathrm{clip}\big((i - \lfloor n r \rfloor) / \max(1, n - \lfloor n r \rfloor),\ 0,\ 1\big)$ over the $n$ kept steps $i = 0, \dots, n-1$; no gradient is taken where $w(i) = 0$; its maximum, $(n - 1 - \lfloor nr \rfloor)/(n - \lfloor nr \rfloor)$, is below 1 \\ % generator.py:518-520,532-534
+Lung mask $S$ & TorchXRayVision PSPNet (\texttt{chestx\_det}) on the image resized to $512^2$ and rescaled to $[-1024, 1024]$; sigmoid, maximum over the left- and right-lung channels, resized bilinearly to $256^2$ \\ % src/models.py:83-107; generator.py:167-182; config.py:110
+Object features $O$ & YOLOv8n (\texttt{yolov8n.pt}) layers 0--9, global average pooled, frozen, on the $256^2$ image replicated to 3 channels \\ % src/models.py:114-149; config.py:37
+Edit mask $m$ & $S(x_a)$ resized bilinearly to $32^2$; dilated by a $5 \times 5$ stride-1 max-pool (2 latent cells, $\approx 16$ px); feathered by a separable Gaussian, $\sigma = 1$ latent cell, radius 3, zero padding; clamped to $[0, 1]$, not thresholded \\ % config.py:128-129; generator.py:188-223,487-500
+Background lock & after every step, $z \leftarrow m \odot z + (1 - m) \odot \tilde z_a$, where $\tilde z_a$ is the latent of $x_a$ forward-noised to the next timestep with fresh noise, and used clean after the last step \\ % config.py:127,211; generator.py:458-474,592-600
+Grad-CAM arm only & $m \leftarrow m \cdot \big(0.15 + 0.85\,\widetilde{\text{CAM}}^{\,0.75}\big)$; CAM at layer \texttt{features}, normalized by its 0.99 quantile at $32^2$, Gaussian blur $\sigma = 0.8$. \texttt{features.denseblock3} setting of the fix arm: \TODO{not found} \\ % config.py:152,163,174-177; generator.py:321-335,511-512
+\bottomrule
+\end{tabular}
+\end{table*}
+
+% -----------------------------------------------------------------------------
+\subsection*{R5. Settings not recorded for the submitted runs}
+\label{sec:repro-changes}
+
+Table~\ref{tab:repro-changes} lists every setting above that took more than one value in the recorded history. For all of them except the guidance classifier, the value used by the committed runs is not recorded.
+
+\begin{table*}[t]
+\centering
+\caption{Settings with more than one recorded value. ``Last recorded'' is the value in the tables above.}
+\label{tab:repro-changes}
+\small
+\begin{tabular}{@{}l p{0.19\linewidth} p{0.30\linewidth} p{0.17\linewidth}@{}}
+\toprule
+Setting & Last recorded & Other recorded value(s) & Committed runs \\
+\midrule
+Guidance classifier $f$$^{\ddagger}$ & \texttt{rsna} only & \texttt{rsna}+\texttt{chex} mean & \texttt{rsna}+\texttt{chex} mean (main paper) \\ % config.py:97-98
+Step budget $T$ & 25 & 8 & \TODO{not found} \\ % config.py:223
+Episode end & validity or $t = T$ & $t = T$ only & \TODO{not found} \\ % config.py:247
+$L_1$ budget $B$ in validity & $\infty$ & 0.02 & \TODO{not found} \\ % config.py:269
+Policy trunk & MLP & convolutional & \TODO{not found} \\ % config.py:470
+LoRA rank / targets & 8 / attention & 16 / + \texttt{ff.net.0.proj}, \texttt{ff.net.2}, \texttt{proj\_in}, \texttt{proj\_out} & \TODO{not found} \\ % config.py:560-571
+LoRA epochs & 30 & 15 & \TODO{not found} \\ % config.py:524. NB config.py:520-523 says the archived rank-8 checkpoint had reached epoch 30
+$a_1$ mapping & $0.30 + 0.90\,\sigma(a_1)$ & $0.50 + 2.50\,\sigma(a_1)$ & \TODO{not found} \\ % environment.py:486
+$R_{\text{fid}}$, $\lambda_{\text{fid}}$ & mean $L_1$, 2.0 & MSE, 0.5 & \TODO{not found} \\ % environment.py:387; config.py:297
+$\lambda_{\text{pres}}^{R}$ & 3.0 & 0.5 & \TODO{not found} \\ % config.py:298
+$\lambda_{\text{hit}}$, $\lambda_{\text{stop}}$ & 2.0, 2.0 & 6.0, 8.0 & \TODO{not found} \\ % config.py:300-301
+Lock / preservation anchor & episode's original image & previous pass's output & \TODO{not found} \\ % config.py:211
+Saturation penalty & 0.01 & absent & \TODO{not found} \\ % config.py:448
+24-image probe holdout & removed from training pool & absent & \TODO{not found} \\ % environment.py:164-171
+\bottomrule
+\end{tabular}
+\end{table*}
+
+Also not recorded (\TODO{not found}): random seeds for LoRA fine-tuning and PPO training; the patient-level split procedure and ratio; the settings of the random-action and no-policy arms; the LHR implementation; the bootstrap code; the mechanism that fixes the transfer-ratio denominator (Sec.~R6); and run manifests linking each reported number to a configuration.
+
+% -----------------------------------------------------------------------------
+% R6: sources for each definition are given in the trailing comments.
+%   code   = file:line in the last recorded code revision
+%   report = the internship report PDF in the report/ folder of the code repository (PDF page numbers)
+%   paper  = sec/4_evaluation.tex, sec/5_experiments.tex of this submission
+% -----------------------------------------------------------------------------
+\subsection*{R6. Metric definitions}
+\label{sec:repro-metrics}
+
+Notation: $X_n = \{x : f(x) < 0.2\}$ and $X_p = \{x : f(x) > 0.8\}$ are the first $N \leq 200$ images of each kind, in dataset order, selected by the guidance classifier $f$ rather than by label. $f$ is the ensemble's mean probability in ensemble arms. n$\to$p edits $X_n$ and p$\to$n edits $X_p$, with $s = +1$ and $s = -1$ respectively. Images are grayscale, $256 \times 256$, in $[0, 1]$, and $\delta = |x_c - x|$ per pixel.
+% code: src/metrics.py:69-117 (scan_groups, shuffle=False), pipeline.py:112-119
+
+\paragraph{Counterfactual Validity.}
+\begin{equation*}
+\mathrm{CV} = \frac{1}{N}\sum_{i} \mathbf{1}\big[s\,(f(x_c^i) - f(x^i)) \geq \tau \,\wedge\, B_i\big], \quad \tau = 0.8,
+\end{equation*}
+with $B_i$: $f(x^i) \leq 0.5 < f(x_c^i)$ for n$\to$p and $f(x^i) \geq 0.5 > f(x_c^i)$ for p$\to$n. Pairs with a non-finite score are dropped. Mean CV is the unweighted mean of the two directions. On $X_n$ and $X_p$ the margin condition already implies $B_i$: with $f \in [0, 1]$, $s\,(f(x_c^i) - f(x^i)) \geq 0.8$ forces $f(x_c) \geq 0.8$ for n$\to$p and $f(x_c) \leq 0.2$ for p$\to$n, and the source side holds by construction of the groups. The tightening relative to a direction-agnostic CV therefore comes from the sign requirement alone.
+% code: src/metrics.py:181-236 (>= tau, signed), :1095-1097 (mean of directions)
+% paper: sec/4_evaluation.tex Sec. 4.1, Eq. (cv) -- matches code (>=).
+% report: PDF Ch. 4 Sec. I (p. 26) gives no formula ("fraction valid, tau = 0.8").
+%         report/report.tex:363-366 (older draft) writes |f(x_c)-f(x)| > tau: strict and unsigned -- differs from code.
+
+\paragraph{Fraction of pixels changed.} $\phi_i = \frac{1}{HW}\sum_p \mathbf{1}[\delta_p > 0.01]$, averaged over pairs. Pairs with $\sum_p \delta_p = 0$ are skipped, both here and for edit concentration.
+% code: src/metrics.py:746-762
+% report: PDF Ch. 4 Sec. III (p. 30) quotes the same quantity ("66% and 62% of all pixels changed").
+
+\paragraph{Edit concentration.} $C_i = \sum_{p \in \mathrm{top}_k(\delta)} \delta_p \big/ \sum_p \delta_p$ with $k = \mathrm{round}(0.05 \cdot 65{,}536) = 3{,}277$, averaged over pairs. Spatially uniform change scores exactly 0.05. As an illustrative heuristic only, not a threshold, a compact lesion-shaped edit would be expected to put roughly half or more of its mass in the top 5\% of pixels. We do not use 0.5 as a decision boundary.
+% code: src/metrics.py:716-763 (docstring: ">~0.5 is focal" -- uncalibrated heuristic)
+% report: PDF Ch. 3 Sec. IV.4 (p. 24) and Ch. 4 Sec. III (p. 30): "A focal consolidation should concentrate well above 0.5" -- heuristic, no calibration preserved.
+
+\paragraph{Identity preservation.} Both scores are computed per pair (source image vs.\ its counterfactual) and averaged. \emph{MS-SSIM}: five scales with $2 \times 2$ average pooling between them; an $11 \times 11$ Gaussian window, $\sigma = 1.5$, zero padding; $C_1 = 0.01^2$ and $C_2 = 0.03^2$ (data range 1); scale weights $(0.0448, 0.2856, 0.3001, 0.2363, 0.1333)$. The result is $\prod_{j=1}^{4} \mathrm{cs}_j^{w_j} \cdot \mathrm{ssim}_5^{w_5}$, with each factor clamped at $\geq 10^{-6}$. \emph{HF-corr}: $h(x) = x - G_{11, 1.5} * x$, $r$ the Pearson correlation of $h(x)$ and $h(x_c)$ over all pixels, reported as $(1 + r)/2$.
+% code: src/metrics.py:592-709; five scales because floor(log2(256/11))+1 = 5 (metrics.py:632-634)
+% report: PDF Ch. 4 Sec. I.1 (p. 26), qualitative description only, no parameters.
+
+\paragraph{FID.} $\mathrm{FID}(A, B) = \lVert \mu_A - \mu_B \rVert^2 + \mathrm{Tr}\big(\Sigma_A + \Sigma_B - 2(\Sigma_A \Sigma_B)^{1/2}\big)$. Here $\Sigma$ is the unbiased sample covariance plus $10^{-6} I$, and the real part of the matrix square root is taken. Features are the global-average-pooled output (1024-d) of the \texttt{features} module of TorchXRayVision DenseNet-121 \texttt{densenet121-res224-rsna}, applied to the image rescaled to $[-1024, 1024]$ and resized bilinearly to $224^2$. The main paper reports the cross-group values $\mathrm{FID}(X_p, X_c^{\text{n}\to\text{p}})$ and $\mathrm{FID}(X_n, X_c^{\text{p}\to\text{n}})$, where the ``real target class'' is the classifier-selected group, not the label. The feature extractor is the \texttt{rsna} model, which also guides generation in the single-classifier and 2-model arms (membership of the 3-model ensemble: \TODO{not found}), so FID is not independent of guidance.
+% code: src/metrics.py:275-329 (extractor), :331-344, :347-429 (FID), :1105-1123 (cross-group = what the paper reports)
+% report: PDF Ch. 4 Sec. I, Table 4.1 (p. 26) reports SAME-group FID (each real group vs its own counterfactuals) -- a different quantity; not comparable.
+
+\paragraph{Held-out transfer ratio.} For validator $v \in \{\texttt{nih}, \texttt{pc}, \texttt{mimic\_ch}\}$ (TorchXRayVision DenseNet-121, Pneumonia output) and direction $s$,
+\begin{equation*}
+\rho_v = \frac{\frac{1}{N}\sum_i s\,\big(f_v(x_c^i) - f_v(x^i)\big)}{\frac{1}{N}\sum_i s\,\big(f_g(x_c^i) - f_g(x^i)\big)},
+\end{equation*}
+over the same $N$ images. $f_g$ is the guidance classifier (mean probability over members for an ensemble), and $\rho_v$ is undefined when the denominator's magnitude is at most $10^{-8}$. Any validator that is also a guidance member is dropped. The denominator must use the classifier(s) that actually guided generation. The mechanism that fixes this per run, the per-shard configuration stamp of main-paper Sec.~4.3, is \TODO{not found}. The per-validator mean reported in main-paper Tables~2 and~4 is \TODO{not found} (averaging rule). The 0.15 cut-off is a heuristic operating point. A ratio of 0.5 is only an illustration, meaning validators reproduce half the guidance shift, and is not a threshold.
+% code: heldout_validation.py:336-349 (signed per-direction mean deltas), :500-514 (ratio, 1e-8 guard, Spearman agreement control on originals), :448-458 (guidance members dropped from validators)
+% TODO: code not preserved -- shard-stamp denominator. In the recorded code the guidance roster comes from the cache's stored list or --guidance-weights (default config.GUIDANCE_ENSEMBLE_WEIGHTS, heldout_validation.py:206-228,426-431), and metrics.current_cfg_stamp (metrics.py:141-174) records GUIDANCE_ENSEMBLE_WEIGHTS but NOT USE_GUIDANCE_ENSEMBLE, so a stamp alone cannot distinguish single from ensemble guidance.
+% report: PDF Ch. 3 Sec. IV.5 (p. 24), Ch. 4 Sec. III (p. 29), glossary (p. 35): "fraction of the guidance model's score shift that the validators reproduce".
+
+\paragraph{Bootstrap intervals for $\rho_v$.} 10{,}000 resamples, with replacement, of the $N = 200$ image indices of a group. Numerator and denominator are recomputed on the same resampled indices, and the interval is taken from the percentiles. Interval level: \TODO{not found}.
+% TODO: code not preserved -- definition rests only on the paper (sec/5_experiments.tex Sec. 5.3); not in the report PDF.
+
+\paragraph{Lesion Hit Rate.} Defined for p$\to$n only, on images with an RSNA opacity annotation. For image $i$ with annotated region $A_i$, hit rate $h_i = \sum_{p \in A_i} \delta_p / \sum_p \delta_p$, null $\pi_i = |A_i| / (HW)$, lift $= h/\pi$. Not recorded (\TODO{not found}): how multiple boxes combine into $A_i$; how boxes are mapped to the $256^2$ grid; whether lift is averaged per image or computed from pooled sums; the test behind the reported $t$ and $p$ for lift against chance; and the definition of $d$ in paired arm comparisons (paired $t$-test and Wilcoxon on per-image lift differences over shared images, main-paper Sec.~5.4).
+% TODO: code not preserved -- definition rests only on the paper (sec/4_evaluation.tex Sec. 4.2); LHR does not appear in the report PDF.

@@ -1,0 +1,75 @@
+\section{Method}
+\label{sec:method}
+
+\subsection{Problem formulation}
+\label{sec:problem-formulation}
+
+Given a frozen binary classifier $f: \mathcal{X} \to [0,1]$ and a target class $c \in \{0,1\}$, we seek $x_c$ that trades off two objectives,
+\begin{equation}
+\min_{x_c}\ \Big(\underbrace{\mathrm{BCE}(f(x_c), c)}_{\text{classification}},\ \underbrace{d(x, x_c)}_{\text{preservation}}\Big),
+\label{eq:objective}
+\end{equation}
+which we do not combine with a single fixed weight. The trade-off is set during sampling by the ratio of the classifier- to preservation-guidance scales, which the policy chooses per pass (\S\ref{sec:generator-lock}, \S\ref{sec:ppo-sampling}), and during policy training by the reward weights (Supp.~Table~R1). Here $d$ is a masked distance penalizing change inside the segmented lung field and change to a frozen object-detector embedding (a foreign-object proxy), and leaving change outside the lung field free, subject to the soft background lock below, which largely removes that freedom away from the lung field.
+
+\subsection{Latent generator and background lock}
+\label{sec:generator-lock}
+
+Images are encoded to a $4\times32\times32$ latent by a frozen SD1.5 VAE. A lightweight MLP maps $(c, \text{pooled latent})$ to a single cross-attention conditioning token, replacing SD1.5's text conditioning with a scalar class signal. Rank-8 LoRA adapters are inserted into the UNet's attention projections and trained on the standard $\epsilon$-prediction objective on the RSNA data, adapting the natural-image prior toward radiography without touching the VAE or the bulk of the UNet. % TODO: verify split (recorded code fine-tunes on the full dataset, factory/finetuning.py)
+
+\paragraph{Guided DDIM sampling.} Generation runs a partial, SDEdit-style forward-then-reverse DDIM trajectory whose length is a strength fraction of $T_{\text{diff}} = 50$ steps. At each step the UNet's noise prediction gives both the predicted clean latent $\hat{z}_0$ and the DDIM update $z_{t-1}$. Two guidance gradients are taken with respect to $\hat{z}_0$, through the VAE decoder $D$, and added to $z_{t-1}$:
+\begin{equation}
+z_{t-1} \leftarrow z_{t-1} - w(i)\, m \odot \big(\alpha_{\text{cls}}\nabla_{\hat{z}_0}\mathcal{L}_{\text{cls}} + \alpha_{\text{pres}}\nabla_{\hat{z}_0}\mathcal{L}_{\text{pres}}\big),
+\label{eq:guidance}
+\end{equation}
+% TODO: verify vs committed run
+where $\mathcal{L}_{\text{cls}} = \mathrm{BCE}(f(D(\hat{z}_0)), c)$, $\mathcal{L}_{\text{pres}} = \mathcal{L}_1^{\text{seg}} + \eta\,\mathrm{MSE}_{\text{obj}}$, $\mathcal{L}_1^{\text{seg}}$ is the lung-mask-weighted $L_1$ distance from the original image, $\mathrm{MSE}_{\text{obj}}$ compares object-detector features, and $\alpha_{\text{cls}}, \alpha_{\text{pres}}$ include the per-pass scales set by the policy (values in Supp.~Table~R4). The update is gated by the soft edit mask $m$ defined below and by a linear ramp $w(i)$ rising from 0 at a learned fraction of the trajectory, which avoids the discontinuity of a hard guidance switch.
+
+\paragraph{Background lock.} After each guided step the latent is blended toward an anchor: the original image's latent forward-noised to the next timestep, and used clean at the final step,
+\begin{equation}
+z_{t-1} \leftarrow m \odot z_{t-1} + (1 - m) \odot \tilde{z}^{\,\text{orig}}_{t-1}.
+\label{eq:lock}
+\end{equation}
+% TODO: verify vs committed run
+Here $m \in [0, 1]$ is the soft edit mask: the original image's lung-probability map, resized to the $32 \times 32$ latent grid, dilated by two latent cells ($\approx 16$ px) and Gaussian-feathered ($\sigma$ of one cell). It is not thresholded. The blend does not depend on how the guidance gradient behaves: where $m \approx 0$, far from the lungs, the final latent is essentially the original image's, rather than being repainted by the free SDEdit process, which is what an unconstrained high-strength schedule does to the entire thorax. The constraint is soft rather than exact. The dilated, feathered band around the lungs remains editable, and because the VAE decoder mixes neighbouring latent cells, preservation in pixel space outside the mask is approximate.
+
+\subsection{PPO-scheduled sampling}
+\label{sec:ppo-sampling}
+
+% TODO: verify trunk type (mlp vs conv) and T (25 vs 8) for submitted runs
+Rather than fixing strength, guidance scales and pass count, a PPO agent~\cite{schulman2017proximal} emits a 9-dimensional continuous action at each of up to $T=25$ policy steps, mapped through sigmoid transforms to the controls in Table~\ref{tab:action-space}. Each policy step runs two to four chained generator passes (two, plus one for each of $a_4, a_5$ thresholded at $\sigma(a) > 0.5$, identically in training and evaluation), with the exact mapping and per-pass schedule modifiers given in Supp.~Sec.~R2.
+
+\begin{table}[t]
+\centering
+\caption{Action space. All nine dimensions are emitted at every policy step by a policy conditioned on the image state and step index, so it can emit image- and step-dependent controls. The $a_0$ range is the base strength $s$; pass $k$ of a step applies $\min(0.9,\ s\beta(1 + 0.15k))$, with $\beta$ from $a_6$, so applied strengths span $(0.17, 0.9]$. $^{\dagger}$Narrowed from an earlier, wider range.}
+\label{tab:action-space}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+& Controls & Range \\
+\midrule
+$a_0$ & DDIM strength & $[0.20, 0.70]$ \\
+$a_1$ & classifier-guidance scale & $[0.3, 1.2]^{\dagger}$ \\
+$a_2$ & preservation-guidance scale & $[0.3, 1.5]$ \\
+$a_3$ & stop signal $\tau_t$ & $[0, 1]$ \\
+$a_4, a_5$ & extra pass, thresholded at $\sigma(a) > 0.5$ & $\{0, 1\}$ \\
+$a_6$ & per-pass strength boost & $[0.85, 1.15]$ \\
+$a_7$ & guidance bias (cls vs.\ pres) & $[0.70, 1.30]$ \\
+$a_8$ & guidance ramp-up start fraction & $[0.1, 0.5]$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% TODO: this subsection describes the last recorded configuration; the committed runs were trained later under a configuration that was not recorded.
+% TODO: verify trunk type (mlp vs conv) and T (25 vs 8) for submitted runs
+% TODO: verify vs committed run (VAE posterior sampling of the latents)
+% TODO: verify dimension vs committed run
+% TODO: verify fixed-episode-length setting for submitted runs (changed late in development)
+\paragraph{Observation and architecture.} The observation is a flat vector of $8{,}192 + 65{,}536 + 3 = 73{,}731$ entries: the VAE latents of the original and current images (two $4 \times 32 \times 32$ latents, 8{,}192 entries; drawn from the VAE posterior rather than taken at its mean, with the current-image latent re-drawn at every step, so the observation is stochastic even for a fixed image), the soft lung-segmentation mask of the current image at the $256 \times 256$ image resolution (65{,}536 entries, i.e.\ 88.9\% of the vector), and three scalars: the step fraction $t/T$, the current distance $d_t = |f(x_t) - c|$ and the target $c$. The agent is a policy network with a shared trunk and policy, value and three auxiliary heads (feasibility, progress, stop); the trunk consumes the full flattened observation, and the policy head outputs nine Gaussian means with a state-independent, per-dimension learnable log-std. It is trained with the clipped PPO objective and GAE (hyperparameters in Supp.~Table~R3); episodes end when $d_t < \epsilon_{\text{stop}} = 0.08$ or after $T = 25$ steps.
+
+% TODO: verify fixed-episode-length setting for submitted runs (changed late in development)
+\paragraph{Reward.} The per-step reward is a weighted sum of: progress $d_t - d_{t+1}$; two distance penalties, $-d_{t+1}$ and $-d_{t+1}^2$; an $L_1$ fidelity penalty against the original image; a lung-mask-weighted $L_1$ preservation penalty plus a KL term between the foreign-object detector's softmaxed features on the original and current images; a constant per-step cost; a validity bonus when $d_{t+1} < \epsilon_{\text{stop}}$ (which also ends the episode); and a stop bonus when, in addition, $\tau_t > 0.5$. The sparsity arm adds an annealed $L_1$ term. The whole n$\to$p reward is multiplied by 2.25. Weights and the implemented form of each term are listed in Supp.~Table~R1; Supp.~Sec.~R collects every setting needed to reproduce the method.
+
+\subsection{Directional policies}
+\label{sec:directional-policies}
+
+The environment is built around a fixed target, so one policy is trained for n$\to$p ($c=1$) and another for p$\to$n ($c=0$), sharing the generator but trained separately per direction. This follows an asymmetry we observe throughout: synthesizing a plausible, spatially coherent opacity pattern in a clean lung field is a harder and more under-constrained generative problem than removing one, which is closer to an inpainting operation the pretrained prior already performs well.

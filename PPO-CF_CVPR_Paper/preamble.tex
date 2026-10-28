@@ -2,6 +2,15 @@
 %% They are not enabled by default, but can be enabled by uncommenting the relevant lines.
 
 %%
+%% Pins a figure to render exactly where it is declared in the source, rather
+%% than letting LaTeX's float algorithm search ahead/behind for "the best" spot
+%%
+\usepackage{float}
+
+%% Omit CreationDate/ModDate (and their time zone) from the PDF info dictionary.
+\pdfinfoomitdate=1
+
+%%
 %% Inline annotations; for predefined colors, refer to "dvipsnames" in the xcolor package:
 %% https://tinyurl.com/overleaf-colors
 %%
