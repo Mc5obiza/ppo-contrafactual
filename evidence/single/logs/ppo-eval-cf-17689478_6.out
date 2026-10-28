@@ -1,0 +1,127 @@
+[slurm] domain checkpoint dir: checkpoints
+[slurm] arm=trained  shard_dir=checkpoints/eval_shards
+[manifest] wrote logs/ppo-eval-cf-17689478_6.manifest
+=== Eval shard 6/8 started on hpc-n978 at Tue Aug 11 18:37:36 CEST 2026 ===
+name, memory.total [MiB], memory.used [MiB]
+NVIDIA H200, 143771 MiB, 0 MiB
+NVIDIA H200, 143771 MiB, 0 MiB
+NVIDIA H200, 143771 MiB, 0 MiB
+NVIDIA H200, 143771 MiB, 13775 MiB
+NVIDIA H200, 143771 MiB, 27679 MiB
+NVIDIA H200, 143771 MiB, 25335 MiB
+NVIDIA H200, 143771 MiB, 0 MiB
+NVIDIA H200, 143771 MiB, 0 MiB
+[preflight] NVIDIA H200 -> sm_90
+[preflight] torch 2.5.1+cu121 kernels: ['sm_50', 'sm_60', 'sm_70', 'sm_75', 'sm_80', 'sm_86', 'sm_90']
+[preflight] OK
+======================================================================
+STEP 1 — Dataset ingestion
+======================================================================
+[domain] rsna_pneumonia: f(.) targets 'Pneumonia' | guidance=densenet121-res224-rsna | ensemble=['densenet121-res224-rsna', 'densenet121-res224-chex'] | validators=['densenet121-res224-nih', 'densenet121-res224-pc', 'densenet121-res224-mimic_ch'] | clinical metrics: CTR, SCP
+[domain] Baseline domain. NOTE both clinical metrics are weak here: CTR is a cardiomegaly measure and SCP's sigmoid(-||yolo_feat||/50) proxy was measured degenerate (0.21% relative spread) in the last eval. Neither is pneumonia-specific.
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+[split] rsna_pneumonia: 21347 train / 5337 test (20.0% held out, seed=0)  [loaded]
+
+======================================================================
+STEP 2 — Loading pretrained models
+======================================================================
+[models] loaded XRV classifier (densenet121-res224-rsna, head='Pneumonia') as f(·)
+[models] loaded PSPNet | lung channels: [4, 5]
+[models] loaded YOLOv8 backbone from yolov8n.pt
+
+======================================================================
+STEP 3 — Building generator with LoRA
+======================================================================
+[generator] loading VAE ...
+[generator] loading UNet ...
+trainable params: 1,594,368 || all params: 861,115,332 || trainable%: 0.1852
+[generator] VRAM estimate — VAE=160 MB, UNet=1645 MB, total=1806 MB
+
+======================================================================
+STEP 4 — Restoring trained checkpoints
+======================================================================
+[pipeline] loading fine-tuned generator from 'checkpoints/n_to_p/'
+[pipeline]   → unet_finetuned.pt + cond_proj.pt
+
+----------------------------------------------------------------------
+Loading trained policy  [n_to_p, target_c=1.0]
+----------------------------------------------------------------------
+[env] 2452/5337 images are > 0.5 away from target_c=1.0  [training fold only]
+[env] far pool split: 2428 train / 24 held out for the CV probe (CV resolution 4.2 pts/image)
+[n_to_p] obs_dim = 73731
+[n_to_p] loaded policy from 'checkpoints/n_to_p/ppo_policy.pt' (37,885,462 params)
+
+----------------------------------------------------------------------
+Loading trained policy  [p_to_n, target_c=0.0]
+----------------------------------------------------------------------
+[env] 2885/5337 images are > 0.5 away from target_c=0.0  [training fold only]
+[env] far pool split: 2861 train / 24 held out for the CV probe (CV resolution 4.2 pts/image)
+[p_to_n] obs_dim = 73731
+[p_to_n] loaded policy from 'checkpoints/p_to_n/ppo_policy.pt' (37,885,462 params)
+
+======================================================================
+STAGE GENERATE — shard 6/8
+======================================================================
+[eval] scanning dataset for Xn / Xp (n_eval=200) over 5337 held-out images ...
+[eval] Xn=200  Xp=200
+[eval] shard slice: Xn[150:175] (25 imgs), Xp[150:175] (25 imgs)
+[eval] generating Xc (n→p) — this is the expensive part ...
+[shard6 n_to_p] [1/25] global_idx=150  0.04 min/img  elapsed 0.0 min  eta 1.1 min
+[shard6 n_to_p] [2/25] global_idx=151  0.05 min/img  elapsed 0.1 min  eta 1.1 min
+[shard6 n_to_p] [3/25] global_idx=152  0.04 min/img  elapsed 0.1 min  eta 0.9 min
+[shard6 n_to_p] [4/25] global_idx=153  0.04 min/img  elapsed 0.2 min  eta 0.9 min
+[shard6 n_to_p] [5/25] global_idx=154  0.05 min/img  elapsed 0.3 min  eta 1.0 min
+[shard6 n_to_p] [6/25] global_idx=155  0.05 min/img  elapsed 0.3 min  eta 1.0 min
+[shard6 n_to_p] [7/25] global_idx=156  0.05 min/img  elapsed 0.3 min  eta 0.8 min
+[shard6 n_to_p] [8/25] global_idx=157  0.05 min/img  elapsed 0.4 min  eta 0.8 min
+[shard6 n_to_p] [9/25] global_idx=158  0.05 min/img  elapsed 0.4 min  eta 0.7 min
+[shard6 n_to_p] [10/25] global_idx=159  0.04 min/img  elapsed 0.4 min  eta 0.7 min
+[shard6 n_to_p] [11/25] global_idx=160  0.04 min/img  elapsed 0.5 min  eta 0.6 min
+[shard6 n_to_p] [12/25] global_idx=161  0.04 min/img  elapsed 0.5 min  eta 0.5 min
+[shard6 n_to_p] [13/25] global_idx=162  0.04 min/img  elapsed 0.5 min  eta 0.5 min
+[shard6 n_to_p] [14/25] global_idx=163  0.04 min/img  elapsed 0.6 min  eta 0.5 min
+[shard6 n_to_p] [15/25] global_idx=164  0.04 min/img  elapsed 0.7 min  eta 0.4 min
+[shard6 n_to_p] [16/25] global_idx=165  0.04 min/img  elapsed 0.7 min  eta 0.4 min
+[shard6 n_to_p] [17/25] global_idx=166  0.04 min/img  elapsed 0.7 min  eta 0.3 min
+[shard6 n_to_p] [18/25] global_idx=167  0.04 min/img  elapsed 0.8 min  eta 0.3 min
+[shard6 n_to_p] [19/25] global_idx=168  0.04 min/img  elapsed 0.8 min  eta 0.3 min
+[shard6 n_to_p] [20/25] global_idx=169  0.04 min/img  elapsed 0.9 min  eta 0.2 min
+[shard6 n_to_p] [21/25] global_idx=170  0.04 min/img  elapsed 0.9 min  eta 0.2 min
+[shard6 n_to_p] [22/25] global_idx=171  0.04 min/img  elapsed 0.9 min  eta 0.1 min
+[shard6 n_to_p] [23/25] global_idx=172  0.04 min/img  elapsed 1.0 min  eta 0.1 min
+[shard6 n_to_p] [24/25] global_idx=173  0.04 min/img  elapsed 1.0 min  eta 0.0 min
+[shard6 n_to_p] [25/25] global_idx=174  0.04 min/img  elapsed 1.0 min  eta 0.0 min
+[eval] generating Xc (p→n) ...
+[shard6 p_to_n] [1/25] global_idx=1000150  0.09 min/img  elapsed 0.1 min  eta 2.1 min
+[shard6 p_to_n] [2/25] global_idx=1000151  0.14 min/img  elapsed 0.3 min  eta 3.3 min
+[shard6 p_to_n] [3/25] global_idx=1000152  0.13 min/img  elapsed 0.4 min  eta 2.9 min
+[shard6 p_to_n] [4/25] global_idx=1000153  0.12 min/img  elapsed 0.5 min  eta 2.5 min
+[shard6 p_to_n] [5/25] global_idx=1000154  0.11 min/img  elapsed 0.6 min  eta 2.3 min
+[shard6 p_to_n] [6/25] global_idx=1000155  0.12 min/img  elapsed 0.7 min  eta 2.2 min
+[shard6 p_to_n] [7/25] global_idx=1000156  0.12 min/img  elapsed 0.8 min  eta 2.1 min
+[shard6 p_to_n] [8/25] global_idx=1000157  0.12 min/img  elapsed 0.9 min  eta 2.0 min
+[shard6 p_to_n] [9/25] global_idx=1000158  0.11 min/img  elapsed 1.0 min  eta 1.8 min
+[shard6 p_to_n] [10/25] global_idx=1000159  0.11 min/img  elapsed 1.1 min  eta 1.7 min
+[shard6 p_to_n] [11/25] global_idx=1000160  0.12 min/img  elapsed 1.3 min  eta 1.6 min
+[shard6 p_to_n] [12/25] global_idx=1000161  0.11 min/img  elapsed 1.4 min  eta 1.5 min
+[shard6 p_to_n] [13/25] global_idx=1000162  0.11 min/img  elapsed 1.5 min  eta 1.4 min
+[shard6 p_to_n] [14/25] global_idx=1000163  0.11 min/img  elapsed 1.6 min  eta 1.2 min
+[shard6 p_to_n] [15/25] global_idx=1000164  0.11 min/img  elapsed 1.7 min  eta 1.1 min
+[shard6 p_to_n] [16/25] global_idx=1000165  0.11 min/img  elapsed 1.8 min  eta 1.0 min
+[shard6 p_to_n] [17/25] global_idx=1000166  0.11 min/img  elapsed 1.9 min  eta 0.9 min
+[shard6 p_to_n] [18/25] global_idx=1000167  0.14 min/img  elapsed 2.5 min  eta 1.0 min
+[shard6 p_to_n] [19/25] global_idx=1000168  0.14 min/img  elapsed 2.6 min  eta 0.8 min
+[shard6 p_to_n] [20/25] global_idx=1000169  0.13 min/img  elapsed 2.7 min  eta 0.7 min
+[shard6 p_to_n] [21/25] global_idx=1000170  0.13 min/img  elapsed 2.8 min  eta 0.5 min
+[shard6 p_to_n] [22/25] global_idx=1000171  0.13 min/img  elapsed 2.8 min  eta 0.4 min
+[shard6 p_to_n] [23/25] global_idx=1000172  0.13 min/img  elapsed 2.9 min  eta 0.3 min
+[shard6 p_to_n] [24/25] global_idx=1000173  0.13 min/img  elapsed 3.0 min  eta 0.1 min
+[shard6 p_to_n] [25/25] global_idx=1000174  0.12 min/img  elapsed 3.1 min  eta 0.0 min
+[generator] Grad-CAM mask: not used (USE_GRADCAM_MASK off)
+
+✓ shard 6 written to 'checkpoints/eval_shards/cf_shard_006.pt'
+  Run the reduce stage once ALL 8 shards exist:
+    python -u eval_main.py --stage reduce --num-shards 8
+=== Eval shard 6 finished at Tue Aug 11 18:48:40 CEST 2026 ===
