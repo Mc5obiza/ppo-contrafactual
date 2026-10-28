@@ -1,0 +1,133 @@
+=== Job 17704444 (array task 0, direction n_to_p)
+=== started on hpc-n982 at Sun Aug 16 18:56:14 CEST 2026 ===
+name, memory.total [MiB], memory.used [MiB]
+NVIDIA H100 NVL, 95830 MiB, 0 MiB
+NVIDIA H100 NVL, 95830 MiB, 35913 MiB
+NVIDIA H100 NVL, 95830 MiB, 0 MiB
+NVIDIA H100 NVL, 95830 MiB, 35933 MiB
+=== wall-clock budget: 22h of 24h ===
+[manifest] wrote logs/ppo-counterfactual-17704444_0.manifest
+[manifest] wrote checkpoints_gradcam_fix/n_to_p/run_manifest.txt
+[preflight] NVIDIA H100 NVL -> sm_90
+[preflight] torch 2.5.1+cu121 kernels: ['sm_50', 'sm_60', 'sm_70', 'sm_75', 'sm_80', 'sm_86', 'sm_90']
+[preflight] OK
+[seed] training: seed=0 | cudnn.deterministic=True, benchmark=False
+======================================================================
+STEP 1 — Dataset ingestion
+======================================================================
+[domain] rsna_pneumonia: f(.) targets 'Pneumonia' | guidance=densenet121-res224-rsna | ensemble=['densenet121-res224-rsna', 'densenet121-res224-chex'] | validators=['densenet121-res224-nih', 'densenet121-res224-pc', 'densenet121-res224-mimic_ch'] | clinical metrics: CTR, SCP
+[domain] Baseline domain. NOTE both clinical metrics are weak here: CTR is a cardiomegaly measure and SCP's sigmoid(-||yolo_feat||/50) proxy was measured degenerate (0.21% relative spread) in the last eval. Neither is pneumonia-specific.
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+[split] rsna_pneumonia: 21347 train / 5337 test (20.0% held out, seed=0)  [loaded]
+
+======================================================================
+STEP 2 — Loading pretrained models
+======================================================================
+[models] loaded ENSEMBLE classifier as f(·), head='Pneumonia': [rsna, chex] (2 members, mean probability)
+[models]   NOTE: f(·) is an ensemble — CV, far-pool sizes and the Xn/Xp group split are NOT comparable to single-classifier runs.
+[models] loaded PSPNet | lung channels: [4, 5]
+[models] loaded YOLOv8 backbone from yolov8n.pt
+
+======================================================================
+STEP 3 — Building generator with LoRA
+======================================================================
+[generator] loading VAE ...
+[generator] loading UNet ...
+trainable params: 1,594,368 || all params: 861,115,332 || trainable%: 0.1852
+[generator] VRAM estimate — VAE=160 MB, UNet=1645 MB, total=1806 MB
+
+======================================================================
+STEP 4 — LoRA denoising fine-tuning
+======================================================================
+[finetuning] trainable params: 1,808,640
+[finetuning] found checkpoint at checkpoints_gradcam_fix/finetuning_latest.pt — resuming
+[finetuning] resumed from epoch 29 — continuing at epoch 30
+[finetuning] checkpoint already at epoch 30 >= n_epochs=30 — nothing to do
+
+======================================================================
+STEP 5 — PPO training  [n_to_p, target_c=1.0]
+======================================================================
+[seed] n_to_p: seed=1 (base 0 + offset 1) | cudnn.deterministic=True, benchmark=False
+[env] 12212/21347 images are > 0.5 away from target_c=1.0  [training fold only]
+[env] far pool split: 12188 train / 24 held out for the CV probe (CV resolution 4.2 pts/image)
+[gradcam] hooking requested layer 'features.denseblock3' (resolved to 'model.features.denseblock3')
+[gradcam] hooking requested layer 'features.denseblock3' (resolved to 'model.features.denseblock3')
+[n_to_p] obs_dim = 73731
+[n_to_p] policy params = 37,885,462
+[ppo] found resumable state at checkpoints_gradcam_fix/n_to_p/ppo_latest.pt — resuming
+[ppo] resumed from update 49 (392 episodes done)
+[ppo] wall-clock budget: 22.00h for the whole process (0.08h already spent on startup) — will checkpoint and exit before it is reached
+[ppo] NOTE: USE_SPARSITY_ANNEALING=True but USE_SPARSITY_REWARD=False — the annealing schedule is inert.
+[ppo] state saved: checkpoints_gradcam_fix/n_to_p/ppo_latest.pt (update 50, 400 episodes)
+[ppo] state saved: checkpoints_gradcam_fix/n_to_p/ppo_latest.pt (update 55, 440 episodes)
+[ppo] state saved: checkpoints_gradcam_fix/n_to_p/ppo_latest.pt (update 60, 480 episodes)
+[ppo] state saved: checkpoints_gradcam_fix/n_to_p/ppo_latest.pt (update 65, 520 episodes)
+[ppo] state saved: checkpoints_gradcam_fix/n_to_p/ppo_latest.pt (update 70, 560 episodes)
+[ppo] state saved: checkpoints_gradcam_fix/n_to_p/ppo_latest.pt (update 75, 600 episodes)
+Update   80 | episodes= 640 | avg_ep_len=25.00 | avg_return=-105.170 | L_ppo=0.0747 | L_value=2.4426 | std_mean=0.6232 | lam_sparse=0.0000
+           reward split [flip=0% pres=4%] val=-2.248(52%) close2=-1.592(37%) bud=-0.225(5%) pres=-0.122(3%) fid=-0.063(1%) prog=+0.043(1%) hit=+0.000(0%) stop=+0.000(0%) sparsity=+0.000(0%)
+           edit_L1=0.0140 (budget inf) | steps score_ok=0% budget_ok=100% valid=0% | |logit|max=4.65 (sat>3.0)
+[ppo] state saved: checkpoints_gradcam_fix/n_to_p/ppo_latest.pt (update 80, 640 episodes)
+[ppo] state saved: checkpoints_gradcam_fix/n_to_p/ppo_latest.pt (update 85, 680 episodes)
+[ppo] state saved: checkpoints_gradcam_fix/n_to_p/ppo_latest.pt (update 90, 720 episodes)
+[ppo] state saved: checkpoints_gradcam_fix/n_to_p/ppo_latest.pt (update 95, 760 episodes)
+[ppo] state saved: checkpoints_gradcam_fix/n_to_p/ppo_latest.pt (update 100, 800 episodes)
+[ppo] state saved: checkpoints_gradcam_fix/n_to_p/ppo_latest.pt (update 100, 800 episodes)
+[ppo] Grad-CAM mask: 409/409 episodes constrained, 0 degenerate (0.0%)
+step |   flat R_t |  shaped R~_t |  advantage |  tau_t
+   0 |    -3.7019 |      -3.7019 |    -1.2888 |  0.699
+   1 |    -4.9964 |      -4.9964 |    -1.2772 |  0.647
+   2 |    -5.1589 |      -5.1589 |    -1.1963 |  0.603
+   3 |    -4.8380 |     -16.0150 |    -1.1009 |  0.429
+   4 |    -4.5622 |     -15.4308 |    -1.0177 |  0.407
+   5 |    -5.0555 |      -5.0555 |    -0.9460 |  0.706
+   6 |    -4.7023 |     -14.9184 |    -0.8416 |  0.352
+   7 |    -4.4883 |     -14.3713 |    -0.7517 |  0.376
+   8 |    -5.0622 |      -5.0622 |    -0.6644 |  0.698
+   9 |    -4.5690 |     -13.6729 |    -0.5414 |  0.289
+  10 |    -4.3739 |     -13.0956 |    -0.4382 |  0.282
+  11 |    -4.9764 |     -13.3398 |    -0.3415 |  0.254
+  12 |    -4.5945 |     -12.4461 |    -0.2034 |  0.489
+  13 |    -4.7605 |     -12.1465 |    -0.0778 |  0.253
+  14 |    -4.5665 |     -11.4194 |     0.0661 |  0.418
+  15 |    -5.0912 |     -11.4217 |     0.2071 |  0.352
+  16 |    -4.2996 |      -4.2996 |     0.3876 |  0.539
+  17 |    -4.8525 |      -9.9804 |     0.5317 |  0.419
+  18 |    -4.7014 |      -9.1322 |     0.7199 |  0.456
+  19 |    -4.7124 |      -4.7124 |     0.9096 |  0.563
+  20 |    -4.6026 |      -4.6026 |     1.1123 |  0.530
+  21 |    -4.8093 |      -4.8093 |     1.3214 |  0.796
+  22 |    -4.9744 |      -4.9744 |     1.5548 |  0.591
+  23 |    -4.4874 |      -4.4874 |     1.8152 |  0.690
+  24 |    -4.4419 |      -4.4419 |     2.0612 |  0.529
+
+──────────────────────────────────────────────────────────────────────
+  GUIDANCE DIAGNOSTICS  (target_c = 1.0)
+──────────────────────────────────────────────────────────────────────
+  episodes sampled          : 20  (492 steps)
+  avg guidance_bias         : 0.7563 ± 0.0772
+  avg n_passes              : 2.98
+  avg pres_suppression      : 1.3338  (floor = 0.60)
+  min pres_suppression seen : 0.8543
+  ✓ suppression is comfortably above the floor on average.
+  avg reward                : -3.0117
+──────────────────────────────────────────────────────────────────────
+[main] guidance diagnostics saved to 'checkpoints_gradcam_fix/guidance_diagnostics_n_to_p.json'
+[evaluate] saved checkpoints to 'checkpoints_gradcam_fix/n_to_p/'
+  → ppo_policy.pt
+  → unet_finetuned.pt
+  → cond_proj.pt
+
+======================================================================
+✓ TRAINING COMPLETE
+======================================================================
+  n_to_p: done → checkpoints_gradcam_fix/n_to_p/  (ppo_policy.pt, unet_finetuned.pt, cond_proj.pt)
+
+  Still to train before evaluation: p_to_n
+        python main.py --direction p_to_n
+=== Job finished at Mon Aug 17 10:34:13 CEST 2026 ===
+=== If this task reported PAUSED: sbatch --array=0 run_ppo.slurm
+=== Once BOTH directions are done: sbatch run_eval_cf.slurm, then
+===   sbatch --dependency=afterok:<that job id> run_eval_reduce.slurm ===

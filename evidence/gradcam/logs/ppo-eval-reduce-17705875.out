@@ -1,0 +1,195 @@
+[manifest] wrote logs/ppo-eval-reduce-17705875.manifest
+[manifest] wrote checkpoints_gradcam_fix/run_manifest.txt
+[slurm] arm=trained  cm=none  tag=none
+[slurm] shard_dir=checkpoints_gradcam_fix/eval_shards  out_dir=checkpoints_gradcam_fix
+=== Eval reduce started on hpc-n978 at Mon Aug 17 12:50:08 CEST 2026 ===
+shards present: 8 / 8
+name, memory.total [MiB], memory.used [MiB]
+NVIDIA H200, 143771 MiB, 58093 MiB
+NVIDIA H200, 143771 MiB, 31788 MiB
+NVIDIA H200, 143771 MiB, 14563 MiB
+NVIDIA H200, 143771 MiB, 0 MiB
+NVIDIA H200, 143771 MiB, 0 MiB
+NVIDIA H200, 143771 MiB, 36609 MiB
+NVIDIA H200, 143771 MiB, 36629 MiB
+NVIDIA H200, 143771 MiB, 0 MiB
+[preflight] NVIDIA H200 -> sm_90
+[preflight] torch 2.5.1+cu121 kernels: ['sm_50', 'sm_60', 'sm_70', 'sm_75', 'sm_80', 'sm_86', 'sm_90']
+[preflight] OK
+[eval] loaded 8 shards from 'checkpoints_gradcam_fix/eval_shards' — Xn=200 Xp=200 Xc_n→p=200 Xc_p→n=200
+======================================================================
+STEP 1 — Dataset ingestion
+======================================================================
+[domain] rsna_pneumonia: f(.) targets 'Pneumonia' | guidance=densenet121-res224-rsna | ensemble=['densenet121-res224-rsna', 'densenet121-res224-chex'] | validators=['densenet121-res224-nih', 'densenet121-res224-pc', 'densenet121-res224-mimic_ch'] | clinical metrics: CTR, SCP
+[domain] Baseline domain. NOTE both clinical metrics are weak here: CTR is a cardiomegaly measure and SCP's sigmoid(-||yolo_feat||/50) proxy was measured degenerate (0.21% relative spread) in the last eval. Neither is pneumonia-specific.
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+[split] rsna_pneumonia: 21347 train / 5337 test (20.0% held out, seed=0)  [loaded]
+
+======================================================================
+STEP 2 — Loading pretrained models
+======================================================================
+[models] loaded ENSEMBLE classifier as f(·), head='Pneumonia': [rsna, chex] (2 members, mean probability)
+[models]   NOTE: f(·) is an ensemble — CV, far-pool sizes and the Xn/Xp group split are NOT comparable to single-classifier runs.
+[models] loaded PSPNet | lung channels: [4, 5]
+[models] loaded YOLOv8 backbone from yolov8n.pt
+
+======================================================================
+STEP 3 — Building generator with LoRA
+======================================================================
+[generator] loading VAE ...
+[generator] loading UNet ...
+trainable params: 1,594,368 || all params: 861,115,332 || trainable%: 0.1852
+[generator] VRAM estimate — VAE=160 MB, UNet=1645 MB, total=1806 MB
+
+======================================================================
+STEP 4 — Restoring trained checkpoints
+======================================================================
+[pipeline] loading fine-tuned generator from 'checkpoints_gradcam_fix/n_to_p/'
+[pipeline]   → unet_finetuned.pt + cond_proj.pt
+
+----------------------------------------------------------------------
+Loading trained policy  [n_to_p, target_c=1.0]
+----------------------------------------------------------------------
+[env] 3052/5337 images are > 0.5 away from target_c=1.0  [training fold only]
+[env] far pool split: 3028 train / 24 held out for the CV probe (CV resolution 4.2 pts/image)
+[gradcam] hooking requested layer 'features.denseblock3' (resolved to 'model.features.denseblock3')
+[gradcam] hooking requested layer 'features.denseblock3' (resolved to 'model.features.denseblock3')
+[n_to_p] obs_dim = 73731
+[n_to_p] loaded policy from 'checkpoints_gradcam_fix/n_to_p/ppo_policy.pt' (37,885,462 params)
+
+----------------------------------------------------------------------
+Loading trained policy  [p_to_n, target_c=0.0]
+----------------------------------------------------------------------
+[env] 2285/5337 images are > 0.5 away from target_c=0.0  [training fold only]
+[env] far pool split: 2261 train / 24 held out for the CV probe (CV resolution 4.2 pts/image)
+[p_to_n] obs_dim = 73731
+[p_to_n] loaded policy from 'checkpoints_gradcam_fix/p_to_n/ppo_policy.pt' (37,885,462 params)
+
+======================================================================
+STEP 6 — Evaluation (metrics over precomputed counterfactuals)
+======================================================================
+
+======================================================================
+EVALUATION — Singla et al. (2022) metrics
+  (using PPO-guided generation)
+======================================================================
+[metrics] using PRECOMPUTED counterfactuals — skipping scan and generation. Xn=200  Xp=200
+[metrics] computing FID ...
+[metrics] computing FOP (TorchXRayVision Support Devices detector) ...
+[metrics] WARNING: 'Support Devices' head absent from weights='densenet121-res224-chex' (available heads: ['Atelectasis', 'Consolidation', '', 'Pneumothorax', 'Edema', '', '', 'Effusion', 'Pneumonia', '', 'Cardiomegaly', '', '', '', 'Lung Lesion', 'Fracture', 'Lung Opacity', 'Enlarged Cardiomediastinum']). FOP will be skipped (reported as N/A).
+[metrics] computing IP (MS-SSIM + high-freq detail preservation) ...
+[metrics] computing edit concentration ...
+[metrics] computing CTR ...
+[metrics] computing SCP ...
+[metrics] computing LHR (lesion hit rate, p→n) ...
+
+──────────────────────────────────────────────────────────────────────
+  METRIC SUMMARY  (Singla et al., 2022 — Table 1 / Fig. 9 style)
+──────────────────────────────────────────────────────────────────────
+
+► Counterfactual Validity (CV)   [τ = 0.8]
+    Xn → Xp : 0.0150
+    Xp → Xn : 0.0200
+    mean     : 0.0175
+
+► FID score  (lower = more realistic CFs)
+  vs SOURCE class — ambiguous: high can mean real class change OR artifact
+    FID(Xn,  Xc_n→p) : 13.16
+    FID(Xp,  Xc_p→n) : 22.76
+  vs TARGET class — the realism test, LOWER IS BETTER
+    FID(Xp,  Xc_n→p) : 14.94
+    FID(Xn,  Xc_p→n) : 7.61
+    (high on BOTH rows = off-manifold edit, not a class change)
+
+► Edit concentration  [model-free; top-5% of pixels' share of |Δ|]
+    Xn → Xp : 0.211  (uniform baseline 0.05) | MAE=0.0145 | changed=52.5%
+    Xp → Xn : 0.269  (uniform baseline 0.05) | MAE=0.0158 | changed=50.5%
+    >~0.5 = focal edit. Near the baseline = diffuse, i.e. adversarial-shaped.
+
+► Lesion Hit Rate (LHR)  [Xp → Xn, vs radiologist boxes — GROUND TRUTH]
+    edit mass inside lesion : 0.258 ± 0.143
+    chance baseline (area)  : 0.174 ± 0.111
+    LIFT                    : 1.64×  [t=13.96, p=9.83e-29, n=148]
+    1.0 = the edit ignores the annotation (adversarial-shaped). >1 = it targets the lesion.
+    Xn → Xp : N/A by construction — negative sources have no annotation.
+
+► Identity Preservation (IP)  [model-free FOP replacement, higher = better]
+    Xn → Xp : MS-SSIM=0.9821  HF-corr=0.9622
+    Xp → Xn : MS-SSIM=0.9647  HF-corr=0.9221
+
+► CTR — Cardiomegaly clinical metric
+    mean CTR(Xn)     = 0.4211 ± 0.0527
+    mean CTR(Xp)     = 0.4396 ± 0.1059
+    mean CTR(Xc_n→p) = 0.4145 ± 0.0548
+    mean CTR(Xc_p→n) = 0.4118 ± 0.1229
+    Δ CTR(Xn − Xc_n→p) = 0.0067 ± 0.0183  [t=5.15, p=0.0000]
+    Δ CTR(Xp − Xc_p→n) = 0.0412 ± 0.1110  [t=4.95, p=0.0000]
+
+► SCP — Pleural Effusion clinical metric
+    ⚠ DEGENERATE — relative spread 0.19% across all four groups (< 2%).
+    The sigmoid(-‖yolo_feat‖/50) proxy is saturated, so SCP is effectively a constant
+    (0.4795 ± 0.0008) and its paired t-tests are testing numerical noise.
+    Group means are retained in eval_metrics.json; the deltas and t-tests are withheld
+    from it (see _strip_unreportable). Fix the proxy (a real CP-recess detector) or drop SCP.
+──────────────────────────────────────────────────────────────────────
+
+[metrics] results saved to 'checkpoints_gradcam_fix/eval_metrics.json'
+Evaluation metrics: CV=0.0175 (n→p=0.0150, p→n=0.0200) | FID_neg=13.1583 | FID_pos=22.7574
+Identity Preservation (IP): n→p MS-SSIM=0.9821/HF=0.9622 | p→n MS-SSIM=0.9647/HF=0.9221
+
+======================================================================
+STEP 6B — Counterfactual diff plots (n→p and p→n, PPO-guided)
+======================================================================
+
+[diff_viz] generating n→p counterfactual (normal → pneumonia) ...
+[diff_viz] saved figure to 'checkpoints_gradcam_fix/counterfactual_diff_n_to_p.png'
+
+── Counterfactual difference summary ───────────────────────────
+  MAE (L1)          : 0.016478
+  MSE (L2)          : 0.000492
+  Max pixel change  : 0.352796
+  Pixels changed    : 62.63%  (threshold > 0.01)
+────────────────────────────────────────────────────────────────
+
+
+── Counterfactual difference summary (n→p) ─────────────────────
+  MAE (L1)          : 0.016478
+  MSE (L2)          : 0.000492
+  Max pixel change  : 0.352796
+  Pixels changed    : 62.63%  (threshold > 0.01)
+────────────────────────────────────────────────────────────────
+
+
+[diff_viz] generating p→n counterfactual (pneumonia → normal) ...
+[diff_viz] saved figure to 'checkpoints_gradcam_fix/counterfactual_diff_p_to_n.png'
+
+── Counterfactual difference summary ───────────────────────────
+  MAE (L1)          : 0.015690
+  MSE (L2)          : 0.001047
+  Max pixel change  : 0.731795
+  Pixels changed    : 53.05%  (threshold > 0.01)
+────────────────────────────────────────────────────────────────
+
+
+── Counterfactual difference summary (p→n) ─────────────────────
+  MAE (L1)          : 0.015690
+  MSE (L2)          : 0.001047
+  Max pixel change  : 0.731795
+  Pixels changed    : 53.05%  (threshold > 0.01)
+────────────────────────────────────────────────────────────────
+
+
+── n→p vs p→n diff comparison ─────────────────────────────────
+  metric                 n→p         p→n
+  MAE                 0.0165      0.0157
+  MSE                 0.0005      0.0010
+  max Δ               0.3528      0.7318
+  % changed            62.6%       53.1%
+────────────────────────────────────────────────────────────────
+
+[eval] saved: checkpoints_gradcam_fix/counterfactual_diff_n_to_p.png, checkpoints_gradcam_fix/counterfactual_diff_p_to_n.png
+
+✓ Evaluation complete.
+=== Eval reduce finished at Mon Aug 17 13:03:20 CEST 2026 ===
