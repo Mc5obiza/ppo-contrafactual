@@ -1,0 +1,102 @@
+[slurm] domain checkpoint dir: checkpoints_ens3
+[slurm] arm=trained  cm=none  tag=none  shard_dir=checkpoints_ens3/eval_shards
+[manifest] wrote logs/ppo-eval-cf-17700783_7.manifest
+=== Eval shard 7/8 started on hpc-n875 at Sat Aug 15 04:22:35 CEST 2026 ===
+name, memory.total [MiB], memory.used [MiB]
+Quadro RTX 6000, 24576 MiB, 1 MiB
+Quadro RTX 6000, 24576 MiB, 1 MiB
+Quadro RTX 6000, 24576 MiB, 1 MiB
+[preflight] Quadro RTX 6000 -> sm_75
+[preflight] torch 2.5.1+cu121 kernels: ['sm_50', 'sm_60', 'sm_70', 'sm_75', 'sm_80', 'sm_86', 'sm_90']
+[preflight] OK
+======================================================================
+STEP 1 — Dataset ingestion
+======================================================================
+[domain] rsna_pneumonia: f(.) targets 'Pneumonia' | guidance=densenet121-res224-rsna | ensemble=['densenet121-res224-rsna', 'densenet121-res224-chex', 'densenet121-res224-mimic_nb'] | validators=['densenet121-res224-nih', 'densenet121-res224-pc'] | clinical metrics: CTR, SCP
+[domain] Baseline domain. NOTE both clinical metrics are weak here: CTR is a cardiomegaly measure and SCP's sigmoid(-||yolo_feat||/50) proxy was measured degenerate (0.21% relative spread) in the last eval. Neither is pneumonia-specific.
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+[split] rsna_pneumonia: 21347 train / 5337 test (20.0% held out, seed=0)  [loaded]
+
+======================================================================
+STEP 2 — Loading pretrained models
+======================================================================
+[models] loaded ENSEMBLE classifier as f(·), head='Pneumonia': [rsna, chex, mimic_nb] (3 members, mean probability)
+[models]   NOTE: f(·) is an ensemble — CV, far-pool sizes and the Xn/Xp group split are NOT comparable to single-classifier runs.
+[models] loaded PSPNet | lung channels: [4, 5]
+[models] loaded YOLOv8 backbone from yolov8n.pt
+
+======================================================================
+STEP 3 — Building generator with LoRA
+======================================================================
+[generator] loading VAE ...
+[generator] loading UNet ...
+trainable params: 1,594,368 || all params: 861,115,332 || trainable%: 0.1852
+[generator] VRAM estimate — VAE=160 MB, UNet=1645 MB, total=1806 MB
+
+======================================================================
+STEP 4 — Restoring trained checkpoints
+======================================================================
+[pipeline] loading fine-tuned generator from 'checkpoints_ens3/n_to_p/'
+[pipeline]   → unet_finetuned.pt + cond_proj.pt
+
+----------------------------------------------------------------------
+Loading trained policy  [n_to_p, target_c=1.0]
+----------------------------------------------------------------------
+[env] 3100/5337 images are > 0.5 away from target_c=1.0  [training fold only]
+[env] far pool split: 3076 train / 24 held out for the CV probe (CV resolution 4.2 pts/image)
+[n_to_p] obs_dim = 73731
+[n_to_p] loaded policy from 'checkpoints_ens3/n_to_p/ppo_policy.pt' (37,885,462 params)
+
+----------------------------------------------------------------------
+Loading trained policy  [p_to_n, target_c=0.0]
+----------------------------------------------------------------------
+[env] 2237/5337 images are > 0.5 away from target_c=0.0  [training fold only]
+[env] far pool split: 2213 train / 24 held out for the CV probe (CV resolution 4.2 pts/image)
+[p_to_n] obs_dim = 73731
+[p_to_n] loaded policy from 'checkpoints_ens3/p_to_n/ppo_policy.pt' (37,885,462 params)
+
+======================================================================
+STAGE GENERATE — shard 7/8
+======================================================================
+[eval] scanning dataset for Xn / Xp (n_eval=200) over 5337 held-out images ...
+[eval] Xn=200  Xp=32
+[eval] shard slice: Xn[175:200] (25 imgs), Xp[28:32] (4 imgs)
+[eval] generating Xc (n→p) — this is the expensive part ...
+[shard7 n_to_p] [1/25] global_idx=175  0.09 min/img  elapsed 0.1 min  eta 2.1 min
+[shard7 n_to_p] [2/25] global_idx=176  0.09 min/img  elapsed 0.2 min  eta 2.0 min
+[shard7 n_to_p] [3/25] global_idx=177  0.09 min/img  elapsed 0.3 min  eta 1.9 min
+[shard7 n_to_p] [4/25] global_idx=178  0.71 min/img  elapsed 2.8 min  eta 14.9 min
+[shard7 n_to_p] [5/25] global_idx=179  0.59 min/img  elapsed 2.9 min  eta 11.7 min
+[shard7 n_to_p] [6/25] global_idx=180  0.50 min/img  elapsed 3.0 min  eta 9.6 min
+[shard7 n_to_p] [7/25] global_idx=181  0.44 min/img  elapsed 3.1 min  eta 8.0 min
+[shard7 n_to_p] [8/25] global_idx=182  0.40 min/img  elapsed 3.2 min  eta 6.8 min
+[shard7 n_to_p] [9/25] global_idx=183  0.36 min/img  elapsed 3.3 min  eta 5.8 min
+[shard7 n_to_p] [10/25] global_idx=184  0.34 min/img  elapsed 3.4 min  eta 5.2 min
+[shard7 n_to_p] [11/25] global_idx=185  0.32 min/img  elapsed 3.5 min  eta 4.5 min
+[shard7 n_to_p] [12/25] global_idx=186  0.30 min/img  elapsed 3.6 min  eta 3.9 min
+[shard7 n_to_p] [13/25] global_idx=187  0.28 min/img  elapsed 3.7 min  eta 3.4 min
+[shard7 n_to_p] [14/25] global_idx=188  0.33 min/img  elapsed 4.7 min  eta 3.7 min
+[shard7 n_to_p] [15/25] global_idx=189  0.50 min/img  elapsed 7.4 min  eta 5.0 min
+[shard7 n_to_p] [16/25] global_idx=190  0.47 min/img  elapsed 7.5 min  eta 4.2 min
+[shard7 n_to_p] [17/25] global_idx=191  0.45 min/img  elapsed 7.6 min  eta 3.6 min
+[shard7 n_to_p] [18/25] global_idx=192  0.46 min/img  elapsed 8.3 min  eta 3.2 min
+[shard7 n_to_p] [19/25] global_idx=193  0.44 min/img  elapsed 8.4 min  eta 2.7 min
+[shard7 n_to_p] [20/25] global_idx=194  0.43 min/img  elapsed 8.5 min  eta 2.1 min
+[shard7 n_to_p] [21/25] global_idx=195  0.41 min/img  elapsed 8.6 min  eta 1.6 min
+[shard7 n_to_p] [22/25] global_idx=196  0.54 min/img  elapsed 11.9 min  eta 1.6 min
+[shard7 n_to_p] [23/25] global_idx=197  0.52 min/img  elapsed 12.0 min  eta 1.0 min
+[shard7 n_to_p] [24/25] global_idx=198  0.50 min/img  elapsed 12.1 min  eta 0.5 min
+[shard7 n_to_p] [25/25] global_idx=199  0.49 min/img  elapsed 12.2 min  eta 0.0 min
+[eval] generating Xc (p→n) ...
+[shard7 p_to_n] [1/4] global_idx=1000028  0.13 min/img  elapsed 0.1 min  eta 0.4 min
+[shard7 p_to_n] [2/4] global_idx=1000029  0.14 min/img  elapsed 0.3 min  eta 0.3 min
+[shard7 p_to_n] [3/4] global_idx=1000030  0.14 min/img  elapsed 0.4 min  eta 0.1 min
+[shard7 p_to_n] [4/4] global_idx=1000031  0.25 min/img  elapsed 1.0 min  eta 0.0 min
+[generator] Grad-CAM mask: not used (USE_GRADCAM_MASK off)
+
+✓ shard 7 written to 'checkpoints_ens3/eval_shards/cf_shard_007.pt'
+  Run the reduce stage once ALL 8 shards exist:
+    python -u eval_main.py --stage reduce --num-shards 8
+=== Eval shard 7 finished at Sat Aug 15 04:47:24 CEST 2026 ===
