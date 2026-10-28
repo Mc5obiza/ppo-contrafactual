@@ -1,0 +1,86 @@
+arm: committed
+jobs: 17694482 17695832 17695840
+checkpoint dir: checkpoints
+code tag: evidence/committed-code -> 49e6050548e5376d26997e08027fb84a99383843
+  EXACT code of training 17694482 / eval 17695832 / reduce 17695840 (manifest: tree dirty only in checkpoints/, report/, social_media/; config.py sha256 f687e57a... = this commit)
+
+sha256 of artefacts (computed 2026-10-28T21:43:28+01:00):
+f35aca5f613d156620ee6aec35bd379639149e1893219676b384c6ee9fb2a917  checkpoints/n_to_p/ppo_policy.pt
+658cdd7956a858c16a6b13c136ec01e4a61668b738826c74b51cdbf5ddc86f99  checkpoints/n_to_p/unet_finetuned.pt
+8434bb76bf8371190c9adad3995279ba28f5e60d020e274849e61eb5e84b5719  checkpoints/n_to_p/cond_proj.pt
+e0d70debe009b6a84a43ccdde009c364d3be71effd8d558f86f16c02fb5bc4b5  checkpoints/p_to_n/ppo_policy.pt
+6ae442301a803162fd66d020521c36d8aa800138acb209e27f20ec59766c9651  checkpoints/p_to_n/unet_finetuned.pt
+4fcf4f7ff535d3903dc45c6c49c4d99af2d3ab114c3ae71f9c1eaf9c17cc29a1  checkpoints/p_to_n/cond_proj.pt
+a7cefb98a0c5960de4800ad0ed207c9554fb4e2173a3d860c093656f86b754af  checkpoints_ens_default/eval_metrics.json
+0c8accef17eef961d53c5c09489581e05a13a2ee235a96750d71ad6673bb6f00  checkpoints/eval_shards_ens_default/cf_shard_000.pt
+99a466f57354ff938fe3248db57a046f366d869c8e2bcc7d0bc9cdc50ea2c6a1  checkpoints/eval_shards_ens_default/cf_shard_001.pt
+734905667e90db3182e09691fc1da982df397ece4b4fa348a625efde6b1e6616  checkpoints/eval_shards_ens_default/cf_shard_002.pt
+e0459dc03ffb0048017b2ac53a616227c0860c8a0996c659c547d8a10ee8f069  checkpoints/eval_shards_ens_default/cf_shard_003.pt
+e1c3b04ed5a1a7b73b7d56019841d025855f3a660f528f87d144c3237f502ccf  checkpoints/eval_shards_ens_default/cf_shard_004.pt
+d8154b73d4fb5c550c34110a772ab5351b27102baffdbfc1b785ba049ac52676  checkpoints/eval_shards_ens_default/cf_shard_005.pt
+6f339dc2089011c231dd22918025a260b8d471deff4b3d51ab1c4c31cd31ea25  checkpoints/eval_shards_ens_default/cf_shard_006.pt
+b383cefb03374889780b758576009a1ea56add83573b4f9efeb7f65014dba61a  checkpoints/eval_shards_ens_default/cf_shard_007.pt
+
+generator tensor diff n_to_p vs p_to_n (~/verification/generator_tensor_diff.json):
+{
+ "unet_finetuned.pt": {
+  "keys_only_in_np": [],
+  "keys_only_in_pn": [],
+  "n_keys": 942,
+  "n_differing": 256,
+  "n_differing_lora": 256,
+  "max_abs_diff": 0.11811669170856476,
+  "max_abs_diff_lora": 0.11811669170856476,
+  "max_abs_diff_nonlora": 0.0,
+  "examples": [
+   [
+    "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_k.lora_A.default.weight",
+    0.09006999433040619
+   ],
+   [
+    "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_k.lora_B.default.weight",
+    0.06671231985092163
+   ],
+   [
+    "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_out.0.lora_A.default.weight",
+    0.06854019314050674
+   ],
+   [
+    "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_out.0.lora_B.default.weight",
+    0.03589852526783943
+   ],
+   [
+    "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_q.lora_A.default.weight",
+    0.08124536275863647
+   ]
+  ]
+ },
+ "cond_proj.pt": {
+  "keys_only_in_np": [],
+  "keys_only_in_pn": [],
+  "n_keys": 4,
+  "n_differing": 4,
+  "n_differing_lora": 0,
+  "max_abs_diff": 0.07456202805042267,
+  "max_abs_diff_lora": 0.0,
+  "max_abs_diff_nonlora": 0.07456202805042267,
+  "examples": [
+   [
+    "0.bias",
+    0.014505594968795776
+   ],
+   [
+    "0.weight",
+    0.058648258447647095
+   ],
+   [
+    "2.bias",
+    0.012439548969268799
+   ],
+   [
+    "2.weight",
+    0.07456202805042267
+   ]
+  ]
+ }
+}
