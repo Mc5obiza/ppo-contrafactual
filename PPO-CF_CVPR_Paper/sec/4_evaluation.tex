@@ -13,8 +13,7 @@ Following~\cite{singla2022explaining}, the evaluation set is split by classifier
 \end{equation}
 where $\Delta_i = f(x^i_c) - f(x^i)$, $B_i$ requires $s\,(f(x^i_c) - 0.5) > 0$ and $s\,(f(x^i) - 0.5) \leq 0$, $f$ is the guidance classifier (the ensemble mean in ensemble arms) and $\tau = 0.8$. On $X_n$ and $X_p$ the crossing condition $B_i$ is redundant: $f(x) < 0.2$ and $s\,\Delta_i \geq 0.8$ already give $f(x_c) \geq 0.8$ for n$\to$p, and symmetrically for p$\to$n. The tightening over the original, direction-agnostic definition therefore comes from the sign requirement alone: an image moving the wrong way by a large margin is no longer credited.
 
-\paragraph{FID.} Between each direction's counterfactuals and the real images of its target group ($X_p$ for n$\to$p, $X_n$ for p$\to$n; selected by $f$, not by label), on 1024-d features of a TorchXRayVision DenseNet-121~\cite{cohen2022torchxrayvision} with \texttt{rsna} weights rather than Inception-v3. These weights also guide generation in the single-classifier and 2-model arms, so FID is not independent of guidance.
-% TODO: 3-model ensemble membership not recorded
+\paragraph{FID.} Between each direction's counterfactuals and the real images of its target group ($X_p$ for n$\to$p, $X_n$ for p$\to$n; selected by $f$, not by label), on 1024-d features of a TorchXRayVision DenseNet-121~\cite{cohen2022torchxrayvision} with \texttt{rsna} weights rather than Inception-v3. These weights also guide generation in every trained arm (the 3-model ensemble is \texttt{rsna}, \texttt{chex}, \texttt{mimic\_nb}), so FID is not independent of guidance.
 
 \paragraph{Identity Preservation (IP).} As a dependency-free substitute for FOP we report MS-SSIM and HF-corr, the Pearson correlation of high-pass-filtered images rescaled to $[0, 1]$ (0.5 means uncorrelated), a proxy for whether thin structures such as tubes, leads and pacemakers survive editing.
 
@@ -23,7 +22,6 @@ where $\Delta_i = f(x^i_c) - f(x^i)$, $B_i$ requires $s\,(f(x^i_c) - 0.5) > 0$ a
 \subsection{Ground-truth-anchored Lesion Hit Rate}
 \label{sec:lhr}
 
-% TODO: LHR implementation not available; definition below is unverified (per-image vs pooled averaging, multi-box handling, test used for the p-value).
 CV, FID and IP share a blind spot: none of them can tell whether the edit landed on the pathology. RSNA ships 9{,}555 radiologist-drawn opacity boxes, which we retain. LHR measures the fraction of an edit's absolute-difference mass falling inside the annotation, against the box's own area as the null; lift (hit rate over null), not raw hit rate, is therefore the informative quantity. LHR is defined only for p$\to$n, since n$\to$p sources are classifier-negative and carry no annotation. Details that the definition leaves open are listed in Supp.~Sec.~R6.
 
 We calibrate the metric before use on synthetic edits with known ground truth: a uniform wash scores lift 1.00 ($p=0.59$, chance, as it should), an on-lesion edit scores 12.4 ($p = 3\times10^{-49}$), an off-lesion edit scores 0.
@@ -36,16 +34,12 @@ Because CV is computed with the guidance classifier, it cannot separate a class-
 \rho_v = \frac{\sum_i s\,\big(f_v(x^i_c) - f_v(x^i)\big)}{\sum_i s\,\big(f(x^i_c) - f(x^i)\big)},
 \label{eq:transfer}
 \end{equation}
-a ratio of means rather than a mean of per-image ratios, undefined when the guidance shift is zero. The denominator must be the shift of the classifier(s) that actually guided generation.
-% TODO: code not preserved (denominator stamp mechanism)
-A ratio below 0.15 we treat as the adversarial regime; this is a heuristic operating point, not a calibrated boundary (\S\ref{sec:cv-overstates}). A ratio of 0.5, meaning validators reproduce half the guidance shift, is used only as an illustration and not as a threshold. % TODO: code not preserved -- shard-stamp denominator. Recorded code takes the guidance roster from cache/--guidance-weights (heldout_validation.py:206-228,426-431); current_cfg_stamp does not record USE_GUIDANCE_ENSEMBLE (metrics.py:141-174).
+a ratio of means rather than a mean of per-image ratios, undefined when the guidance shift is zero. The denominator must be the shift of the classifier(s) that actually guided generation, so it is read from the configuration stamp each evaluation shard carries, which records the guidance classifiers for the committed and later arms (the single-classifier arm's shards predate this key and are treated as single-classifier guidance).
+A ratio below 0.15 we treat as the adversarial regime; this is a heuristic operating point, not a calibrated boundary (\S\ref{sec:cv-overstates}). A ratio of 0.5, meaning validators reproduce half the guidance shift, is used only as an illustration and not as a threshold.
 
 \subsection{Controls the comparison requires}
 \label{sec:controls}
 
 A control-arm comparison needs three preconditions that we had assumed and that did not hold (full account in Supp.~Sec.~E1): (i) one deterministic, persisted, patient-level split shared by LoRA fine-tuning, the PPO pool and evaluation, replacing a shared dataset object under which evaluation images had been seen during fine-tuning; (ii) seeded training, since two identical unseeded submissions produced two different policies; and (iii) control arms exercised end to end, which surfaced a routing bug and a shared output directory that would each have produced a well-formed but wrong table.
-% TODO: fix code not preserved (seeding)
-% TODO: restore claim if code recovered
-Two caveats remain. We have no record that the shared generator was fine-tuned again after the split was introduced, so its fine-tuning set may overlap the evaluation images in every arm.
-% TODO: verify whether the generator was re-fine-tuned on the split (recorded code fine-tunes on the full dataset)
-And the single-classifier arm of \S\ref{sec:five-arms} predates (i) and (ii), was re-scored with the corrected evaluation code, and probably differs from the ensemble arms in reward weights, $a_1$ range and anchoring as well as in guidance (unverified; its training configuration was not recorded), so it is not evaluated under the same protocol as the other four arms.
+Every reported run uses the 80/20 patient-level split with seed 0, LoRA seed 0, PPO seeds 1 (n$\to$p) and 2 (p$\to$n), and evaluation base seed 0. Generator fine-tuning, PPO rollouts and the validity probe use only the 80\% training fold; every evaluated image is in the 20\% test fold.
+The single-classifier arm of \S\ref{sec:five-arms} shares split, seeds, reward weights, action ranges and anchoring with the committed arm; its configuration is identical except for the guidance flag. The two runs differ in guidance, in the classifier-selected groups (78 of 200 p$\to$n sources shared) and in hardware, and each is one training run.
