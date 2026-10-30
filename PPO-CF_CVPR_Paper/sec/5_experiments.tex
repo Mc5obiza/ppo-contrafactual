@@ -9,27 +9,27 @@ We use the RSNA Pneumonia Detection Challenge dataset~\cite{rsna2018} (DICOM, mi
 \subsection{Main results}
 \label{sec:main-results}
 
-Table~\ref{tab:main-results} reports the committed configuration (2-model guidance ensemble, no Grad-CAM mask, no sparsity reward). Three things are worth reading together. The policy succeeds at the base task far more often in n$\to$p (CV 0.960) than in p$\to$n (0.715). It concentrates edit mass on radiologist-annotated lesions far above chance: a 2.67$\times$ lift is not a marginal effect, though a no-policy arm, run with \texttt{rsna}-only guidance on the single-classifier arm's groups, already scores 2.046, so the policy's own contribution under the committed configuration is unmeasured and may be much smaller. And yet it changes roughly 65\% of pixels and places only a quarter to a third of its difference mass in the top 5\% of the edit map, against a 0.05 uniform baseline. The edits are class-informative and diffuse at the same time. % TODO(J4) TODO(J5)
+Table~\ref{tab:main-results} reports the committed configuration (2-model guidance ensemble, no Grad-CAM mask, no sparsity reward). Three things are worth reading together. The policy succeeds at the base task far more often in n$\to$p (CV 0.960) than in p$\to$n (0.670). It concentrates edit mass on radiologist-annotated lesions far above chance: a 2.60$\times$ lift is not a marginal effect, though a no-policy arm, run with \texttt{rsna}-only guidance on the single-classifier arm's groups, already scores 2.046, so the policy's own contribution under the committed configuration is unmeasured and may be much smaller. And yet it changes roughly 65\% of pixels and places only a quarter to a third of its difference mass in the top 5\% of the edit map, against a 0.05 uniform baseline. The edits are class-informative and diffuse at the same time. % TODO(J5)
 
 \begin{table}[t]
 \centering
-\caption{Committed configuration, $n=200$ per group. LHR is defined only for p$\to$n. p$\to$n is evaluated with the n$\to$p generator adapter (\S\ref{sec:directional-policies}).} % TODO(J4)
+\caption{Committed configuration, $n=200$ per group. LHR is defined only for p$\to$n. Each direction is evaluated with its own generator adapter (\S\ref{sec:directional-policies}); the p$\to$n column is from a re-evaluation with the p$\to$n adapter.}
 \label{tab:main-results}
 \small
 \begin{tabular}{@{}llcc@{}}
 \toprule
 Metric & & n$\to$p & p$\to$n \\
 \midrule
-CV & fraction valid, $\tau{=}0.8$ & 0.960 & 0.715 \\ % TODO(J4)
+CV & fraction valid, $\tau{=}0.8$ & 0.960 & 0.670 \\
 & mean & \multicolumn{2}{c}{0.838} \\ % TODO(J4)
-LHR & lift vs.\ annotation-area null & --- & 2.673 \\ % TODO(J4)
-& \multicolumn{3}{l}{\footnotesize $t=24.19$, $p=4.2\times10^{-53}$, $n=148$} \\ % TODO(J4)
-Transfer & mean over 3 validators & 0.282 & 0.293 \\ % TODO(J4)
-EditConc. & top-5\% mass (uniform=0.05) & 0.253 & 0.318 \\ % TODO(J4)
-& fraction of pixels changed & 0.650 & 0.633 \\ % TODO(J4)
-FID & vs.\ real target class & 22.21 & 4.95 \\ % TODO(J4)
-IP & MS-SSIM & 0.923 & 0.870 \\ % TODO(J4)
-& HF-corr & 0.948 & 0.914 \\ % TODO(J4)
+LHR & lift vs.\ annotation-area null & --- & 2.595 \\
+& \multicolumn{3}{l}{\footnotesize $t=24.09$, $p=6.6\times10^{-53}$, $n=148$} \\
+Transfer & mean over 3 validators & 0.282 & 0.276 \\
+EditConc. & top-5\% mass (uniform=0.05) & 0.253 & 0.314 \\
+& fraction of pixels changed & 0.650 & 0.634 \\
+FID & vs.\ real target class & 22.21 & 4.76 \\
+IP & MS-SSIM & 0.923 & 0.868 \\
+& HF-corr & 0.948 & 0.913 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -37,7 +37,7 @@ IP & MS-SSIM & 0.923 & 0.870 \\ % TODO(J4)
 \subsection{CV overstates what the edits achieve}
 \label{sec:cv-overstates}
 
-Table~\ref{tab:transfer-ratio} makes the case directly. Against the earlier single-classifier policy, the 2-model ensemble-guided policy has lower mean CV (0.838 vs.\ 0.940) but higher LHR lift (2.673 vs.\ 2.293) and higher 3-validator mean held-out transfer in both directions (Table~\ref{tab:five-arms}); the one per-validator exception, \texttt{nih} n$\to$p, is not distinguishable from noise (below). The metric that fell is the one that shares a classifier with the generator. The two runs share split, seeds, reward weights, action ranges and anchoring, and differ in guidance, in the classifier-selected groups (78 of 200 p$\to$n sources shared) and in hardware (\S\ref{sec:controls}); with one training run per arm, these differences are not separated from run-to-run variation. % TODO(J4)
+Table~\ref{tab:transfer-ratio} makes the case directly. Against the earlier single-classifier policy, the 2-model ensemble-guided policy has lower mean CV (0.838 vs.\ 0.940) but higher LHR lift (2.595 vs.\ 2.293) and higher 3-validator mean held-out transfer in both directions (Table~\ref{tab:five-arms}); the one per-validator exception, \texttt{nih} n$\to$p, is not distinguishable from noise (below). The metric that fell is the one that shares a classifier with the generator. The two runs share split, seeds, reward weights, action ranges and anchoring, and differ in guidance, in the classifier-selected groups (78 of 200 p$\to$n sources shared) and in hardware (\S\ref{sec:controls}); with one training run per arm, these differences are not separated from run-to-run variation. % TODO(J4)
 
 \begin{table}[t]
 \centering
@@ -74,11 +74,11 @@ This is the paper's central empirical claim. In the n$\to$p direction the single
 Arm & LHR & Transfer & LHR vs.\ default \\
 & & n$\to$p/p$\to$n & (paired) \\
 \midrule
-Single-classifier & 2.293 & 0.230/0.146 & worse ($d{=}0.482$) \\ % TODO(J1)
-\textbf{2-ens (default)} & \textbf{2.673} & \textbf{0.282/0.293} & --- \\ % TODO(J4)
-3-model ensemble & 2.492 & 0.350/0.276$^*$ & unresolved ($n{=}12$) \\ % TODO(J1) TODO(J2)
-Sparsity reward & 2.398 & 0.311/0.212 & worse ($d{=}0.512$) \\ % TODO(J1) TODO(J2)
-Grad-CAM constraint & 1.636 & 0.161/0.103 & much worse ($d{=}1.205$) \\ % TODO(J1) TODO(J2)
+Single-classifier & 2.293 & 0.230/0.146 & worse ($d{=}0.316$) \\
+\textbf{2-ens (default)} & \textbf{2.595} & \textbf{0.282/0.276} & --- \\
+3-model ensemble & 2.492 & 0.350/0.276$^*$ & unresolved ($n{=}12$) \\ % TODO(J2)
+Sparsity reward & 2.398 & 0.311/0.212 & worse ($d{=}0.363$) \\ % TODO(J2)
+Grad-CAM constraint & 1.636 & 0.161/0.103 & much worse ($d{=}1.068$) \\ % TODO(J2)
 \bottomrule
 \end{tabular}
 \end{table}
@@ -86,7 +86,7 @@ Grad-CAM constraint & 1.636 & 0.161/0.103 & much worse ($d{=}1.205$) \\ % TODO(J
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.9\linewidth]{figures/fig1_lhr_lift.png}
-\caption{LHR lift (p$\to$n) across all five trained arms. Dashed lines mark chance (1.0) and the no-policy baseline. The no-policy arm, run with \texttt{rsna}-only guidance on the single-classifier arm's classifier-selected groups, scores 2.046; the line is drawn at the no-policy value under the label protocol (groups selected by ground-truth label rather than classifier confidence), 2.057, which is indistinguishable at this scale.} % TODO(J5)
+\caption{LHR lift (p$\to$n) across all five trained arms. Dashed lines mark chance (1.0) and the no-policy baseline. With the committed guidance and groups, the no-policy arm scores 2.064; the line is drawn at the no-policy value under the label protocol (groups selected by ground-truth label rather than classifier confidence), 2.057, which is indistinguishable at this scale.} % TODO(fig): image not regenerated; default bar still shows the earlier p$\to$n value
 \label{fig:lhr-lift}
 \end{figure}
 
@@ -95,24 +95,24 @@ Grad-CAM constraint & 1.636 & 0.161/0.103 & much worse ($d{=}1.205$) \\ % TODO(J
 
 Every arm in Table~\ref{tab:five-arms} is a policy trained for 800 episodes per direction and evaluated end-to-end, with one training run per arm; none is a cheaper no-policy sweep or an offline proxy. All five share the split and seeds of \S\ref{sec:controls}; the single-classifier arm differs from the committed one only in its guidance classifier, and through it in its evaluation groups, and in hardware. LHR verdicts are paired significance tests on the images two arms share, never differences of group means; transfer comparisons use each arm's own bootstrap CI (\S\ref{sec:cv-overstates}).
 
-\paragraph{The ensemble-guided policy beats the single-classifier one in a single-run comparison.} Between trained policies, the single-classifier$\to$2-model step rests on a single run per arm: on the 76 shared annotated images the paired LHR-lift test favours the ensemble-guided policy ($d=0.482$, $p=7.1\times10^{-5}$). The two runs share split, seeds, reward weights, action ranges and anchoring (their configurations differ only in the guidance flag), but they differ in guidance, in the classifier-selected groups (78 of 200 p$\to$n sources shared) and in hardware, and with one run per arm the gap is not separated from run-to-run variation. % TODO(J1) TODO(J4)
-A policy-free sweep (three seeds) bears on ensembling without a policy: generating without a policy under the label protocol, ensemble guidance raises paired per-image LHR lift over the no-countermeasure baseline by $+0.0694$ ($d=0.221$), $+0.0693$ ($d=0.223$) and $+0.0575$ ($d=0.151$) across three seeds, all with 95\% CIs excluding zero. That effect ($\approx+0.07$) is smaller than the trained comparison and is not a replication of it. Growing the ensemble to three members improves \texttt{pc} n$\to$p transfer from 0.462 to 0.623 with non-overlapping CIs and does not resolve on LHR ($n=12$, paired CI $[-0.298, +0.482]$), so we cannot say whether transfer and lesion targeting dissociate. It also moves \texttt{nih} in the right direction on both counts without separating from noise, and lowers mean CV further to 0.624 (0.685 n$\to$p, 0.563 p$\to$n), on a p$\to$n group of only $n=32$ (27 annotated). % TODO(J1) TODO(J2)
+\paragraph{The ensemble-guided policy beats the single-classifier one in a single-run comparison.} Between trained policies, the single-classifier$\to$2-model step rests on a single run per arm: on the 76 shared annotated images the paired LHR-lift test favours the ensemble-guided policy ($d=0.316$, $p=7.4\times10^{-3}$). The two runs share split, seeds, reward weights, action ranges and anchoring (their configurations differ only in the guidance flag), but they differ in guidance, in the classifier-selected groups (78 of 200 p$\to$n sources shared) and in hardware, and with one run per arm the gap is not separated from run-to-run variation.
+A policy-free sweep (three seeds) bears on ensembling without a policy: generating without a policy under the label protocol, ensemble guidance raises paired per-image LHR lift over the no-countermeasure baseline by $+0.0694$ ($d=0.221$), $+0.0693$ ($d=0.223$) and $+0.0575$ ($d=0.151$) across three seeds, all with 95\% CIs excluding zero. That effect ($\approx+0.07$) is smaller than the trained comparison and is not a replication of it. Growing the ensemble to three members improves \texttt{pc} n$\to$p transfer from 0.462 to 0.623 with non-overlapping CIs and does not resolve on LHR ($n=12$, paired CI $[-0.318, +0.323]$), so we cannot say whether transfer and lesion targeting dissociate. It also moves \texttt{nih} in the right direction on both counts without separating from noise, and lowers mean CV further to 0.624 (0.685 n$\to$p, 0.563 p$\to$n), on a p$\to$n group of only $n=32$ (27 annotated). % TODO(J2)
 
 \paragraph{The single-classifier policy beats a random one, but barely.} This comparison is measured against the single-classifier policy ($n=183$ annotated images), not the committed ensemble. Against the random-action arm on the same 183 images: paired lift difference $+0.090$ (95\% CI $[+0.021, +0.160]$), $t=2.551$, $p=0.0116$, Wilcoxon $p=0.0147$, $d=0.189$, trained better on 105/183. The effect is real but small, and considerably smaller than either negative result below.
 
 \subsection{Two negative results}
 \label{sec:negative-results}
 
-\paragraph{An annealed sparsity reward fails at its own objective.} Edit concentration has stayed in the 0.21--0.32 band in every arm we measure. The sparsity term was built to address this and had been disabled throughout, leaving its annealing ramp inert. We enabled it and retrained both directions. In n$\to$p the validity safeguard (Supp.~Sec.~R1) froze $\lambda_{\text{sparsity}}$ at 0 before its ramp began, so only p$\to$n was trained with the term; the n$\to$p changes are run-to-run variation (CV 0.935 vs.\ 0.960 gives an informal replicate of the default). In p$\to$n, concentration moved by less than 0.02. Meanwhile a paired test on the 148 shared annotated images gives a lift gap of $+0.275$ favouring the arm \emph{without} it (95\% CI $[+0.188, +0.363]$, $t=6.229$, $p=4.7\times10^{-9}$, $d=0.512$), and p$\to$n transfer falls from 0.293 to 0.212 with non-overlapping CIs on two of three validators. Without a working spatial mask the term degrades to plain unweighted $L_1$, which discourages edit mass uniformly rather than off-target mass specifically. This is a plausible account of why it competes with precise editing while failing at its own goal. % TODO(J1) TODO(J2) TODO(J4)
+\paragraph{An annealed sparsity reward fails at its own objective.} Edit concentration has stayed in the 0.21--0.32 band in every arm we measure. The sparsity term was built to address this and had been disabled throughout, leaving its annealing ramp inert. We enabled it and retrained both directions. In n$\to$p the validity safeguard (Supp.~Sec.~R1) froze $\lambda_{\text{sparsity}}$ at 0 before its ramp began, so only p$\to$n was trained with the term; the n$\to$p changes are run-to-run variation (CV 0.935 vs.\ 0.960 gives an informal replicate of the default). In p$\to$n, concentration moved by less than 0.02. Meanwhile a paired test on the 148 shared annotated images gives a lift gap of $+0.198$ favouring the arm \emph{without} it (95\% CI $[+0.113, +0.288]$, $t=4.418$, $p=1.9\times10^{-5}$, $d=0.363$), and p$\to$n transfer falls from 0.293 to 0.212 with non-overlapping CIs on two of three validators. Without a working spatial mask the term degrades to plain unweighted $L_1$, which discourages edit mass uniformly rather than off-target mass specifically. This is a plausible account of why it competes with precise editing while failing at its own goal. % TODO(J2) TODO(J4)
 
-\paragraph{A Grad-CAM spatial constraint collapses the base task.} In a policy-free sweep (no trained policy), constraining edits to a Grad-CAM~\cite{selvaraju2017gradcam} region lowered LHR lift rather than raising it, so we diagnosed it directly. Scoring 263 member-image observations under the exact ensemble Grad-CAM path used during training contradicted the explanation on record: it is \texttt{chex}, not \texttt{rsna}, that degenerates (66/263, 25.1\% vs.\ 1/263), and it does so concentrated at \emph{low} predicted probability rather than near 0.5, which is consistent with output saturation zeroing the gradient. When \texttt{chex} degenerates the averaged mask falls back toward the least-constrained member alone, and CAM--lesion overlap falls with it (2.052, $n=127$ on clean episodes vs.\ 1.347, $n=23$ on partially degenerate ones). The remedy on record, a finer target layer, does eliminate the degeneracy (0\%/0.4\%) but drops baseline CAM--lesion lift to 1.196, barely above chance. % TODO(J3)
+\paragraph{A Grad-CAM spatial constraint collapses the base task.} In a policy-free sweep (no trained policy), constraining edits to a Grad-CAM~\cite{selvaraju2017gradcam} region lowered LHR lift rather than raising it, so we diagnosed it directly. Scoring 263 member-image observations under the exact ensemble Grad-CAM path used during training contradicted the explanation on record: it is \texttt{chex}, not \texttt{rsna}, that degenerates (66/263, 25.1\% vs.\ 1/263), and it does so concentrated at \emph{low} predicted probability rather than near 0.5, which is consistent with output saturation zeroing the gradient. When \texttt{chex} degenerates the averaged mask falls back toward the least-constrained member alone, and CAM--lesion overlap falls with it (2.052, $n=127$ on clean episodes vs.\ 1.347, $n=23$ on partially degenerate ones). The remedy on record, a finer target layer, does eliminate the degeneracy (0\%/0.4\%) but drops baseline CAM--lesion lift to 1.196, barely above chance.
 
-A policy trained under that remedy moved in the same direction, by a larger margin: CV collapses from 0.838 to 0.017, the paired LHR gap is $+1.037$ favouring the unconstrained arm (95\% CI $[+0.900, +1.178]$, $t=14.660$, $p=1.5\times10^{-30}$, $d=1.205$, better on 141/148 images), and transfer falls across all three validators. This is the largest paired effect size we measure anywhere, and it is against a mechanism introduced specifically to help. Constraining the action space to a finer, less confident CAM region does not trade a degeneracy problem for a localisation problem; it makes the base task substantially harder and every dependent metric degrades with it. % TODO(J1) TODO(J2) TODO(J4)
+A policy trained under that remedy moved in the same direction, by a larger margin: CV collapses from 0.838 to 0.017, the paired LHR gap is $+0.960$ favouring the unconstrained arm (95\% CI $[+0.815, +1.108]$, $t=12.988$, $p=3.6\times10^{-26}$, $d=1.068$, better on 138/148 images), and transfer falls across all three validators. This is the largest paired effect size we measure anywhere, and it is against a mechanism introduced specifically to help. Constraining the action space to a finer, less confident CAM region does not trade a degeneracy problem for a localisation problem; it makes the base task substantially harder and every dependent metric degrades with it. % TODO(J2) TODO(J4)
 
 \subsection{Clinical proxy metrics}
 \label{sec:clinical-proxies}
 
-We also computed two clinical proxies under the committed configuration, the Cardio-Thoracic Ratio (CTR) and a costophrenic-recess score (SCP), each with a paired $t$-test on the real-to-counterfactual delta (full results in Supp.~Sec.~E2). CTR shifts by less than 0.01 in both directions, far below the metric's clinical resolution, consistent with a cardiac silhouette that lies largely outside the lung mask gating the edits. SCP is numerically degenerate in this configuration (relative spread 0.19\%), so neither proxy supports a clinical claim. % TODO(J4)
+We also computed two clinical proxies under the committed configuration, the Cardio-Thoracic Ratio (CTR) and a costophrenic-recess score (SCP), each with a paired $t$-test on the real-to-counterfactual delta (full results in Supp.~Sec.~E2). CTR shifts by less than 0.01 in both directions, far below the metric's clinical resolution, consistent with a cardiac silhouette that lies largely outside the lung mask gating the edits. SCP is numerically degenerate in this configuration (relative spread 0.19\%), so neither proxy supports a clinical claim.
 
 \subsection{Qualitative examples}
 \label{sec:qualitative}

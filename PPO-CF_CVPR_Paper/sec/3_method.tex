@@ -63,5 +63,5 @@ $a_8$ & guidance ramp-up start fraction & $[0.1, 0.5]$ \\
 \subsection{Directional policies}
 \label{sec:directional-policies}
 
-The environment is built around a fixed target, so one policy is trained for n$\to$p ($c=1$) and another for p$\to$n ($c=0$). Each direction fine-tunes its own LoRA adapter from the same data, seed and recipe, and the resulting weights differ; in every arm except the Grad-CAM arm, evaluation uses the n$\to$p adapter for both directions. % TODO(J4): replace p->n numbers if they change
+The environment is built around a fixed target, so one policy is trained for n$\to$p ($c=1$) and another for p$\to$n ($c=0$). Each direction fine-tunes its own LoRA adapter from the same data, seed and recipe, and the resulting weights differ; the committed and Grad-CAM arms are evaluated with each direction's own adapter, and the other arms with the n$\to$p adapter for both directions.
 This follows an asymmetry we observe throughout: synthesizing a plausible, spatially coherent opacity pattern in a clean lung field is a harder and more under-constrained generative problem than removing one, which is closer to an inpainting operation the pretrained prior already performs well.
