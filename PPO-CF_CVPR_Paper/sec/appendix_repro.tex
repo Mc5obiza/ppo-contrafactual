@@ -1,7 +1,7 @@
 % =============================================================================
 % Reproducibility appendix (supplementary material).
 %
-% Values are read from the code and configuration of the committed runs and
+% Values are read from the code and configuration of the default-configuration runs and
 % checked against their run logs, recorded configuration and checkpoints.
 % =============================================================================
 
@@ -10,7 +10,7 @@
 \setcounter{table}{0}
 \renewcommand{\thetable}{R\arabic{table}}
 
-Every value in this appendix is read from the code and configuration of the committed runs of the main paper (2-model guidance ensemble) and checked against their run logs, recorded configuration and checkpoints. Settings that differ between code versions are listed in Sec.~R5 with the value the committed runs used. \TODO{not found} marks a setting we could not find.
+Every value in this appendix is read from the code and configuration of the default-configuration runs of the main paper (2-model guidance ensemble) and checked against their run logs, recorded configuration and checkpoints. Settings that differ between code versions are listed in Sec.~R5 with the value the default runs used.
 
 % -----------------------------------------------------------------------------
 \subsection*{R1. Reward}
@@ -117,7 +117,7 @@ Termination & $d_{t+1} < \epsilon_{\text{stop}} = 0.08$ (with $B = \infty$) or $
 Training images & drawn uniformly with replacement, one per episode, from training-fold images with $|f(x) - c| > 0.5$, excluding the first 24 of that pool, which are held out for the sparsity-arm probe in every arm \\
 Final policy & weights after the last update; no checkpoint selection \\
 Evaluation & mean action ($a = \mu$), same $T$ and termination; per-image seed $=$ base seed 0 $+$ global image index ($+10^6$ for p$\to$n) \\
-Random seeds & split 0; LoRA fine-tuning 0; PPO 1 (n$\to$p) and 2 (p$\to$n), i.e.\ base 0 plus a per-direction offset; cuDNN deterministic mode on, full determinism off, so repeated runs are not guaranteed to be bit-identical, and re-running the identical protocol on different hardware regenerates different images, so aggregate metrics move by small amounts (two runs of the committed p$\to$n protocol differ in LHR lift by $+0.016$, 95\% CI $[-0.045, +0.098]$, on 148 images); evaluation base seed 0 \\
+Random seeds & split 0; LoRA fine-tuning 0; PPO 1 (n$\to$p) and 2 (p$\to$n), i.e.\ base 0 plus a per-direction offset; cuDNN deterministic mode on, full determinism off, so repeated runs are not guaranteed to be bit-identical, and re-running the identical protocol on different hardware regenerates different images, so aggregate metrics move by small amounts (two runs of the default p$\to$n protocol differ in LHR lift by $+0.016$, 95\% CI $[-0.045, +0.098]$, on 148 images); evaluation base seed 0 \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -138,7 +138,7 @@ Setting & Value \\
 Backbone & SD v1.5 (\texttt{runwayml/stable-diffusion-v1-5}) VAE and UNet, fp16, frozen except LoRA. Text encoder unused. $256^2$ grayscale input replicated to 3 channels and mapped to $[-1, 1]$; $4 \times 32 \times 32$ latent drawn from the VAE posterior (sample, not mean) \\
 Conditioning MLP & $[c,\ \text{latent average-pooled to 64}] \in \mathbb{R}^{65} \to 256 \to 768$, SiLU; one cross-attention token; 214{,}272 parameters, fp32, trained jointly with LoRA \\
 LoRA & rank 8, $\alpha = 16$, dropout 0.05, on \texttt{to\_q}, \texttt{to\_k}, \texttt{to\_v}, \texttt{to\_out.0} of the attention layers (1{,}594{,}368 LoRA parameters) \\
-LoRA fine-tuning & $\epsilon$-prediction MSE only; timestep uniform over the 50 DDIM timesteps; 30 epochs, batch 8, AdamW with learning rate $10^{-4}$; class-balanced sampling with replacement; fp16 autocast with gradient scaling; gradient-norm clip 1.0. Training images: the 21{,}347 images of the training fold. Each direction fine-tunes its own adapter with this recipe and seed, and the resulting weights differ. As the Frobenius norm of the difference over all LoRA tensors, relative to the n$\to$p adapter's norm: 0.385 (committed), $1.18\times10^{-2}$ (single-classifier), $3.94\times10^{-3}$ (3-model), $1.49\times10^{-3}$ (sparsity), and 0 for the Grad-CAM arm, whose two adapters are identical; the committed arm's difference is 33 to 259 times the other arms'. The committed and Grad-CAM arms are evaluated with each direction's own adapter, the other arms with the n$\to$p adapter for both directions. For the committed arm the p$\to$n numbers come from a re-evaluation with the p$\to$n adapter; against the earlier evaluation with the n$\to$p adapter, LHR lift on the 148 annotated images changes by $-0.077$ (paired 95\% CI $[-0.159, +0.001]$) and p$\to$n CV by $-0.045$ (19 vs.\ 10 discordant images, exact McNemar $p=0.14$). Two runs of the identical matched-adapter protocol, partly on different GPU types, differ by $+0.016$ in LHR lift ($[-0.045, +0.098]$) and by 0.015 in p$\to$n CV (6 vs.\ 9 discordant, $p=0.61$), so the changes are not attributed to the adapter alone \\
+LoRA fine-tuning & $\epsilon$-prediction MSE only; timestep uniform over the 50 DDIM timesteps; 30 epochs, batch 8, AdamW with learning rate $10^{-4}$; class-balanced sampling with replacement; fp16 autocast with gradient scaling; gradient-norm clip 1.0. Training images: the 21{,}347 images of the training fold. Each direction fine-tunes its own adapter with this recipe and seed, and the resulting weights differ. As the Frobenius norm of the difference over all LoRA tensors, relative to the n$\to$p adapter's norm: 0.385 (default), $1.18\times10^{-2}$ (single-classifier), $3.94\times10^{-3}$ (3-model), $1.49\times10^{-3}$ (sparsity), and 0 for the Grad-CAM arm, whose two adapters are identical; the default arm's difference is 33 to 259 times the other arms'. The default and Grad-CAM arms are evaluated with each direction's own adapter, the other arms with the n$\to$p adapter for both directions. All default-arm numbers in the main paper come from the evaluation with each direction's own adapter. An earlier evaluation of the default with the n$\to$p adapter for both directions, on the same images and seeds, is used only where the default is compared with the three arms evaluated that way (main-paper Table~4); against it, the per-direction evaluation has LHR lift lower by 0.077 on the 148 annotated images (paired 95\% CI $[-0.159, +0.001]$) and p$\to$n CV lower by 0.045 (19 vs.\ 10 discordant images, exact McNemar $p=0.14$); its n$\to$p CV is 0.945 vs.\ 0.960 (3 vs.\ 0 discordant, $p=0.25$). Two runs of the identical matched-adapter protocol, partly on different GPU types, differ by $+0.016$ in LHR lift ($[-0.045, +0.098]$) and by 0.015 in p$\to$n CV (6 vs.\ 9 discordant, $p=0.61$), so the changes are not attributed to the adapter alone \\
 DDIM & SD1.5 scheduler configuration, $T_{\text{diff}} = 50$ timesteps; pass $k$ keeps the last $\max(1, \lfloor 50\, s_k \rfloor)$ and starts from the pass input's latent, forward-noised to the first kept timestep. DDIM $\eta = 0$ (not set in code; library default) \\
 Guidance losses & $\mathcal{L}_{\text{cls}} = \mathrm{BCE}(f(D(\hat z_0)), c)$; $\mathcal{L}_{\text{pres}} = \dfrac{\sum S\,|D(\hat z_0) - x_a|}{\sum S + 10^{-8}} + \eta\,\mathrm{MSE}\big(O(D(\hat z_0)), O(x_a)\big)$, $\eta = 0.5$ (the reward uses KL on softmaxed features instead, Table~\ref{tab:repro-reward}) \\
 Guidance update & $z_{t-1} \leftarrow z_{t-1} - w(i)\, m \odot \big(1.15\,\alpha_{\text{cls}}\, g_{c,k} \nabla_{\hat z_0}\mathcal{L}_{\text{cls}} + \alpha_{\text{pres}}\, g_{p,k} \nabla_{\hat z_0}\mathcal{L}_{\text{pres}}\big)$, $\alpha_{\text{cls}} = 4.0$, $\alpha_{\text{pres}} = 0.05$; gradients through the VAE decoder $D$, one backward pass per loss \\
@@ -157,16 +157,16 @@ Grad-CAM arm only & $m \leftarrow m \cdot \big(0.15 + 0.85\,\widetilde{\text{CAM
 \subsection*{R5. Settings that differ between code versions}
 \label{sec:repro-changes}
 
-Table~\ref{tab:repro-changes} lists every setting above that differs between code versions, with the value used by the committed runs. The 3-model, sparsity and Grad-CAM runs came from uncommitted code states, identified by their configuration hash and logged flags.
+Table~\ref{tab:repro-changes} lists every setting above that differs between code versions, with the value used by the default runs. The 3-model, sparsity and Grad-CAM runs came from uncommitted code states, identified by their configuration hash and logged flags.
 
 \begin{table*}[t]
 \centering
-\caption{Settings that differ between code versions. ``Committed runs'' is the value in the tables above.}
+\caption{Settings that differ between code versions. ``Default runs'' is the value in the tables above.}
 \label{tab:repro-changes}
 \small
 \begin{tabular}{@{}l p{0.22\linewidth} p{0.40\linewidth}@{}}
 \toprule
-Setting & Committed runs & Other code versions \\
+Setting & Default runs & Other code versions \\
 \midrule
 Guidance classifier $f$ & \texttt{rsna}+\texttt{chex} mean & \texttt{rsna} only (single-classifier arm) \\
 Step budget $T$ & 25 & 8 \\
@@ -186,7 +186,7 @@ Saturation penalty & 0.01 & absent \\
 \end{tabular}
 \end{table*}
 
-Also recorded for the committed runs: the patient-level split (80\% of patients for training and 20\% for test, seed 0, persisted with a dataset fingerprint; one image per patient, 21{,}347 training and 5{,}337 test images, unstratified); the random seeds (Table~\ref{tab:repro-ppo}); the LHR implementation and the per-shard configuration stamp that fixes the transfer-ratio denominator (Sec.~R6); and a run manifest for every training and evaluation run, giving its code revision and configuration. The random-action and no-policy arms are evaluation-only and reuse the single-classifier run's generator, \texttt{rsna} guidance and evaluation groups. The held-out transfer point estimates were recomputed from the saved evaluation shards and agree with the originally logged values to within $10^{-4}$; the differences come from GPU type and affect only the last printed digit. The bootstrap intervals reported in the main paper come from this recomputation (Sec.~R6).
+Also recorded for the default runs: the patient-level split (80\% of patients for training and 20\% for test, seed 0, persisted with a dataset fingerprint; one image per patient, 21{,}347 training and 5{,}337 test images, unstratified); the random seeds (Table~\ref{tab:repro-ppo}); the LHR implementation and the per-shard configuration stamp that fixes the transfer-ratio denominator (Sec.~R6); and a run manifest for every training and evaluation run, giving its code revision and configuration. The random-action and no-policy arms compared with the single-classifier policy are evaluation-only and reuse that run's generator, \texttt{rsna} guidance and evaluation groups. The no-policy, fixed-schedule and second-seed runs compared with the default (main-paper Sec.~5.2, 5.4; Supp.~E5) instead use the default's guidance, evaluation groups, images and per-image seeds, with each direction's own adapter (the second seed's two directions share one adapter). The held-out transfer point estimates were recomputed from the saved evaluation shards and agree with the originally logged values to within $10^{-4}$; the differences come from GPU type and affect only the last printed digit. The bootstrap intervals reported in the main paper come from this recomputation (Sec.~R6).
 
 % -----------------------------------------------------------------------------
 \subsection*{R6. Metric definitions}
@@ -212,7 +212,7 @@ with $B_i$: $f(x^i) \leq 0.5 < f(x_c^i)$ for n$\to$p and $f(x^i) \geq 0.5 > f(x_
 \begin{equation*}
 \rho_v = \frac{\frac{1}{N}\sum_i s\,\big(f_v(x_c^i) - f_v(x^i)\big)}{\frac{1}{N}\sum_i s\,\big(f_g(x_c^i) - f_g(x^i)\big)},
 \end{equation*}
-over the same $N$ images. $f_g$ is the guidance classifier (mean probability over members for an ensemble), and $\rho_v$ is undefined when the denominator is exactly zero. No validator is a guidance member in any reported arm. The denominator must use the classifier(s) that actually guided generation: it is computed from the guidance roster in each evaluation shard's configuration stamp, which records the guidance flag and member list for the committed and later arms; the single-classifier arm's shards predate this key and are treated as single-classifier guidance, which its training log confirms. The 3-validator mean in main-paper Tables~2 and~4 is the unweighted mean of the per-validator ratios. The 0.15 cut-off is a heuristic operating point. A ratio of 0.5 is only an illustration, meaning validators reproduce half the guidance shift, and is not a threshold.
+over the same $N$ images. $f_g$ is the guidance classifier (mean probability over members for an ensemble), and $\rho_v$ is undefined when the denominator is exactly zero. No validator is a guidance member in any reported arm. The denominator must use the classifier(s) that actually guided generation: it is computed from the guidance roster in each evaluation shard's configuration stamp, which records the guidance flag and member list for the default and later arms; the single-classifier arm's shards predate this key and are treated as single-classifier guidance, which its training log confirms. The 3-validator mean in main-paper Tables~2 and~4 is the unweighted mean of the per-validator ratios. The 0.15 cut-off is a heuristic operating point. A ratio of 0.5 is only an illustration, meaning validators reproduce half the guidance shift, and is not a threshold.
 
 \paragraph{Bootstrap intervals for $\rho_v$.} 10{,}000 resamples, with replacement, of the $N = 200$ image indices of a group. Numerator and denominator are recomputed on the same resampled indices, and the 95\% interval is taken from the 2.5th and 97.5th percentiles.
 
