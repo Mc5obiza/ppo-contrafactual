@@ -37,7 +37,7 @@ Rather than fixing strength, guidance scales and pass count, a PPO agent~\cite{s
 
 \begin{table}[t]
 \centering
-\caption{Action space. All nine dimensions are emitted at every policy step by a policy conditioned on the image state and step index, so it can emit image- and step-dependent controls; the committed n$\to$p policy holds $a_7$ at 1.298 of 1.30 with three passes per step (\S\ref{sec:limitations}). The $a_0$ range is the base strength $s$; pass $k$ of a step applies $\min(0.9,\ s\beta(1 + 0.15k))$, with $\beta$ from $a_6$, so applied strengths span $(0.17, 0.9]$. $^{\dagger}$Narrowed from an earlier, wider range.} % TODO(J6)
+\caption{Action space. All nine dimensions are emitted at every policy step by a policy conditioned on the image state and step index, so it can emit image- and step-dependent controls. In an evaluation replay the n$\to$p policy holds $a_0$, $a_4$, $a_5$, $a_7$ at or near their bounds and $a_6$ near-constant, varying $a_1$--$a_3$, $a_8$; the p$\to$n policy varies all nine (\S\ref{sec:limitations}). The $a_0$ range is the base strength $s$; pass $k$ of a step applies $\min(0.9,\ s\beta(1 + 0.15k))$, with $\beta$ from $a_6$, so applied strengths span $(0.17, 0.9]$. $^{\dagger}$Narrowed from an earlier, wider range.}
 \label{tab:action-space}
 \small
 \begin{tabular}{@{}lll@{}}
@@ -63,5 +63,5 @@ $a_8$ & guidance ramp-up start fraction & $[0.1, 0.5]$ \\
 \subsection{Directional policies}
 \label{sec:directional-policies}
 
-The environment is built around a fixed target, so one policy is trained for n$\to$p ($c=1$) and another for p$\to$n ($c=0$). Each direction fine-tunes its own LoRA adapter from the same data, seed and recipe, and the resulting weights differ; the committed and Grad-CAM arms are evaluated with each direction's own adapter, and the other arms with the n$\to$p adapter for both directions.
+The environment is built around a fixed target, so one policy is trained for n$\to$p ($c=1$) and another for p$\to$n ($c=0$). Each direction fine-tunes its own LoRA adapter from the same data, seed and recipe, and the resulting weights differ: the relative norm of the difference is 0.385 in the committed arm, 33 to 259 times that in the single-classifier ($1.18\times10^{-2}$), 3-model ($3.94\times10^{-3}$) and sparsity ($1.49\times10^{-3}$) arms, and the Grad-CAM arm's two adapters are identical. The committed and Grad-CAM arms are evaluated with each direction's own adapter, and the other arms with the n$\to$p adapter for both directions. Re-evaluating the committed p$\to$n policy with its own adapter lowered LHR lift by 0.077 (95\% CI $[-0.001, +0.159]$, 148 images), not separable from the $+0.016$ ($[-0.045, +0.098]$) between two runs of that protocol partly on different GPU types, so we do not attribute the change to the adapter alone.
 This follows an asymmetry we observe throughout: synthesizing a plausible, spatially coherent opacity pattern in a clean lung field is a harder and more under-constrained generative problem than removing one, which is closer to an inpainting operation the pretrained prior already performs well.

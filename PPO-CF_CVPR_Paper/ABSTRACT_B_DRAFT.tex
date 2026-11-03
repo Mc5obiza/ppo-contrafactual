@@ -1,0 +1,9 @@
+% Draft abstract B (evaluation-first). Not input by main.tex; the live abstract is sec/0_abstract.tex.
+% Bracketed placeholders mark results not yet available.
+\begin{abstract}
+Counterfactual explanations for medical image classifiers are usually scored by Counterfactual Validity (CV), computed with the classifier that guided generation. We show that CV alone cannot establish that an edit is class-relevant, and pair it with two measurements free of that circularity: a Lesion Hit Rate (LHR) anchored to radiologist-drawn boxes, and a held-out transfer ratio that re-scores counterfactuals with classifiers never used for guidance. Our testbed is PPO-CF, a PPO agent that schedules the sampling of a frozen, LoRA-adapted latent diffusion generator. On the RSNA Pneumonia Detection Challenge it reaches a CV of 0.960 (n$\to$p) and 0.670 (p$\to$n) and a 2.60$\times$ LHR lift ($n = 148$), yet changes about 65\% of pixels, and its n$\to$p transfer to the most independent validator is adversarial (0.046). Against the generator's default schedule the policy raises p$\to$n CV from 0.225 and LHR lift by 0.53 (paired $d = 0.76$); in n$\to$p it adds nothing measurable.
+A fixed schedule at the policy's mean action comes within [gap] of the policy (95\% CI [interval]), so [reading]. % TODO(J5c)
+A tuned fixed schedule found without RL [result]. % TODO(J12)
+A second training seed of the committed configuration [replicates / does not replicate] the LHR lift ([value]). % TODO(J9)
+Across five trained arms (one run each), a sparsity reward ($d = 0.36$) and a Grad-CAM constraint ($d = 1.07$) both degrade lesion targeting. CV without an anchored companion metric overstates progress, as it does for our own system.
+\end{abstract}
