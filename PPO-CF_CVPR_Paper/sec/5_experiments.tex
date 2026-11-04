@@ -39,7 +39,7 @@ IP & MS-SSIM & 0.924 & 0.868 \\
 \subsection{CV overstates what the edits achieve}
 \label{sec:cv-overstates}
 
-Table~\ref{tab:transfer-ratio} is consistent with this, but not decisive. Against the earlier single-classifier policy, the 2-model ensemble-guided policy has lower mean CV (0.808 vs.\ 0.940) but higher LHR lift (2.595 vs.\ 2.293) and higher 3-validator mean held-out transfer in both directions (Table~\ref{tab:five-arms}; same orderings under matched adapters); the one per-validator exception, \texttt{nih} n$\to$p, is not distinguishable from noise (below). The metric that fell is the one that shares a classifier with the generator. The two runs differ in guidance, in the classifier-selected groups and in hardware (\S\ref{sec:controls}), and with one training run per arm these differences are not separated from run-to-run variation (\S\ref{sec:five-arms}).
+Table~\ref{tab:transfer-ratio} is consistent with the claim that CV overstates what the edits achieve, but is not decisive. Against the earlier single-classifier policy, the 2-model ensemble-guided policy has lower mean CV (0.808 vs.\ 0.940) but higher LHR lift (2.595 vs.\ 2.293) and higher 3-validator mean held-out transfer in both directions (Table~\ref{tab:five-arms}; same orderings under matched adapters); the one per-validator exception, \texttt{nih} n$\to$p, is not distinguishable from noise (below). The metric that fell is the one that shares a classifier with the generator. The two runs differ in guidance, in the classifier-selected groups and in hardware (\S\ref{sec:controls}), and with one training run per arm these differences are not separated from run-to-run variation (\S\ref{sec:five-arms}).
 
 \begin{table}[t]
 \centering
