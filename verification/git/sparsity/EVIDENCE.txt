@@ -1,0 +1,86 @@
+arm: sparsity
+jobs: 17701295 17702127 17702135
+checkpoint dir: checkpoints_sparsity
+code tag: evidence/sparsity-code -> 35f0ea7c7d3c86269627fbe0c5b477ab5121644a
+  CODE STATE NOT RECOVERABLE: the exact code of this run cannot be reconstructed from any git object; this tag points only at the base commit 35f0ea7 of the dirty working tree, not at the code that ran. Run(s): 17701295. Run config.py sha256 cda22868... is reproduced by no git object; factory/ppo.py was also modified
+
+sha256 of artefacts (computed 2026-10-28T21:44:21+01:00):
+2da76b925ed014f518f8e6b0af53c4c5b47e685f035a7126180f4462854c6f65  checkpoints_sparsity/n_to_p/ppo_policy.pt
+83cacdddaad4f04b9fa6813378084cf48e6a349f84647bd9a132fbe910069475  checkpoints_sparsity/n_to_p/unet_finetuned.pt
+28902cf1aa32652092be91cfb972629aa64c8ca2daf9ac0f5a050d1802669b6f  checkpoints_sparsity/n_to_p/cond_proj.pt
+fe6e87842032c773ac451d4ad310eaf3b9f06901020d71a23579720765bbb099  checkpoints_sparsity/p_to_n/ppo_policy.pt
+a2188f6331e7f29343d5e8ba5f8eb9d8e9d2dbd6a3e71e5a3868167982025f09  checkpoints_sparsity/p_to_n/unet_finetuned.pt
+96f084d7cc1b24a6d42dbd6dca3a5e7672eb2cefba8eb679fc33b7552135b5ea  checkpoints_sparsity/p_to_n/cond_proj.pt
+75e0f4c1b74539056952e9bb3c72d5f4305acea27a9ba58c5efb9a93400cf0c1  checkpoints_sparsity/eval_metrics.json
+490855925500a69755a8cb7c30d99e027b8b3f62711a119da35477213cf834aa  checkpoints_sparsity/eval_shards/cf_shard_000.pt
+d5e928e632b826712f3bf033a11fcc2e35964599f2e74842560084b188ba2bb1  checkpoints_sparsity/eval_shards/cf_shard_001.pt
+36d0921a0f33867dc0a2c79e3e02a4bcdec57ce6d8e89da8ce9fd665d23e99bb  checkpoints_sparsity/eval_shards/cf_shard_002.pt
+7db0d95aafee44cc3720451a87cbaf84e883f29603d7cb94d9ecd058e7494309  checkpoints_sparsity/eval_shards/cf_shard_003.pt
+e5dca59bfcf467e7f1a954f73f88ad372baf4801c9771983ffa15ef12c7771c8  checkpoints_sparsity/eval_shards/cf_shard_004.pt
+2f8c0ce0f5214009b33b2b39c51a27c8801371008b913029b6e8f197870d0633  checkpoints_sparsity/eval_shards/cf_shard_005.pt
+bd54b52559a667cfd3f0743fff45d20ac462c883f2d7f03de6376665592d79a8  checkpoints_sparsity/eval_shards/cf_shard_006.pt
+8b01fc22bdea1e831edf2d6b7dc5069aab960fb75198cb27301ff025595334ef  checkpoints_sparsity/eval_shards/cf_shard_007.pt
+
+generator tensor diff n_to_p vs p_to_n (~/verification/generator_tensor_diff.json):
+{
+ "unet_finetuned.pt": {
+  "keys_only_in_np": [],
+  "keys_only_in_pn": [],
+  "n_keys": 942,
+  "n_differing": 225,
+  "n_differing_lora": 225,
+  "max_abs_diff": 0.000504806637763977,
+  "max_abs_diff_lora": 0.000504806637763977,
+  "max_abs_diff_nonlora": 0.0,
+  "examples": [
+   [
+    "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_k.lora_A.default.weight",
+    0.00022885575890541077
+   ],
+   [
+    "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_k.lora_B.default.weight",
+    0.00016360171139240265
+   ],
+   [
+    "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_out.0.lora_A.default.weight",
+    0.00021473132073879242
+   ],
+   [
+    "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_out.0.lora_B.default.weight",
+    0.000109880231320858
+   ],
+   [
+    "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_q.lora_A.default.weight",
+    0.00026366114616394043
+   ]
+  ]
+ },
+ "cond_proj.pt": {
+  "keys_only_in_np": [],
+  "keys_only_in_pn": [],
+  "n_keys": 4,
+  "n_differing": 4,
+  "n_differing_lora": 0,
+  "max_abs_diff": 0.0003140736371278763,
+  "max_abs_diff_lora": 0.0,
+  "max_abs_diff_nonlora": 0.0003140736371278763,
+  "examples": [
+   [
+    "0.bias",
+    3.933161497116089e-05
+   ],
+   [
+    "0.weight",
+    9.004771709442139e-05
+   ],
+   [
+    "2.bias",
+    7.353522232733667e-05
+   ],
+   [
+    "2.weight",
+    0.0003140736371278763
+   ]
+  ]
+ }
+}

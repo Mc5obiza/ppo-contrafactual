@@ -1,0 +1,128 @@
+{
+ "name": "L0.2250_0.5145_0.4422_1.0850_0.1607",
+ "eligible": true,
+ "controls": {
+  "strength": 0.225,
+  "cls_scale": 0.5145,
+  "pres_scale": 0.4422,
+  "strength_boost": 1.085,
+  "ramp_start_frac": 0.1607
+ },
+ "raw": [
+  -2.9444389791664407,
+  -1.161650168922309,
+  -2.006455611233687,
+  2.4455873325689517,
+  3.0410016051572355,
+  -6.356879266340341,
+  1.284825342902309,
+  6.5497491679974456,
+  -1.7214111750048762
+ ],
+ "is_centre": false,
+ "stage": 1,
+ "direction": "n_to_p",
+ "n_images": 12,
+ "rows": [
+  {
+   "dataset_idx": 5,
+   "ret": 11.470646277822752,
+   "ret_undiscounted": 11.470646277822752,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 7.793287515640259
+  },
+  {
+   "dataset_idx": 8,
+   "ret": 11.255231640866237,
+   "ret_undiscounted": 11.255231640866237,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 7.783668756484985
+  },
+  {
+   "dataset_idx": 9,
+   "ret": 11.282698457973368,
+   "ret_undiscounted": 11.282698457973368,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 7.786527156829834
+  },
+  {
+   "dataset_idx": 10,
+   "ret": 11.215314185997517,
+   "ret_undiscounted": 11.215314185997517,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 7.785629034042358
+  },
+  {
+   "dataset_idx": 15,
+   "ret": 11.384889894091774,
+   "ret_undiscounted": 11.384889894091774,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 7.790892601013184
+  },
+  {
+   "dataset_idx": 20,
+   "ret": 11.43454474965408,
+   "ret_undiscounted": 11.43454474965408,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 7.784325838088989
+  },
+  {
+   "dataset_idx": 26,
+   "ret": 11.46854232023847,
+   "ret_undiscounted": 11.46854232023847,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 7.78407621383667
+  },
+  {
+   "dataset_idx": 31,
+   "ret": 11.26288828615593,
+   "ret_undiscounted": 11.26288828615593,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 7.788093090057373
+  },
+  {
+   "dataset_idx": 33,
+   "ret": 11.095296868811369,
+   "ret_undiscounted": 11.095296868811369,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 7.7959253787994385
+  },
+  {
+   "dataset_idx": 36,
+   "ret": 11.028033130947094,
+   "ret_undiscounted": 11.028033130947094,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 7.791422128677368
+  },
+  {
+   "dataset_idx": 38,
+   "ret": 10.944469601306555,
+   "ret_undiscounted": 10.944469601306555,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 7.78484320640564
+  },
+  {
+   "dataset_idx": 40,
+   "ret": 11.030130651902702,
+   "ret_undiscounted": 11.030130651902702,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 7.7774858474731445
+  }
+ ],
+ "mean_return": 11.239390505480655,
+ "valid_rate": 1.0,
+ "mean_steps": 1.0,
+ "gpu": "NVIDIA A100-PCIE-40GB"
+}

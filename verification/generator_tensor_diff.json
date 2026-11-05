@@ -1,0 +1,274 @@
+{
+ "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints": {
+  "unet_finetuned.pt": {
+   "keys_only_in_np": [],
+   "keys_only_in_pn": [],
+   "n_keys": 942,
+   "n_differing": 256,
+   "n_differing_lora": 256,
+   "max_abs_diff": 0.11811669170856476,
+   "max_abs_diff_lora": 0.11811669170856476,
+   "max_abs_diff_nonlora": 0.0,
+   "examples": [
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_k.lora_A.default.weight",
+     0.09006999433040619
+    ],
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_k.lora_B.default.weight",
+     0.06671231985092163
+    ],
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_out.0.lora_A.default.weight",
+     0.06854019314050674
+    ],
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_out.0.lora_B.default.weight",
+     0.03589852526783943
+    ],
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_q.lora_A.default.weight",
+     0.08124536275863647
+    ]
+   ]
+  },
+  "cond_proj.pt": {
+   "keys_only_in_np": [],
+   "keys_only_in_pn": [],
+   "n_keys": 4,
+   "n_differing": 4,
+   "n_differing_lora": 0,
+   "max_abs_diff": 0.07456202805042267,
+   "max_abs_diff_lora": 0.0,
+   "max_abs_diff_nonlora": 0.07456202805042267,
+   "examples": [
+    [
+     "0.bias",
+     0.014505594968795776
+    ],
+    [
+     "0.weight",
+     0.058648258447647095
+    ],
+    [
+     "2.bias",
+     0.012439548969268799
+    ],
+    [
+     "2.weight",
+     0.07456202805042267
+    ]
+   ]
+  }
+ },
+ "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/archive_pre_ensemble_default_20260812": {
+  "unet_finetuned.pt": {
+   "keys_only_in_np": [],
+   "keys_only_in_pn": [],
+   "n_keys": 942,
+   "n_differing": 225,
+   "n_differing_lora": 225,
+   "max_abs_diff": 0.017183681949973106,
+   "max_abs_diff_lora": 0.017183681949973106,
+   "max_abs_diff_nonlora": 0.0,
+   "examples": [
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_k.lora_A.default.weight",
+     0.0007151570171117783
+    ],
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_k.lora_B.default.weight",
+     0.0005629649967886508
+    ],
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_out.0.lora_A.default.weight",
+     0.001303553581237793
+    ],
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_out.0.lora_B.default.weight",
+     0.0006136912852525711
+    ],
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_q.lora_A.default.weight",
+     0.0009744646959006786
+    ]
+   ]
+  },
+  "cond_proj.pt": {
+   "keys_only_in_np": [],
+   "keys_only_in_pn": [],
+   "n_keys": 4,
+   "n_differing": 4,
+   "n_differing_lora": 0,
+   "max_abs_diff": 0.0019337395206093788,
+   "max_abs_diff_lora": 0.0,
+   "max_abs_diff_nonlora": 0.0019337395206093788,
+   "examples": [
+    [
+     "0.bias",
+     0.0005676671862602234
+    ],
+    [
+     "0.weight",
+     0.0017558932304382324
+    ],
+    [
+     "2.bias",
+     0.0004612486809492111
+    ],
+    [
+     "2.weight",
+     0.0019337395206093788
+    ]
+   ]
+  }
+ },
+ "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_ens3": {
+  "unet_finetuned.pt": {
+   "keys_only_in_np": [],
+   "keys_only_in_pn": [],
+   "n_keys": 942,
+   "n_differing": 225,
+   "n_differing_lora": 225,
+   "max_abs_diff": 0.0027610324323177338,
+   "max_abs_diff_lora": 0.0027610324323177338,
+   "max_abs_diff_nonlora": 0.0,
+   "examples": [
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_k.lora_A.default.weight",
+     0.0007247324101626873
+    ],
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_k.lora_B.default.weight",
+     0.0006330274045467377
+    ],
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_out.0.lora_A.default.weight",
+     0.0005600098520517349
+    ],
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_out.0.lora_B.default.weight",
+     0.00025553314480930567
+    ],
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_q.lora_A.default.weight",
+     0.0013538766652345657
+    ]
+   ]
+  },
+  "cond_proj.pt": {
+   "keys_only_in_np": [],
+   "keys_only_in_pn": [],
+   "n_keys": 4,
+   "n_differing": 4,
+   "n_differing_lora": 0,
+   "max_abs_diff": 0.0005769357085227966,
+   "max_abs_diff_lora": 0.0,
+   "max_abs_diff_nonlora": 0.0005769357085227966,
+   "examples": [
+    [
+     "0.bias",
+     0.00018480420112609863
+    ],
+    [
+     "0.weight",
+     0.0002720355987548828
+    ],
+    [
+     "2.bias",
+     0.00016202591359615326
+    ],
+    [
+     "2.weight",
+     0.0005769357085227966
+    ]
+   ]
+  }
+ },
+ "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_sparsity": {
+  "unet_finetuned.pt": {
+   "keys_only_in_np": [],
+   "keys_only_in_pn": [],
+   "n_keys": 942,
+   "n_differing": 225,
+   "n_differing_lora": 225,
+   "max_abs_diff": 0.000504806637763977,
+   "max_abs_diff_lora": 0.000504806637763977,
+   "max_abs_diff_nonlora": 0.0,
+   "examples": [
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_k.lora_A.default.weight",
+     0.00022885575890541077
+    ],
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_k.lora_B.default.weight",
+     0.00016360171139240265
+    ],
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_out.0.lora_A.default.weight",
+     0.00021473132073879242
+    ],
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_out.0.lora_B.default.weight",
+     0.000109880231320858
+    ],
+    [
+     "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_q.lora_A.default.weight",
+     0.00026366114616394043
+    ]
+   ]
+  },
+  "cond_proj.pt": {
+   "keys_only_in_np": [],
+   "keys_only_in_pn": [],
+   "n_keys": 4,
+   "n_differing": 4,
+   "n_differing_lora": 0,
+   "max_abs_diff": 0.0003140736371278763,
+   "max_abs_diff_lora": 0.0,
+   "max_abs_diff_nonlora": 0.0003140736371278763,
+   "examples": [
+    [
+     "0.bias",
+     3.933161497116089e-05
+    ],
+    [
+     "0.weight",
+     9.004771709442139e-05
+    ],
+    [
+     "2.bias",
+     7.353522232733667e-05
+    ],
+    [
+     "2.weight",
+     0.0003140736371278763
+    ]
+   ]
+  }
+ },
+ "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_gradcam_fix": {
+  "unet_finetuned.pt": {
+   "keys_only_in_np": [],
+   "keys_only_in_pn": [],
+   "n_keys": 942,
+   "n_differing": 0,
+   "n_differing_lora": 0,
+   "max_abs_diff": 0.0,
+   "max_abs_diff_lora": 0.0,
+   "max_abs_diff_nonlora": 0.0,
+   "examples": []
+  },
+  "cond_proj.pt": {
+   "keys_only_in_np": [],
+   "keys_only_in_pn": [],
+   "n_keys": 4,
+   "n_differing": 0,
+   "n_differing_lora": 0,
+   "max_abs_diff": 0.0,
+   "max_abs_diff_lora": 0.0,
+   "max_abs_diff_nonlora": 0.0,
+   "examples": []
+  }
+ }
+}

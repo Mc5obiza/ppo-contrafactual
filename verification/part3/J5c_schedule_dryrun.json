@@ -1,0 +1,64 @@
+{
+ "n_to_p": {
+  "mean_raw_action": [
+   -9.114096314159791,
+   -0.6705773694264652,
+   -2.0064556112336875,
+   2.4455873325689517,
+   3.0410016051572355,
+   -6.356879266340341,
+   4.073682486121334,
+   6.5497491679974456,
+   -1.0896218951365249
+  ],
+  "std_raw_action": [
+   1.1789665431355891,
+   0.3339183659541388,
+   0.6822793444799209,
+   0.8032774058327268,
+   1.0755941081538754,
+   0.9432915040344609,
+   0.6935088707381648,
+   1.193676255916923,
+   0.7895949738684725
+  ],
+  "n_steps": 201,
+  "n_images": 200
+ },
+ "p_to_n": {
+  "mean_raw_action": [
+   1.7052469332374407,
+   1.699959900162003,
+   0.4317953817525918,
+   0.4857183273980515,
+   -1.6072432656771583,
+   -0.26044525845233635,
+   -1.1415609518834624,
+   2.968299724482007,
+   -0.6077660828869711
+  ],
+  "std_raw_action": [
+   1.6859773165940966,
+   0.8553184242406053,
+   0.535765777129008,
+   0.8263634400124161,
+   1.6804902064597391,
+   0.7187546249129395,
+   0.7661235384324385,
+   1.996215902031582,
+   1.5727202358506045
+  ],
+  "n_steps": 1093,
+  "n_images": 200
+ },
+ "source": [
+  "/home2020/home/insa/arbaoui/verification/out/actions/actions_shard_000.json",
+  "/home2020/home/insa/arbaoui/verification/out/actions/actions_shard_001.json",
+  "/home2020/home/insa/arbaoui/verification/out/actions/actions_shard_002.json",
+  "/home2020/home/insa/arbaoui/verification/out/actions/actions_shard_003.json",
+  "/home2020/home/insa/arbaoui/verification/out/actions/actions_shard_004.json",
+  "/home2020/home/insa/arbaoui/verification/out/actions/actions_shard_005.json",
+  "/home2020/home/insa/arbaoui/verification/out/actions/actions_shard_006.json",
+  "/home2020/home/insa/arbaoui/verification/out/actions/actions_shard_007.json"
+ ]
+}

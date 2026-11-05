@@ -1,0 +1,49 @@
+{
+  "validators": [
+    "densenet121-res224-nih",
+    "densenet121-res224-pc",
+    "densenet121-res224-mimic_ch"
+  ],
+  "arms": {
+    "shards": {
+      "n_per_group": 50,
+      "guidance": [
+        "densenet121-res224-rsna",
+        "densenet121-res224-chex"
+      ],
+      "delta_guidance_n_to_p": 0.8894223570823669,
+      "delta_guidance_p_to_n": 0.7118366956710815,
+      "group_source": "classifier",
+      "validators": {
+        "densenet121-res224-nih": {
+          "delta_n_to_p": -0.014825812540948391,
+          "delta_p_to_n": 0.061653729528188705,
+          "ratio_n_to_p": -0.016669035158484793,
+          "ratio_p_to_n": 0.08661218212425094,
+          "verdict": "ADVERSARIAL/ADVERSARIAL",
+          "original_agreement_spearman": 0.8387278727872786
+        },
+        "densenet121-res224-pc": {
+          "delta_n_to_p": 0.4096430242061615,
+          "delta_p_to_n": 0.20756545662879944,
+          "ratio_n_to_p": 0.460571989161529,
+          "ratio_p_to_n": 0.2915913971435792,
+          "verdict": "partial/partial",
+          "original_agreement_spearman": 0.7067386738673865
+        },
+        "densenet121-res224-mimic_ch": {
+          "delta_n_to_p": 0.26337212324142456,
+          "delta_p_to_n": 0.21230915188789368,
+          "ratio_n_to_p": 0.29611592416608706,
+          "ratio_p_to_n": 0.2982554189451275,
+          "verdict": "partial/partial",
+          "original_agreement_spearman": 0.6098649864986498
+        }
+      },
+      "mean_ratio_n_to_p": 0.24667295938971043,
+      "mean_ratio_p_to_n": 0.22548633273765253,
+      "mean_over_n_validators": 3,
+      "mean_is_independence_check": true
+    }
+  }
+}

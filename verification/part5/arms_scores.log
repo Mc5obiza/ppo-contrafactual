@@ -1,0 +1,4 @@
+J4 {'CV_np': '0.94500 vs json 0.94500', 'CV_pn': '0.67000 vs json 0.67000', 'conc_np': '0.25410 vs json 0.25410', 'frac_pn': '0.63374 vs json 0.63374'}
+J5 {'CV_np': '0.94000 vs json 0.94000', 'CV_pn': '0.22500 vs json 0.22500', 'conc_np': '0.26809 vs json 0.26809', 'frac_pn': '0.59916 vs json 0.59916'}
+J5c {'CV_np': '0.94500 vs json 0.94500', 'CV_pn': '0.66000 vs json 0.66000', 'conc_np': '0.25446 vs json 0.25446', 'frac_pn': '0.63081 vs json 0.63081'}
+J9 {'CV_np': '0.91500 vs json 0.91500', 'CV_pn': '0.49500 vs json 0.49500', 'conc_np': '0.27866 vs json 0.27866', 'frac_pn': '0.61973 vs json 0.61973'}

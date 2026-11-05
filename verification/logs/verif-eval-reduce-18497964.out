@@ -1,0 +1,191 @@
+[adapter] per-direction mode: n_to_p <- /home2020/home/insa/arbaoui/verification/views/committed, p_to_n <- /home2020/home/insa/arbaoui/verification/views/pn_lora
+[eval] loaded 8 shards from '/home2020/home/insa/arbaoui/verification/out/J5_none_perdir/shards' — Xn=200 Xp=200 Xc_n→p=200 Xc_p→n=200
+======================================================================
+STEP 1 — Dataset ingestion
+======================================================================
+[domain] rsna_pneumonia: f(.) targets 'Pneumonia' | guidance=densenet121-res224-rsna | ensemble=['densenet121-res224-rsna', 'densenet121-res224-chex'] | validators=['densenet121-res224-nih', 'densenet121-res224-pc', 'densenet121-res224-mimic_ch'] | clinical metrics: CTR, SCP
+[domain] Baseline domain. NOTE both clinical metrics are weak here: CTR is a cardiomegaly measure and SCP's sigmoid(-||yolo_feat||/50) proxy was measured degenerate (0.21% relative spread) in the last eval. Neither is pneumonia-specific.
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+[split] rsna_pneumonia: 21347 train / 5337 test (20.0% held out, seed=0)  [loaded]
+
+======================================================================
+STEP 2 — Loading pretrained models
+======================================================================
+[models] loaded ENSEMBLE classifier as f(·), head='Pneumonia': [rsna, chex] (2 members, mean probability)
+[models]   NOTE: f(·) is an ensemble — CV, far-pool sizes and the Xn/Xp group split are NOT comparable to single-classifier runs.
+[models] loaded PSPNet | lung channels: [4, 5]
+[models] loaded YOLOv8 backbone from yolov8n.pt
+
+======================================================================
+STEP 3 — Building generator with LoRA
+======================================================================
+[generator] loading VAE ...
+[generator] loading UNet ...
+trainable params: 1,594,368 || all params: 861,115,332 || trainable%: 0.1852
+[generator] VRAM estimate — VAE=160 MB, UNet=1645 MB, total=1806 MB
+
+======================================================================
+STEP 4 — Restoring trained checkpoints
+======================================================================
+[pipeline] loading fine-tuned generator from '/home2020/home/insa/arbaoui/verification/views/committed/n_to_p/'
+[pipeline]   → unet_finetuned.pt + cond_proj.pt
+
+[eval] ARM = none — no policy; gradient guidance with the generator's default fixed schedule.
+
+======================================================================
+STEP 6 — Evaluation (metrics over precomputed counterfactuals)
+======================================================================
+
+======================================================================
+EVALUATION — Singla et al. (2022) metrics
+  (using generator defaults — no trained policy supplied)
+======================================================================
+[metrics] using PRECOMPUTED counterfactuals — skipping scan and generation. Xn=200  Xp=200
+[metrics] computing FID ...
+[metrics] computing FOP (TorchXRayVision Support Devices detector) ...
+[metrics] WARNING: 'Support Devices' head absent from weights='densenet121-res224-chex' (available heads: ['Atelectasis', 'Consolidation', '', 'Pneumothorax', 'Edema', '', '', 'Effusion', 'Pneumonia', '', 'Cardiomegaly', '', '', '', 'Lung Lesion', 'Fracture', 'Lung Opacity', 'Enlarged Cardiomediastinum']). FOP will be skipped (reported as N/A).
+[metrics] computing IP (MS-SSIM + high-freq detail preservation) ...
+[metrics] computing edit concentration ...
+[metrics] computing CTR ...
+[metrics] computing SCP ...
+[metrics] computing LHR (lesion hit rate, p→n) ...
+
+──────────────────────────────────────────────────────────────────────
+  METRIC SUMMARY  (Singla et al., 2022 — Table 1 / Fig. 9 style)
+──────────────────────────────────────────────────────────────────────
+
+► Counterfactual Validity (CV)   [τ = 0.8]
+    Xn → Xp : 0.9400
+    Xp → Xn : 0.2250
+    mean     : 0.5825
+
+► FID score  (lower = more realistic CFs)
+  vs SOURCE class — ambiguous: high can mean real class change OR artifact
+    FID(Xn,  Xc_n→p) : 93.69
+    FID(Xp,  Xc_p→n) : 41.24
+  vs TARGET class — the realism test, LOWER IS BETTER
+    FID(Xp,  Xc_n→p) : 15.91
+    FID(Xn,  Xc_p→n) : 2.69
+    (high on BOTH rows = off-manifold edit, not a class change)
+
+► Edit concentration  [model-free; top-5% of pixels' share of |Δ|]
+    Xn → Xp : 0.268  (uniform baseline 0.05) | MAE=0.0315 | changed=64.1%
+    Xp → Xn : 0.278  (uniform baseline 0.05) | MAE=0.0253 | changed=59.9%
+    >~0.5 = focal edit. Near the baseline = diffuse, i.e. adversarial-shaped.
+
+► Lesion Hit Rate (LHR)  [Xp → Xn, vs radiologist boxes — GROUND TRUTH]
+    edit mass inside lesion : 0.327 ± 0.172
+    chance baseline (area)  : 0.174 ± 0.111
+    LIFT                    : 2.06×  [t=21.05, p=3.2e-46, n=148]
+    1.0 = the edit ignores the annotation (adversarial-shaped). >1 = it targets the lesion.
+    Xn → Xp : N/A by construction — negative sources have no annotation.
+
+► Identity Preservation (IP)  [model-free FOP replacement, higher = better]
+    Xn → Xp : MS-SSIM=0.9106  HF-corr=0.9482
+    Xp → Xn : MS-SSIM=0.9097  HF-corr=0.9151
+
+► CTR — Cardiomegaly clinical metric
+    mean CTR(Xn)     = 0.4211 ± 0.0527
+    mean CTR(Xp)     = 0.4396 ± 0.1059
+    mean CTR(Xc_n→p) = 0.3933 ± 0.0517
+    mean CTR(Xc_p→n) = 0.4256 ± 0.1404
+    Δ CTR(Xn − Xc_n→p) = 0.0278 ± 0.0521  [t=7.53, p=0.0000]
+    Δ CTR(Xp − Xc_p→n) = 0.0202 ± 0.1437  [t=1.85, p=0.0664]
+
+► SCP — Pleural Effusion clinical metric
+    ⚠ DEGENERATE — relative spread 0.19% across all four groups (< 2%).
+    The sigmoid(-‖yolo_feat‖/50) proxy is saturated, so SCP is effectively a constant
+    (0.4795 ± 0.0008) and its paired t-tests are testing numerical noise.
+    Group means are retained in eval_metrics.json; the deltas and t-tests are withheld
+    from it (see _strip_unreportable). Fix the proxy (a real CP-recess detector) or drop SCP.
+──────────────────────────────────────────────────────────────────────
+
+[metrics] results saved to '/home2020/home/insa/arbaoui/verification/out/J5_none_perdir/eval_metrics.json'
+Evaluation metrics: CV=0.5825 (n→p=0.9400, p→n=0.2250) | FID_neg=93.6866 | FID_pos=41.2437
+Identity Preservation (IP): n→p MS-SSIM=0.9106/HF=0.9482 | p→n MS-SSIM=0.9097/HF=0.9151
+
+======================================================================
+STEP 6B — Counterfactual diff plots (n→p and p→n, PPO-guided)
+======================================================================
+
+[diff_viz] generating n→p counterfactual (normal → pneumonia) ...
+[pipeline] loading fine-tuned generator from '/home2020/home/insa/arbaoui/verification/views/committed/n_to_p/'
+[pipeline]   → unet_finetuned.pt + cond_proj.pt
+[adapter] n_to_p <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/n_to_p/unet_finetuned.pt sha256=658cdd7956a858c16a6b13c136ec01e4a61668b738826c74b51cdbf5ddc86f99 | cond_proj <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/n_to_p/cond_proj.pt | generator == file: unet LoRA 256/256, cond_proj 4/4 | expected sha256 MATCH
+[diff_viz] saved figure to '/home2020/home/insa/arbaoui/verification/out/J5_none_perdir/counterfactual_diff_n_to_p.png'
+
+── Counterfactual difference summary ───────────────────────────
+  MAE (L1)          : 0.038642
+  MSE (L2)          : 0.003864
+  Max pixel change  : 0.392346
+  Pixels changed    : 72.94%  (threshold > 0.01)
+────────────────────────────────────────────────────────────────
+
+
+── Counterfactual difference summary (n→p) ─────────────────────
+  MAE (L1)          : 0.038642
+  MSE (L2)          : 0.003864
+  Max pixel change  : 0.392346
+  Pixels changed    : 72.94%  (threshold > 0.01)
+────────────────────────────────────────────────────────────────
+
+
+[diff_viz] generating p→n counterfactual (pneumonia → normal) ...
+[pipeline] loading fine-tuned generator from '/home2020/home/insa/arbaoui/verification/views/pn_lora/p_to_n/'
+[pipeline]   → unet_finetuned.pt + cond_proj.pt
+[adapter] p_to_n <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/p_to_n/unet_finetuned.pt sha256=6ae442301a803162fd66d020521c36d8aa800138acb209e27f20ec59766c9651 | cond_proj <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/p_to_n/cond_proj.pt | generator == file: unet LoRA 256/256, cond_proj 4/4 | expected sha256 MATCH
+[diff_viz] saved figure to '/home2020/home/insa/arbaoui/verification/out/J5_none_perdir/counterfactual_diff_p_to_n.png'
+
+── Counterfactual difference summary ───────────────────────────
+  MAE (L1)          : 0.027051
+  MSE (L2)          : 0.002096
+  Max pixel change  : 0.741927
+  Pixels changed    : 64.41%  (threshold > 0.01)
+────────────────────────────────────────────────────────────────
+
+
+── Counterfactual difference summary (p→n) ─────────────────────
+  MAE (L1)          : 0.027051
+  MSE (L2)          : 0.002096
+  Max pixel change  : 0.741927
+  Pixels changed    : 64.41%  (threshold > 0.01)
+────────────────────────────────────────────────────────────────
+
+
+── n→p vs p→n diff comparison ─────────────────────────────────
+  metric                 n→p         p→n
+  MAE                 0.0386      0.0271
+  MSE                 0.0039      0.0021
+  max Δ               0.3923      0.7419
+  % changed            72.9%       64.4%
+────────────────────────────────────────────────────────────────
+
+[eval] saved: /home2020/home/insa/arbaoui/verification/out/J5_none_perdir/counterfactual_diff_n_to_p.png, /home2020/home/insa/arbaoui/verification/out/J5_none_perdir/counterfactual_diff_p_to_n.png
+
+✓ Evaluation complete.
+
+==========================================================================
+shards
+==========================================================================
+  n=200 per group | guidance = rsna+chex | groups = classifier | gradcam = False
+[models] loaded ENSEMBLE classifier as f(·), head='Pneumonia': [rsna, chex] (2 members, mean probability)
+[models]   NOTE: f(·) is an ensemble — CV, far-pool sizes and the Xn/Xp group split are NOT comparable to single-classifier runs.
+  Δ_guidance  n→p=0.8960  p→n=0.5736
+  validator       Δ n→p    Δ p→n  ratio n→p  ratio p→n   verdict
+[models] loaded XRV classifier (densenet121-res224-nih, head='Pneumonia') as f(·)
+  nih                      0.0904   0.0646      0.101      0.113   ADVERSARIAL/ADVERSARIAL
+    rank agreement with guidance on the 400 unedited originals: rho=+0.756
+    95% CI  n→p [0.059, 0.142]   p→n [0.083, 0.143]  (10000 resamples)
+[models] loaded XRV classifier (densenet121-res224-pc, head='Pneumonia') as f(·)
+  pc                       0.4247   0.1407      0.474      0.245   partial/partial
+    rank agreement with guidance on the 400 unedited originals: rho=+0.732
+    95% CI  n→p [0.444, 0.503]   p→n [0.218, 0.275]  (10000 resamples)
+[models] loaded XRV classifier (densenet121-res224-mimic_ch, head='Pneumonia') as f(·)
+  mimic_ch                 0.3089   0.0855      0.345      0.149   partial/ADVERSARIAL
+    rank agreement with guidance on the 400 unedited originals: rho=+0.638
+    95% CI  n→p [0.314, 0.376]   p→n [0.099, 0.197]  (10000 resamples)
+  MEAN                                          0.307      0.169
+
+wrote /home2020/home/insa/arbaoui/verification/out/J5_none_perdir/transfer.json

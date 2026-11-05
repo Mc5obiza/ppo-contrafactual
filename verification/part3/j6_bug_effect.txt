@@ -1,0 +1,30 @@
+
+== n_to_p: logged 2621 step records vs 201 real steps; step-0 actions identical: True; n_steps identical: True
+  dim  |Δmean| (logged-repaired)  Δsd   | as fraction of repaired sd
+  a0   -0.014                    +0.004  | 0.01
+  a1   +0.006                    +0.007  | 0.02
+  a2   -0.001                    -0.001  | 0.00
+  a3   +0.016                    +0.002  | 0.02
+  a4   +0.014                    -0.001  | 0.01
+  a5   -0.012                    +0.010  | 0.01
+  a6   +0.016                    +0.002  | 0.02
+  a7   +0.020                    -0.002  | 0.02
+  a8   -0.008                    +0.007  | 0.01
+  guidance_bias at bound (>=1.295): logged 0.969 vs repaired 0.965
+  n_passes ==3: logged 1.000 vs repaired 1.000
+  episode length from len(steps): logged mean 13.11 (max 26) vs n_steps mean 1.00
+
+== p_to_n: logged 14517 step records vs 1093 real steps; step-0 actions identical: True; n_steps identical: True
+  dim  |Δmean| (logged-repaired)  Δsd   | as fraction of repaired sd
+  a0   +0.106                    +0.019  | 0.06
+  a1   +0.059                    -0.023  | 0.07
+  a2   +0.072                    +0.032  | 0.13
+  a3   +0.001                    -0.002  | 0.00
+  a4   -0.109                    +0.049  | 0.06
+  a5   +0.042                    +0.010  | 0.06
+  a6   -0.035                    +0.008  | 0.05
+  a7   +0.193                    -0.005  | 0.10
+  a8   -0.009                    +0.032  | 0.01
+  guidance_bias at bound (>=1.295): logged 0.225 vs repaired 0.212
+  n_passes ==3: logged 0.352 vs repaired 0.350
+  episode length from len(steps): logged mean 72.58 (max 189) vs n_steps mean 5.46

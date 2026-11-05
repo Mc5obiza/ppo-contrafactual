@@ -1,0 +1,8 @@
+paired images            : 148
+mean lift J4_perdir/shards: 2.5955  (sd 0.8945)
+mean lift J6_as_shards/shards: 2.5799  (sd 0.8665)
+paired difference       : +0.0156   95% CI [-0.0453, +0.0984]
+paired t-test           : t=0.418  p=0.6763
+Wilcoxon signed-rank    : W=5326.0  p=0.7204
+Cohen's d (paired)      : +0.034
+J4_perdir/shards better on       : 78 / 148 images

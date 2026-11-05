@@ -1,0 +1,57 @@
+# submitted 2026-10-28T21:53:14+01:00
+J4_gen 18497956 2026-10-28T21:53:14+01:00 sbatch --export=ALL,VIEW=committed,PN_VIEW=pn_lora,ARM=trained,TAG=J4_perdir,ADAPTER_EXPECT_NP_SHA=658cdd7956a858c16a6b13c136ec01e4a61668b738826c74b51cdbf5ddc86f99,ADAPTER_EXPECT_PN_SHA=6ae442301a803162fd66d020521c36d8aa800138acb209e27f20ec59766c9651 04_eval_generate.sbatch
+J4_reduce 18497957 2026-10-28T21:53:14+01:00 sbatch --dependency=afterok:18497956 --export=ALL,VIEW=committed,PN_VIEW=pn_lora,ARM=trained,TAG=J4_perdir,ADAPTER_EXPECT_NP_SHA=658cdd7956a858c16a6b13c136ec01e4a61668b738826c74b51cdbf5ddc86f99,ADAPTER_EXPECT_PN_SHA=6ae442301a803162fd66d020521c36d8aa800138acb209e27f20ec59766c9651 05_eval_reduce.sbatch
+J1 18497958 2026-10-28T21:53:14+01:00 sbatch 01_paired_lhr.sbatch
+J2 18497959 2026-10-28T21:53:14+01:00 sbatch 02_transfer_bootstrap.sbatch
+J1_on_J4 18497960 2026-10-28T21:53:14+01:00 sbatch --dependency=afterok:18497956 --export=ALL,S2=/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards,OUTNAME=paired_lhr_J4 01_paired_lhr.sbatch
+J2_on_J4 18497961 2026-10-28T21:53:14+01:00 sbatch --dependency=afterok:18497956 --export=ALL,ENS2=/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards,ENS2_TAG=ens2_J4_perdir,ONLY_ENS2=1,OUTNAME=transfer_J4 02_transfer_bootstrap.sbatch
+J3 18497962 2026-10-28T21:53:14+01:00 sbatch 03_gradcam_diag.sbatch
+J5_gen 18497963 2026-10-28T21:53:14+01:00 sbatch --export=ALL,VIEW=committed,PN_VIEW=pn_lora,ARM=none,TAG=J5_none_perdir,ADAPTER_EXPECT_NP_SHA=658cdd7956a858c16a6b13c136ec01e4a61668b738826c74b51cdbf5ddc86f99,ADAPTER_EXPECT_PN_SHA=6ae442301a803162fd66d020521c36d8aa800138acb209e27f20ec59766c9651 04_eval_generate.sbatch
+J5_reduce 18497964 2026-10-28T21:53:14+01:00 sbatch --dependency=afterok:18497963 --export=ALL,VIEW=committed,PN_VIEW=pn_lora,ARM=none,TAG=J5_none_perdir,ADAPTER_EXPECT_NP_SHA=658cdd7956a858c16a6b13c136ec01e4a61668b738826c74b51cdbf5ddc86f99,ADAPTER_EXPECT_PN_SHA=6ae442301a803162fd66d020521c36d8aa800138acb209e27f20ec59766c9651 05_eval_reduce.sbatch
+J6 18497965 2026-10-28T21:53:14+01:00 sbatch 06_action_stats.sbatch
+J5b_gen 18497966 2026-10-28T21:53:14+01:00 sbatch --dependency=afterok:18497965 10_fixed_schedule_generate.sbatch
+J5b_reduce 18497967 2026-10-28T21:53:14+01:00 sbatch --dependency=afterok:18497966 11_fixed_schedule_reduce.sbatch
+J7 18497968 2026-10-28T21:53:14+01:00 sbatch 07_runtime_memory.sbatch
+J8 18497969 2026-10-28T21:53:14+01:00 sbatch 08_mask_ablation.sbatch
+J9_train 18497970 2026-10-28T21:53:14+01:00 sbatch --export=ALL,SEED=1,GUIDANCE=ens 09_retrain.sbatch
+J9_eval_gen 18497971 2026-10-28T21:53:14+01:00 sbatch --dependency=afterok:18497970 --export=ALL,VIEW=J9_seed1_np,PN_VIEW=J9_seed1_pn,ARM=trained,TAG=J9_seed1 04_eval_generate.sbatch
+J9_eval_reduce 18497972 2026-10-28T21:53:14+01:00 sbatch --dependency=afterok:18497971 --export=ALL,VIEW=J9_seed1_np,PN_VIEW=J9_seed1_pn,ARM=trained,TAG=J9_seed1 05_eval_reduce.sbatch
+J10_cyclegan 18501943 2026-10-29T19:30:45+01:00 sbatch 12_cyclegan_eval.sbatch
+# submitted 2026-10-30T22:00:56+01:00
+J13_l40s_1 18507884 --constraint=gpul40s RUN=l40s_1 13_nih_cell_repeat.sbatch
+J13_l40s_2 18507885 --constraint=gpul40s RUN=l40s_2 13_nih_cell_repeat.sbatch
+J13_h100_1 18507886 --constraint=gpuh100 RUN=h100_1 (2026-10-30: constraint changed to gpuh200|gpua100 by scontrol; H100 start estimate was 11-07; output file name keeps "h100_1", actual GPU in log) 13_nih_cell_repeat.sbatch
+
+# 2026-10-31 (user decisions 3, 4)
+J5c generate  18511256  (scripts/14, array 0-7, schedule = truncated J6 means from out/actions)
+J5c reduce    18511257  (scripts/15, afterok:18511256)
+J12 pilot     18511258  (scripts/16 --array=6: stage 1, p_to_n chunk 0 of 6, L40S)
+J12 stage 1   18511304  (scripts/16 --array=0-5,7-11; task 6 = pilot 18511258, COMPLETED 38 min) 2026-10-31 23:1x
+J12 stage 2   18511305  (scripts/17, array 0-5, afterok:18511304)
+
+# 2026-11-03 (user: option a, local grid around the J6 means)
+J12 local stage 1  18527692  (scripts/20, array 0-11, L40S; n_to_p 243 / p_to_n 81 configs x 12 train-fold images)
+J12 local stage 2  18527693  (scripts/21, array 0-5, afterok:18527692; top 6 n_to_p / top 4 p_to_n x 36 images)
+J12 final generate 18527694  (scripts/18, array 0-7, afterok:18527693, SELECT_DIRS = out/J12_grid/select + out/J12_local/select)
+J12 final reduce   18527695  (scripts/19, afterok:18527694)
+# 2026-11-03 later: L40S start estimate 11-13/14 (past the 11-07 deadline). User chose "A100 + re-score coarse".
+scontrol update 18527692 / 18527693 Features=gpua100 (local stage 1/2; no cancel)
+J12 coarse re-score stage 1 18527706 (scripts/22, array 0-3, A100; coarse stage-2 configs, 6 per direction, 48 train-fold images)
+J12 coarse re-score stage 2 18527707 (scripts/23, array 0-3, afterok:18527706)
+scancel 18527694 18527695 (never started; their SELECT_DIRS pointed at the L40S coarse grid)
+J12 final generate 18527708 (scripts/18, afterok:18527693:18527707, SELECT_DIRS = out/J12_coarse_a100/select + out/J12_local/select)
+J12 final reduce   18527709 (scripts/19, afterok:18527708)
+J14_offline_metrics 18528285 2026-11-03T22:07:46+01:00 sbatch scripts/24_offline_metrics.sbatch (E4/E8: lock-mask share, VAE-floor fraction, KID, FID CIs on J4/J5/J5c shards; CPU)
+# 2026-11-04T18:10:10+01:00 J12 deadline push: scontrol TimeLimit 18527692->3:30 (p_to_n chunks 3-5; siblings took 2:05-2:16 on A100), 18527706/18527693/18527707->2:30, 18527708->2:00, to allow backfill. Constraint kept gpua100 for scoring stages.
+# 2026-11-05T12:37:36+01:00 J12 chain COMPLETED (final reduce 18527709). Paired tests: out/paired_lhr_J12/paired_tests.txt, out/J12_paired/{j12_paired.json,j12_cv_mcnemar.json,j12_paired_per_image.npz} (scripts/j12_paired.py, CPU). Integrated in paper commit 6e67105.
+J15_smoke 18537166 2026-11-05T21:00:04+01:00 sbatch --export=ALL,TAG=J15_latent_shift_smoke,LIMIT=8 25_latent_shift.sbatch (D1 Latent Shift smoke test, 8 images per group)
+J15_smoke_retry 18537169 2026-11-05T21:02:04+01:00 (18537166 failed at import: torchxrayvision imported before project config; fixed import order)
+# 2026-11-05T21:04:16+01:00 (plan: D3 common images)
+J16 single common gen    18537173  (scripts/26, array 0-7; single-classifier policy, own per-direction adapters db36b707/01d6c7e3, J4's 400 images + seeds; code 49e6050_single)
+J16 single common reduce 18537174  (scripts/27, afterok:18537173; reduce, paired LHR vs J4, per-image LHR, transfer)
+# 2026-11-05T21:06:21+01:00 (plan: D3 PPO-only seed replicates)
+J17 seedrep ens seed2  18537211  (scripts/28, array 0-1 n_to_p/p_to_n; PPO-only, own per-direction adapters; cutoff 2026-11-09 12:00)
+J17 seedrep single seed1  18537212  (scripts/28, array 0-1 n_to_p/p_to_n; PPO-only, own per-direction adapters; cutoff 2026-11-09 12:00)
+J17 seedrep single seed2  18537213  (scripts/28, array 0-1 n_to_p/p_to_n; PPO-only, own per-direction adapters; cutoff 2026-11-09 12:00)
+J18 validator AUROC 18537214 2026-11-05T21:07:14+01:00 (scripts/29; Pneumonia AUROC of guidance + validators on the 5,337-image test fold; D8/E5)
+J15 latent shift FULL 18537216 2026-11-05T21:07:37+01:00 (scripts/25; 400 images; lambda grid extended to 4.0 after smoke 18537169: 2/8 p->n at grid max 2.0)

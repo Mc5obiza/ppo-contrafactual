@@ -1,0 +1,134 @@
+% =============================================================================
+% Supplementary sections moved out of the main paper: E1 (controls),
+% E2 (clinical proxy metrics), E3 (comparison to prior methods), E4 (lock-width sensitivity),
+% E5 (same-image runs: default, no policy, two fixed schedules, second seed), E6 (edit locality, FID/KID uncertainty).
+% =============================================================================
+
+\section*{E. Additional Details}
+\label{sec:suppl-details}
+\setcounter{table}{0}
+\renewcommand{\thetable}{E\arabic{table}}
+
+% -----------------------------------------------------------------------------
+\subsection*{E1. Controls the comparison requires}
+\label{sec:suppl-controls}
+
+A control-arm comparison is only as trustworthy as the plumbing beneath it, and three preconditions we had assumed did not hold during development. (i) A single dataset object was shared by LoRA fine-tuning, the PPO pool and the metrics scan, so evaluation images had been seen during fine-tuning. We replaced it with one deterministic, persisted, \emph{patient-level} split shared by every stage, computed once because generation runs as independent array processes that cannot recompute an RNG-based split consistently. It assigns 80\% of patients to training and 20\% to test (seed 0; one image per patient in RSNA, so 21{,}347 training and 5{,}337 test images) and is stored with a fingerprint of the dataset. In every reported arm, generator fine-tuning, PPO rollouts and the validity probe use only the training fold, and every evaluated image is in the test fold. (ii) Training was unseeded: two identical submissions produced two different policies, which is survivable for a headline number but not for a comparison in which arms must differ by treatment alone. Every reported run now uses split seed 0, LoRA seed 0 and PPO seeds 1 (n$\to$p) and 2 (p$\to$n); evaluation uses base seed 0, with per-image seed equal to the base plus the image's global index ($+10^6$ for p$\to$n). Seeding fixes the random streams but not floating-point nondeterminism, so repeated runs are not guaranteed to be bit-identical. (iii) The control arms had never been exercised. Wiring them up surfaced a routing bug under which every reduce silently fell back to the trained arm's shards, which would have made ``the policy contributes nothing'' an artefact of a missing flag, and a shared output directory under which each arm overwrote the previous one's metrics.
+
+A CPU-only invariant suite pins the LHR calibration, split disjointness and three further properties whose silent failure would yield a plausible-looking wrong number rather than a crash. Every training and evaluation run writes a manifest giving its code revision and configuration, and every evaluation shard carries a configuration stamp from which the transfer-ratio denominator is read (main paper Sec.~4.3). We report these because each was, at the time it was found, invisible in the outputs: all three would have produced a well-formed table.
+
+% -----------------------------------------------------------------------------
+\subsection*{E2. Clinical proxy metrics}
+\label{sec:suppl-clinical}
+
+We report two clinically motivated proxies under the default configuration: the Cardio-Thoracic Ratio (CTR), the ratio of cardiac to thoracic width from the heart and lung segmentation masks, and a costophrenic-recess score (SCP) approximating pleural blunting, each tested with a paired $t$-test on the within-image delta (real minus counterfactual).
+
+CTR shifts by $+0.0127$ ($t=3.882$, $p=1.4\times10^{-4}$) in n$\to$p and by $+0.0047$ ($t=0.478$, $p=0.634$) in p$\to$n: a small shift, significant in n$\to$p only, with an absolute magnitude ($\leq 0.013$) far below the metric's clinical resolution (its diagnostic threshold is 0.5). This is consistent with the intended behaviour of the background lock, since the cardiac silhouette lies largely outside the lung mask that gates editing; we read it as a shift too small to act on either way, not as a clinically directional CTR effect.
+SCP's own computation flags itself as degenerate under this configuration (relative spread 0.19\% across the four image groups), so its delta and $t$-test are withheld rather than reported on what is, numerically, a near-constant signal. Since it is built on the feature norm of a COCO-pretrained detector rather than a dedicated recess detector, we do not consider it informative in its current form. Neither proxy supports a directional claim about pleural or cardiac status.
+
+% -----------------------------------------------------------------------------
+\subsection*{E3. Comparison to prior methods}
+\label{sec:suppl-comparison}
+
+We do not compare head-to-head with prior counterfactual generators, for two reasons. First, published values are not comparable to ours: they are computed with other classifiers, feature extractors and evaluation groups, and none of ECED, FiRe or DocVCE reports a lesion-anchored metric or the held-out target shift. Second, running them under our protocol was not feasible for this submission: DiME, ACE and FastDiME guide a pixel-space diffusion model trained on the target dataset, and FiRe a Pixel Mean Flow model, none of which exists for RSNA at our resolution and split; training one per method is a separate project. We therefore report no literature reference values, and we scope every claim about the gap between CV and the anchored metrics to our system.
+
+The closest thing to a baseline we can run under an identical protocol is the generator's own default schedule without a policy: one classifier-guided, background-locked latent diffusion pass with hand-set strength and guidance (the ``no policy'' row of Table~\ref{tab:suppl-fourarm}). It shows the same pattern as the trained policy: n$\to$p CV 0.940 against a 3-validator mean transfer of 0.307 and \texttt{nih} 0.101. So the gap is not specific to the RL scheduler, though it may still be specific to classifier-guided latent editing with our guidance models.
+
+% -----------------------------------------------------------------------------
+\subsection*{E4. Lock-width sensitivity (exploratory)}
+\label{sec:suppl-lockwidth}
+
+The width of the background lock's editable band (main paper Sec.~3.2: dilation and Gaussian feathering of the lung mask, both in latent cells) was set once and not tuned. As an exploratory check we regenerated the first 50 images of each direction with the default policies under three settings: d0 (dilation 0, no feathering), d2 (dilation 2, feathering 1.0; the default setting, so a rerun) and d4 (dilation 4, feathering 2.0). LHR uses the 47 annotated p$\to$n images. Table~\ref{tab:suppl-lockwidth} gives each setting's paired difference from the d2 rerun, with 95\% paired percentile-bootstrap CIs (10{,}000 resamples of the images, drawn jointly across settings; transfer as a ratio of means; CV also with an exact McNemar test). As the rerun-noise reference we use the difference between the d2 rerun and the earlier evaluation of the default on the same images, and count a difference as exceeding rerun noise when its CI lies entirely outside $\pm$ that reference. The reference itself has CIs excluding zero on several metrics, so a CI that excludes zero is not on its own evidence of a setting effect. Every contrast here is across GPU types, and for p$\to$n metrics that reference evaluation used the n$\to$p adapter for both directions, so its band also contains that change.
+
+Narrowing the lock (d0) raises edit concentration ($+0.028$ n$\to$p, $+0.035$ p$\to$n) and lowers the fraction of pixels changed ($-0.060$, $-0.065$); it also moves two n$\to$p validator ratios beyond noise, in opposite directions (\texttt{nih} $-0.059$, \texttt{pc} $+0.019$). Widening it (d4) lowers LHR lift by 0.130 (95\% CI $[0.038, 0.247]$) and makes edits slightly more diffuse (concentration $-0.007$ and $-0.018$, fraction changed $+0.018$ and $+0.048$). The other differences, including CV and mean transfer in both directions, are within rerun noise; d0's p$\to$n CV drop of 0.140 (1 vs.\ 8 discordant images, $p=0.039$) has a CI that excludes zero but not the noise band. With 50 images and a single rerun pair as the noise reference, we read these as indications of sensitivity, not as a tuning result.
+
+\begin{table*}[t]
+\centering
+\caption{Lock-width sensitivity, first 50 images per direction (LHR: 47 annotated). d2 is the default setting, rerun. Differences are setting minus d2 rerun, with 95\% paired bootstrap CIs. Rerun noise is d2 rerun minus the earlier default evaluation on the same images. $^{\dagger}$CI entirely outside $\pm$ rerun noise. $^{\ddagger}$CI excludes zero but not the rerun-noise band.}
+\label{tab:suppl-lockwidth}
+\footnotesize
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Metric & d2 (rerun) & Rerun noise & d0 $-$ d2 & d4 $-$ d2 \\
+\midrule
+CV, n$\to$p & 0.960 & $0.000$ $[0.000, 0.000]$ & $-0.020$ $[-0.060, 0.000]$ & $0.000$ $[0.000, 0.000]$ \\
+CV, p$\to$n & 0.740 & $-0.060$ $[-0.140, 0.000]$ & $-0.140$ $[-0.260, -0.040]$$^{\ddagger}$ & $+0.040$ $[-0.040, +0.120]$ \\
+LHR lift (p$\to$n) & 2.489 & $-0.034$ $[-0.114, +0.043]$ & $+0.013$ $[-0.096, +0.124]$ & $-0.130$ $[-0.247, -0.038]$$^{\dagger}$ \\
+Edit conc., n$\to$p & 0.248 & $0.000$ $[-0.002, +0.001]$ & $+0.028$ $[+0.025, +0.032]$$^{\dagger}$ & $-0.007$ $[-0.010, -0.004]$$^{\dagger}$ \\
+Edit conc., p$\to$n & 0.317 & $-0.005$ $[-0.013, +0.002]$ & $+0.035$ $[+0.025, +0.043]$$^{\dagger}$ & $-0.018$ $[-0.025, -0.010]$$^{\dagger}$ \\
+Frac.\ changed, n$\to$p & 0.664 & $0.000$ $[0.000, +0.001]$ & $-0.060$ $[-0.072, -0.050]$$^{\dagger}$ & $+0.018$ $[+0.008, +0.025]$$^{\dagger}$ \\
+Frac.\ changed, p$\to$n & 0.629 & $+0.001$ $[-0.008, +0.009]$ & $-0.065$ $[-0.074, -0.056]$$^{\dagger}$ & $+0.048$ $[+0.037, +0.060]$$^{\dagger}$ \\
+Transfer mean, n$\to$p & 0.262 & $-0.005$ $[-0.015, +0.002]$ & $-0.016$ $[-0.032, -0.001]$$^{\ddagger}$ & $+0.004$ $[-0.007, +0.015]$ \\
+Transfer mean, p$\to$n & 0.251 & $-0.038$ $[-0.062, -0.014]$ & $-0.025$ $[-0.052, +0.003]$ & $+0.046$ $[+0.015, +0.077]$$^{\ddagger}$ \\
+\texttt{nih}, n$\to$p & 0.042 & $-0.012$ $[-0.040, +0.010]$ & $-0.059$ $[-0.101, -0.018]$$^{\dagger}$ & $+0.017$ $[-0.010, +0.047]$ \\
+\texttt{pc}, n$\to$p & 0.442 & $-0.002$ $[-0.007, +0.004]$ & $+0.019$ $[+0.006, +0.031]$$^{\dagger}$ & $-0.002$ $[-0.018, +0.012]$ \\
+\texttt{mimic\_ch}, n$\to$p & 0.304 & $-0.002$ $[-0.006, +0.002]$ & $-0.008$ $[-0.024, +0.007]$ & $-0.004$ $[-0.013, +0.006]$ \\
+\texttt{nih}, p$\to$n & 0.124 & $-0.060$ $[-0.105, -0.021]$ & $-0.038$ $[-0.082, +0.007]$ & $+0.073$ $[+0.018, +0.129]$$^{\ddagger}$ \\
+\texttt{pc}, p$\to$n & 0.320 & $-0.004$ $[-0.040, +0.030]$ & $-0.029$ $[-0.070, +0.010]$ & $+0.033$ $[+0.001, +0.068]$$^{\ddagger}$ \\
+\texttt{mimic\_ch}, p$\to$n & 0.307 & $-0.049$ $[-0.097, -0.006]$ & $-0.009$ $[-0.061, +0.045]$ & $+0.031$ $[-0.008, +0.070]$ \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+% -----------------------------------------------------------------------------
+\subsection*{E5. Same-image runs: default, no policy, fixed schedules, second seed}
+\label{sec:suppl-fourarm}
+
+Table~\ref{tab:suppl-fourarm} compares five runs on the same 400 test images with the same per-image seeds: the default policy, the generator's default schedule without a policy, a fixed schedule that holds every control at the policy's mean action over its evaluation steps (same step budget and validity-based stopping, no training), a tuned fixed schedule chosen without RL, and a second PPO seed of the default configuration. Each direction uses its own adapter, except the second seed, whose two directions share one; both of its directions were resumed from checkpoints after preemption (n$\to$p at update 15, p$\to$n at update 80) without saved random-number state. The fixed schedule's raw actions are, for n$\to$p, ($-9.114$, $-0.671$, $-2.007$, $2.446$, $3.041$, $-6.357$, $4.074$, $6.550$, $-1.090$) (strength 0.200, three passes, guidance bias 1.299), and for p$\to$n, ($1.705$, $1.700$, $0.432$, $0.486$, $-1.607$, $-0.260$, $-1.142$, $2.968$, $-0.608$), the means over 201 and 1{,}093 policy steps. The tuned fixed schedule is selected on training-fold images only, by the quantity PPO maximizes, the mean discounted episode reward. Candidates are 54 constant schedules on a coarse grid (strength $\{0.25, 0.45, 0.65\}$, classifier scale $\{0.50, 0.85, 1.15\}$, guidance bias $\{0.85, 1.05, 1.27\}$, two or three passes; every other control at the midpoint of its range) and a local grid around the policy's mean action (three levels each of strength, classifier and preservation scale, strength boost and, for n$\to$p, ramp start: 243 schedules for n$\to$p, 81 for p$\to$n). Each is scored on 12 training-fold images per direction, and the best of each grid on 36 more; the stop bonus that the coarse grid's neutral stop threshold forgoes is added back before ranking. Both selected schedules come from the coarse grid: strength 0.25, classifier scale 1.15, guidance bias 0.85 and two passes for n$\to$p, and strength 0.25, classifier scale 1.15, guidance bias 1.27 and three passes for p$\to$n.
+
+\begin{table*}[t]
+\centering
+\caption{Five runs on the same 400 test images and seeds. CV with Wilson 95\% CIs; LHR with a $t$-interval (concentration and fraction changed have $t$-interval half-widths $\leq 0.01$); transfer per validator with a 10{,}000-resample bootstrap, the mean with a paired bootstrap over per-image deltas. $^{\dagger}$Second seed: shared adapter, resumed training.}
+\label{tab:suppl-fourarm}
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}llcccccccc@{}}
+\toprule
+Dir. & Run & CV & LHR lift & \texttt{nih} & \texttt{pc} & \texttt{mimic\_ch} & Transfer mean & Edit conc. & Frac.\ changed \\
+\midrule
+n$\to$p & default policy & 0.945 [0.904, 0.969] & --- & 0.044 [0.005, 0.082] & 0.465 [0.436, 0.494] & 0.333 [0.302, 0.364] & 0.281 [0.259, 0.303] & 0.254 & 0.647 \\
+& no policy & 0.940 [0.898, 0.965] & --- & 0.101 [0.059, 0.142] & 0.474 [0.444, 0.503] & 0.345 [0.314, 0.376] & 0.307 [0.284, 0.329] & 0.268 & 0.641 \\
+& fixed schedule & 0.945 [0.904, 0.969] & --- & 0.044 [0.004, 0.083] & 0.469 [0.439, 0.499] & 0.334 [0.302, 0.365] & 0.282 [0.260, 0.304] & 0.254 & 0.647 \\
+& tuned fixed schedule & 0.940 [0.898, 0.965] & --- & 0.039 [0.002, 0.077] & 0.466 [0.437, 0.494] & 0.326 [0.294, 0.358] & 0.277 [0.256, 0.299] & 0.252 & 0.637 \\
+& second seed$^{\dagger}$ & 0.915 [0.868, 0.946] & --- & 0.204 [0.161, 0.246] & 0.458 [0.428, 0.488] & 0.334 [0.304, 0.365] & 0.332 [0.310, 0.355] & 0.279 & 0.675 \\
+\midrule
+p$\to$n & default policy & 0.670 [0.602, 0.731] & 2.595 [2.450, 2.741] & 0.165 [0.138, 0.193] & 0.306 [0.278, 0.335] & 0.357 [0.317, 0.397] & 0.276 [0.254, 0.298] & 0.314 & 0.634 \\
+& no policy & 0.225 [0.173, 0.288] & 2.064 [1.961, 2.166] & 0.113 [0.083, 0.143] & 0.245 [0.218, 0.275] & 0.149 [0.099, 0.197] & 0.169 [0.146, 0.192] & 0.278 & 0.599 \\
+& fixed schedule & 0.660 [0.592, 0.722] & 2.525 [2.385, 2.664] & 0.151 [0.124, 0.179] & 0.261 [0.236, 0.288] & 0.319 [0.278, 0.357] & 0.244 [0.224, 0.264] & 0.312 & 0.631 \\
+& tuned fixed schedule & 0.720 [0.654, 0.778] & 2.408 [2.303, 2.514] & 0.180 [0.151, 0.210] & 0.205 [0.180, 0.230] & 0.249 [0.208, 0.290] & 0.211 [0.190, 0.232] & 0.305 & 0.637 \\
+& second seed$^{\dagger}$ & 0.495 [0.426, 0.564] & 2.479 [2.350, 2.608] & 0.154 [0.126, 0.182] & 0.218 [0.192, 0.246] & 0.252 [0.208, 0.295] & 0.208 [0.187, 0.230] & 0.298 & 0.620 \\
+\bottomrule
+\end{tabular}}
+\end{table*}
+
+Against the default policy (paired, LHR on the 148 annotated p$\to$n images, CV with exact McNemar tests): the fixed schedule differs by $-0.071$ in LHR lift ($[-0.161, +0.019]$, $p=0.12$, $d=-0.13$), $0.000$ in n$\to$p CV (0 discordant) and $-0.010$ in p$\to$n CV (14 vs.\ 16 discordant, $p=0.86$); the second seed by $-0.117$ ($[-0.227, -0.006]$, $p=0.039$), $-0.030$ (0 vs.\ 6, $p=0.031$) and $-0.175$ (7 vs.\ 42, $p=3.6\times10^{-7}$); no policy by $-0.532$ ($[-0.645, -0.419]$, $p=1.9\times10^{-16}$), $-0.005$ (3 vs.\ 4, $p=1.0$) and $-0.445$ (1 vs.\ 90, $p=7.4\times10^{-26}$). Relative to no policy, the fixed schedule recovers 87\% $[71, 102]\%$ of the policy's LHR-lift gain and 98\% $[86, 111]\%$ of its p$\to$n CV gain (paired bootstrap over images, 10{,}000 resamples); in n$\to$p the policy has no gain to recover. The tuned fixed schedule differs from the default policy by $-0.187$ in LHR lift ($[-0.279, -0.095]$, $p=1.0\times10^{-4}$, $d=-0.33$), $-0.005$ in n$\to$p CV (1 vs.\ 2 discordant, $p=1.0$) and $+0.050$ in p$\to$n CV (22 vs.\ 12, $p=0.12$); from the mean-action schedule by $-0.116$ in LHR lift ($[-0.217, -0.013]$, $p=0.025$) and $+0.060$ in p$\to$n CV (21 vs.\ 9, $p=0.043$); and from no policy by $+0.344$ in LHR lift ($[+0.260, +0.432]$, $p=1.6\times10^{-12}$). Its mean p$\to$n transfer is below that of the policy and of the mean-action schedule (paired differences $-0.065$ $[-0.085, -0.045]$ and $-0.032$ $[-0.052, -0.013]$); in n$\to$p the three schedules differ by at most 0.005. A search over fixed schedules by the training reward thus matches the policy's validity but not its lesion targeting or transfer, which the reward does not measure.
+
+\subsection*{E6. Edit locality and FID uncertainty}
+\label{sec:suppl-locality}
+
+Table~\ref{tab:suppl-locality} is computed offline from the saved counterfactuals of the first three runs of Table~\ref{tab:suppl-fourarm} (no regeneration). With $\delta = |x_c - x|$ on the $256^2$ grid: the share of $\sum \delta$ inside the editable region ($m > 0.5$, where $m$ is the background lock's soft mask of main-paper Sec.~3.2, recomputed from the source image and upsampled bilinearly) and inside the undilated lung mask ($S > 0.5$), each beside its area fraction, which is what a spatially uniform edit would score; the fraction of pixels with $\delta > 0.01$, the same fraction measured against the VAE round trip $D(E(x))$ (posterior mean), and the fraction the round trip alone changes; and the share of $|x_c - D(E(x))|$ outside $m > 0.5$. FID uses the main paper's features, with a 95\% interval from 500 bootstrap resamples of both sets; KID uses the same features (cubic polynomial kernel, unbiased, 100 subsets of 100). The recomputed FIDs match the evaluation's to within 0.01.
+
+\begin{table*}[t]
+\centering
+\caption{Edit locality and distribution metrics, $n=200$ per direction and run. ``in $m$'' and ``in lung'': share of $\sum|x_c - x|$ inside the editable region and the lung mask, with the area fraction (uniform-edit null) in parentheses. ``changed'': fraction of pixels with $|\cdot| > 0.01$ against $x$, against $D(E(x))$, and for $D(E(x))$ itself. ``out of $m$'': share of $\sum |x_c - D(E(x))|$ outside the editable region. Locality values have 95\% $t$-interval half-widths $\leq 0.017$. KID $\times 10^3$, mean $\pm$ s.d.\ over subsets.}
+\label{tab:suppl-locality}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llcccccccc}
+\toprule
+Dir. & Run & in $m$ (null) & in lung (null) & changed vs.\ $x$ & changed vs.\ $D(E(x))$ & $D(E(x))$ floor & out of $m$ vs.\ $D(E(x))$ & FID [95\% CI] & KID$\times10^3$ \\
+\midrule
+n$\to$p & default policy & 0.835 (0.590) & 0.653 (0.339) & 0.647 & 0.436 & 0.499 & 0.036 & 22.39 [20.43, 24.56] & 69.3 $\pm$ 3.6 \\
+& no policy & 0.845 (0.590) & 0.675 (0.339) & 0.641 & 0.429 & 0.499 & 0.031 & 15.92 [14.33, 17.78] & 48.4 $\pm$ 3.1 \\
+& fixed schedule & 0.836 (0.590) & 0.655 (0.339) & 0.647 & 0.434 & 0.499 & 0.034 & 22.51 [20.78, 24.49] & 70.0 $\pm$ 3.2 \\
+\midrule
+p$\to$n & default policy & 0.808 (0.495) & 0.663 (0.268) & 0.634 & 0.406 & 0.474 & 0.054 & 4.76 [3.86, 5.87] & 12.5 $\pm$ 1.4 \\
+& no policy & 0.734 (0.495) & 0.558 (0.268) & 0.599 & 0.359 & 0.474 & 0.068 & 2.69 [2.31, 3.24] & 5.1 $\pm$ 0.5 \\
+& fixed schedule & 0.798 (0.495) & 0.647 (0.268) & 0.631 & 0.402 & 0.474 & 0.058 & 4.40 [3.61, 5.27] & 11.6 $\pm$ 1.4 \\
+\bottomrule
+\end{tabular}}
+\end{table*}
+
+Three observations. (i) The lock works as intended at the level it acts on: relative to the VAE round trip, only 3--7\% of the change lies outside the editable region. Most of the difference outside it, and about half of all pixels changed by more than 0.01, is VAE reconstruction error that any latent-space editor with this autoencoder incurs, so the main paper's ``fraction of pixels changed'' overstates the generative edit; against $D(E(x))$ it is 0.41--0.44 for the default policy. (ii) The edits are lung-localized but diffuse within the lung: about 82\% of the mass sits in a region covering 49--59\% of the image, while edit concentration stays at 0.25--0.31. In p$\to$n the policy places more of the change in the lung than the no-policy schedule (0.663 vs.\ 0.558, null 0.268), consistent with its LHR gain, and the fixed schedule is close to the policy (0.647). (iii) FID and KID favor the no-policy schedule in both directions, with non-overlapping bootstrap intervals, while the policy and the fixed schedule are indistinguishable. Since the feature extractor also guides generation (main-paper Sec.~4.1), we read this only as evidence that the stronger schedule moves counterfactuals further in the guidance classifier's feature space, not as a realism ranking.
+

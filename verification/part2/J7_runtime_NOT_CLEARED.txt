@@ -1,0 +1,5 @@
+J7 (18497968), H100 NVL 95 GB (hpc-n982), committed shard 0 = 25 images per direction, committed single-adapter protocol.
+Check 5 FAILED (max_abs_diff_vs_saved_cf: n->p max 0.340 / median 0.068; p->n max 0.790 / median 0.082; 0/25 images < 1e-3). NOT CLEARED.
+(Runtime/memory are measured independently of the output mismatch, but per your rule they are not used.)
+n->p: 3.79 s/img mean (median 3.78, range 3.56-4.25), 1.00 steps/img, 3.79 s/step, peak GPU memory 3752 MiB
+p->n: 36.81 s/img mean (median 10.38, range 6.35-209.44), 5.28 steps/img, 6.97 s/step, peak GPU memory 3766 MiB (median 3758)

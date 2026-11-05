@@ -1,0 +1,48 @@
+
+== n_to_p: 200 images, 201 steps
+  episode length: mean 1.00, median 1, max 2 (cap 25); counts {1: 199, 2: 1}
+  images with >1 step: 1
+  raw action: mean | sd over all steps | sd of first-step action across images | mean within-image sd | between-image share of variance
+    a0: -9.114 | 1.176 | 1.173 | n/a | n/a
+    a1: -0.671 | 0.333 | 0.330 | n/a | n/a
+    a2: -2.006 | 0.681 | 0.682 | n/a | n/a
+    a3: +2.446 | 0.801 | 0.802 | n/a | n/a
+    a4: +3.041 | 1.073 | 1.075 | n/a | n/a
+    a5: -6.357 | 0.941 | 0.940 | n/a | n/a
+    a6: +4.074 | 0.692 | 0.692 | n/a | n/a
+    a7: +6.550 | 1.191 | 1.193 | n/a | n/a
+    a8: -1.090 | 0.788 | 0.789 | n/a | n/a
+  mapped controls (all steps): mean, sd, [min, max];  first-step sd across images
+    strength         0.2001  sd 0.0004  [0.2000, 0.2030];  first-step sd 0.0004
+    cls_scale        0.6082  sd 0.0628  [0.3958, 0.7705];  first-step sd 0.0619
+    pres_scale       0.4641  sd 0.1003  [0.3321, 0.7922];  first-step sd 0.1005
+    tau              0.8999  sd 0.0795  [0.4798, 0.9878];  first-step sd 0.0796
+    strength_boost   1.1438  sd 0.0046  [1.1162, 1.1495];  first-step sd 0.0046
+    guidance_bias    1.2985  sd 0.0016  [1.2885, 1.3000];  first-step sd 0.0016
+    ramp_start_frac  0.2105  sd 0.0602  [0.1221, 0.3689];  first-step sd 0.0604
+    n_passes         3.0000  sd 0.0000  [3.0000, 3.0000];  first-step sd 0.0000
+  guidance_bias (range 0.70-1.30): >=1.295 on 96.5% of steps, >=1.29 on 99.0%; n_passes distribution {3.0: 201}
+
+== p_to_n: 200 images, 1093 steps
+  episode length: mean 5.46, median 1, max 25 (cap 25); counts {1: 129, 2: 15, 3: 10, 4: 3, 5: 3, 6: 2, 7: 1, 8: 1, 11: 1, 12: 1, 13: 1, 17: 1, 22: 1, 25: 31}
+  images with >1 step: 71
+  raw action: mean | sd over all steps | sd of first-step action across images | mean within-image sd | between-image share of variance
+    a0: +1.705 | 1.685 | 1.250 | 0.929 | 0.71
+    a1: +1.700 | 0.855 | 1.183 | 0.493 | 0.70
+    a2: +0.432 | 0.536 | 0.655 | 0.276 | 0.78
+    a3: +0.486 | 0.826 | 0.470 | 0.489 | 0.68
+    a4: -1.607 | 1.680 | 1.799 | 0.985 | 0.72
+    a5: -0.260 | 0.718 | 1.226 | 0.405 | 0.75
+    a6: -1.142 | 0.766 | 0.808 | 0.422 | 0.75
+    a7: +2.968 | 1.995 | 1.367 | 1.136 | 0.67
+    a8: -0.608 | 1.572 | 1.187 | 0.886 | 0.72
+  mapped controls (all steps): mean, sd, [min, max];  first-step sd across images
+    strength         0.5784  sd 0.0874  [0.3852, 0.6996];  first-step sd 0.0214
+    cls_scale        1.0372  sd 0.0818  [0.7252, 1.1987];  first-step sd 0.0865
+    pres_scale       1.0206  sd 0.1436  [0.5630, 1.3671];  first-step sd 0.1811
+    tau              0.5970  sd 0.1651  [0.2913, 0.9447];  first-step sd 0.0738
+    strength_boost   0.9300  sd 0.0349  [0.8540, 1.0246];  first-step sd 0.0292
+    guidance_bias    1.2304  sd 0.0631  [1.0018, 1.2999];  first-step sd 0.0123
+    ramp_start_frac  0.2713  sd 0.0938  [0.1013, 0.4308];  first-step sd 0.0413
+    n_passes         2.4511  sd 0.5901  [2.0000, 4.0000];  first-step sd 0.5184
+  guidance_bias (range 0.70-1.30): >=1.295 on 21.2% of steps, >=1.29 on 25.6%; n_passes distribution {2.0: 655, 3.0: 383, 4.0: 55}

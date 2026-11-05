@@ -1,0 +1,90 @@
+{
+  "CV": {
+    "n_to_p": 0.9399999976158142,
+    "p_to_n": 0.6000000238418579,
+    "mean": 0.7700000107288361
+  },
+  "FID": {
+    "negative_group": 103.44114080784918,
+    "positive_group": 50.71138403828661,
+    "n_to_p_vs_real_positive": 21.27283551429687,
+    "p_to_n_vs_real_negative": 5.124842314368178
+  },
+  "FOP": {
+    "_omitted": "not computable in this environment; see the detector/proxy docstring in src/metrics.py"
+  },
+  "IP": {
+    "n_to_p": {
+      "ms_ssim": 0.9338869023323059,
+      "hf_corr": 0.9504893922805786
+    },
+    "p_to_n": {
+      "ms_ssim": 0.9014956736564637,
+      "hf_corr": 0.9224726951122284
+    }
+  },
+  "EditConcentration": {
+    "n_to_p": {
+      "concentration": 0.2767801088094711,
+      "uniform_baseline": 0.05,
+      "mae": 0.026445781961083412,
+      "frac_changed": 0.6034243774414062
+    },
+    "p_to_n": {
+      "concentration": 0.3519986736774445,
+      "uniform_baseline": 0.05,
+      "mae": 0.028753599599003792,
+      "frac_changed": 0.5644189453125
+    }
+  },
+  "LHR": {
+    "p_to_n": {
+      "hit_rate": 0.442572176053277,
+      "std_hit_rate": 0.21045356951460936,
+      "null_baseline": 0.2103531208444149,
+      "std_null": 0.13506671777160223,
+      "lift": 2.5021391218458606,
+      "std_lift": 1.0105380732093954,
+      "mean_delta": 0.2322190552088621,
+      "std_delta": 0.10674194038314885,
+      "t": 14.755083663859713,
+      "p": 4.627607913804293e-19,
+      "n_pairs": 47,
+      "n_without_annotation": 3
+    },
+    "n_to_p": {
+      "_omitted": "not defined for this direction \u2014 the n\u2192p source images are classifier-negative and carry no lesion annotation, so there is no ground truth for where a synthesized opacity should appear"
+    }
+  },
+  "CTR": {
+    "mean_xn": 0.41478399851513004,
+    "std_xn": 0.053995401640326506,
+    "mean_xp": 0.44243779277844936,
+    "std_xp": 0.10173161846809108,
+    "mean_xc_np": 0.404431991206779,
+    "std_xc_np": 0.04766385821999344,
+    "mean_xc_pn": 0.4236484588473592,
+    "std_xc_pn": 0.10175118182297839,
+    "mean_delta_n": 0.010352007308351023,
+    "std_delta_n": 0.04581430946454876,
+    "t_n": 1.581690349704606,
+    "p_n": 0.12015437158618376,
+    "mean_delta_p": 0.02187626612859241,
+    "std_delta_p": 0.11059981164204853,
+    "t_p": 1.2509755060024919,
+    "p_p": 0.21821117061981943
+  },
+  "SCP": {
+    "mean_xn": 0.47949605345726015,
+    "std_xn": 0.0008908385256249324,
+    "mean_xp": 0.4793296182155609,
+    "std_xp": 0.000946924664147432,
+    "mean_xc_np": 0.479489187002182,
+    "std_xc_np": 0.0009759553075663629,
+    "mean_xc_pn": 0.4794682693481445,
+    "std_xc_pn": 0.0010306445096135422,
+    "degenerate": true,
+    "relative_spread": 0.0021498057854820764,
+    "_omitted": "deltas and t-tests withheld: metric flagged degenerate (relative spread 0.21% across all four groups). Group means are retained; the tests were computed on a constant and must not be reported."
+  }
+}

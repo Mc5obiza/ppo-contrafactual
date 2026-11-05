@@ -1,0 +1,86 @@
+arm: single
+jobs: 17686489 17689478 17689479
+checkpoint dir: checkpoints/archive_pre_ensemble_default_20260812
+code tag: evidence/single-code -> cf5204fb36c459871d95429720da70c47f333e8c
+  CODE STATE NOT RECOVERABLE: the exact code of this run cannot be reconstructed from any git object; this tag points only at the base commit cf5204f of the dirty working tree, not at the code that ran. Run(s): 17686489. Its config.py sha256 ff168a23... equals config.py at 5b37471 (and 6869f3e, fb268c6, 927d6b8, 34ac79c); the other modified files were not hashed at run time
+
+sha256 of artefacts (computed 2026-10-28T21:43:45+01:00):
+f66f059e0ced44570b1c812545583aa533e0f9ad68b149b0d832c7a933841d72  checkpoints/archive_pre_ensemble_default_20260812/n_to_p/ppo_policy.pt
+db36b707817b319244ed5945fc796e09907ae88476f1143149f1e7a16e3ffe69  checkpoints/archive_pre_ensemble_default_20260812/n_to_p/unet_finetuned.pt
+d37b1ce1e322e202e79f6bc685ec46eab15687673d87cbe0816ab9896b5d90c8  checkpoints/archive_pre_ensemble_default_20260812/n_to_p/cond_proj.pt
+459ae4f6da1c071289ffeda6224a5c12e65d8790544a94a79b4b229688787d8b  checkpoints/archive_pre_ensemble_default_20260812/p_to_n/ppo_policy.pt
+01d6c7e3bcb28317ce3d30c49a0e523a473e6896dc67959169627fa0a71a9853  checkpoints/archive_pre_ensemble_default_20260812/p_to_n/unet_finetuned.pt
+e45564c1b155f65bf9c6be6bdb82e0d23a395ce1e391a333db16b8b3ae85fe25  checkpoints/archive_pre_ensemble_default_20260812/p_to_n/cond_proj.pt
+f85c277bb02ae7886b1ddf26387c66098ebcd5bac6c5ebe45d680104a1b0b4b8  checkpoints/eval_metrics.json
+de60f9bb35823257456a466907461036171edf5b7204e3b691d755159af4dffa  checkpoints/eval_shards/cf_shard_000.pt
+eca4237905e1354caf047f2bac073e5c10f2f6a8edceefacd5fff59ac1e265f2  checkpoints/eval_shards/cf_shard_001.pt
+08b30b0c3066a6e47de4d88970673d9309b678ac9494e573387250c5358c4944  checkpoints/eval_shards/cf_shard_002.pt
+b4b1c8a99aae6b34abbb259c6c963cbf38f55701e954ea0d3a891a6f6feef1ff  checkpoints/eval_shards/cf_shard_003.pt
+9efcb652a7ba0474fd17de85758697c5b4bffa3f5f75d8540ebfba6031b794df  checkpoints/eval_shards/cf_shard_004.pt
+c2de4f4302a620146266dcfe2207f75491f1bd3cbae55c65e47451686e6c430e  checkpoints/eval_shards/cf_shard_005.pt
+f18fc223fd57f5a3bbec719744eca41073abe68db3ff5c1d287540ec6320ca58  checkpoints/eval_shards/cf_shard_006.pt
+37076aa059a357dd37000785c0535cb9be5e576a4b37c5412753fcb7645f2c6d  checkpoints/eval_shards/cf_shard_007.pt
+
+generator tensor diff n_to_p vs p_to_n (~/verification/generator_tensor_diff.json):
+{
+ "unet_finetuned.pt": {
+  "keys_only_in_np": [],
+  "keys_only_in_pn": [],
+  "n_keys": 942,
+  "n_differing": 225,
+  "n_differing_lora": 225,
+  "max_abs_diff": 0.017183681949973106,
+  "max_abs_diff_lora": 0.017183681949973106,
+  "max_abs_diff_nonlora": 0.0,
+  "examples": [
+   [
+    "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_k.lora_A.default.weight",
+    0.0007151570171117783
+   ],
+   [
+    "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_k.lora_B.default.weight",
+    0.0005629649967886508
+   ],
+   [
+    "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_out.0.lora_A.default.weight",
+    0.001303553581237793
+   ],
+   [
+    "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_out.0.lora_B.default.weight",
+    0.0006136912852525711
+   ],
+   [
+    "base_model.model.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_q.lora_A.default.weight",
+    0.0009744646959006786
+   ]
+  ]
+ },
+ "cond_proj.pt": {
+  "keys_only_in_np": [],
+  "keys_only_in_pn": [],
+  "n_keys": 4,
+  "n_differing": 4,
+  "n_differing_lora": 0,
+  "max_abs_diff": 0.0019337395206093788,
+  "max_abs_diff_lora": 0.0,
+  "max_abs_diff_nonlora": 0.0019337395206093788,
+  "examples": [
+   [
+    "0.bias",
+    0.0005676671862602234
+   ],
+   [
+    "0.weight",
+    0.0017558932304382324
+   ],
+   [
+    "2.bias",
+    0.0004612486809492111
+   ],
+   [
+    "2.weight",
+    0.0019337395206093788
+   ]
+  ]
+ }
+}

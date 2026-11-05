@@ -1,0 +1,63 @@
+=== /home2020/home/insa/arbaoui/verification/out/J4_perdir/shards  vs  /home2020/home/insa/arbaoui/verification/out/J5_none_perdir/shards
+
+PAIRED ARM TEST — /home2020/home/insa/arbaoui/verification/out/J4_perdir/shards vs /home2020/home/insa/arbaoui/verification/out/J5_none_perdir/shards  (LHR lift, p→n)
+==============================================================
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+paired images            : 148
+mean lift /home2020/home/insa/arbaoui/verification/out/J4_perdir/shards: 2.5955  (sd 0.8945)
+mean lift /home2020/home/insa/arbaoui/verification/out/J5_none_perdir/shards: 2.0639  (sd 0.6304)
+paired difference       : +0.5316   95% CI [+0.4233, +0.6469]
+paired t-test           : t=9.296  p=1.851e-16
+Wilcoxon signed-rank    : W=833.0  p=3.283e-19
+Cohen's d (paired)      : +0.764
+/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards better on       : 128 / 148 images
+
+READING
+  The difference is statistically detectable (p=1.85e-16), but read the
+  effect size before calling it meaningful: a lift gap of +0.532
+  against a between-image sd of 0.895.
+
+=== /home2020/home/insa/arbaoui/verification/out/J4_perdir/shards  vs  /home2020/home/insa/arbaoui/verification/out/J5b_fixed_schedule/shards
+
+PAIRED ARM TEST — /home2020/home/insa/arbaoui/verification/out/J4_perdir/shards vs /home2020/home/insa/arbaoui/verification/out/J5b_fixed_schedule/shards  (LHR lift, p→n)
+==============================================================
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+paired images            : 148
+mean lift /home2020/home/insa/arbaoui/verification/out/J4_perdir/shards: 2.5955  (sd 0.8945)
+mean lift /home2020/home/insa/arbaoui/verification/out/J5b_fixed_schedule/shards: 2.5200  (sd 0.8540)
+paired difference       : +0.0755   95% CI [-0.0079, +0.1727]
+paired t-test           : t=1.624  p=0.1065
+Wilcoxon signed-rank    : W=4817.0  p=0.1828
+Cohen's d (paired)      : +0.134
+/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards better on       : 84 / 148 images
+
+READING
+  No detectable difference (p=0.106). With 148 paired images the
+  95% CI on the gap is [-0.0079, +0.1727] — the data are consistent with
+  the trained policy editing no closer to the lesion than an untrained one.
+
+=== /home2020/home/insa/arbaoui/verification/out/J5b_fixed_schedule/shards  vs  /home2020/home/insa/arbaoui/verification/out/J5_none_perdir/shards
+
+PAIRED ARM TEST — /home2020/home/insa/arbaoui/verification/out/J5b_fixed_schedule/shards vs /home2020/home/insa/arbaoui/verification/out/J5_none_perdir/shards  (LHR lift, p→n)
+==============================================================
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+paired images            : 148
+mean lift /home2020/home/insa/arbaoui/verification/out/J5b_fixed_schedule/shards: 2.5200  (sd 0.8540)
+mean lift /home2020/home/insa/arbaoui/verification/out/J5_none_perdir/shards: 2.0639  (sd 0.6304)
+paired difference       : +0.4561   95% CI [+0.3629, +0.5568]
+paired t-test           : t=9.157  p=4.231e-16
+Wilcoxon signed-rank    : W=1179.0  p=1.073e-16
+Cohen's d (paired)      : +0.753
+/home2020/home/insa/arbaoui/verification/out/J5b_fixed_schedule/shards better on       : 122 / 148 images
+
+READING
+  The difference is statistically detectable (p=4.23e-16), but read the
+  effect size before calling it meaningful: a lift gap of +0.456
+  against a between-image sd of 0.854.
+

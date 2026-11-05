@@ -1,0 +1,31 @@
+host hpc-n968
+name, memory.total [MiB], driver_version
+NVIDIA L40S, 46068 MiB, 580.105.08
+NVIDIA L40S, 46068 MiB, 580.105.08
+NVIDIA L40S, 46068 MiB, 580.105.08
+NVIDIA L40S, 46068 MiB, 580.105.08
+
+==========================================================================
+eval_shards
+==========================================================================
+  [warn] shards predate the USE_GUIDANCE_ENSEMBLE stamp; assuming the single guidance model
+  n=200 per group | guidance = rsna | groups = classifier | gradcam = False
+[models] loaded XRV classifier (densenet121-res224-rsna, head='Pneumonia') as f(·)
+  Δ_guidance  n→p=0.9152  p→n=0.8676
+  validator       Δ n→p    Δ p→n  ratio n→p  ratio p→n   verdict
+[models] loaded XRV classifier (densenet121-res224-nih, head='Pneumonia') as f(·)
+  nih                      0.0737   0.0872      0.081      0.100   ADVERSARIAL/ADVERSARIAL
+    rank agreement with guidance on the 400 unedited originals: rho=+0.717
+    95% CI  n→p [0.048, 0.114]   p→n [0.075, 0.126]  (10000 resamples)
+[models] loaded XRV classifier (densenet121-res224-pc, head='Pneumonia') as f(·)
+  pc                       0.3787   0.1947      0.414      0.224   partial/partial
+    rank agreement with guidance on the 400 unedited originals: rho=+0.785
+    95% CI  n→p [0.384, 0.442]   p→n [0.203, 0.247]  (10000 resamples)
+[models] loaded XRV classifier (densenet121-res224-mimic_ch, head='Pneumonia') as f(·)
+  mimic_ch                 0.1802   0.0968      0.197      0.112   partial/ADVERSARIAL
+    rank agreement with guidance on the 400 unedited originals: rho=+0.665
+    95% CI  n→p [0.166, 0.226]   p→n [0.083, 0.141]  (10000 resamples)
+  MEAN                                          0.230      0.145
+
+wrote /home2020/home/insa/arbaoui/verification/out/J13_nih_cell/l40s_2.json
+[J13] nih ratio_n_to_p=0.08050076055108743 delta_n_to_p=0.073678158223629 delta_guidance_n_to_p=0.9152479767799377 ci=[0.04772622622549534, 0.11388954147696494]

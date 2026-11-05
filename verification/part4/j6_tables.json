@@ -1,0 +1,242 @@
+{
+ "n_to_p": {
+  "dims": {
+   "a0": {
+    "control": "strength",
+    "raw_mean": -9.114096314159791,
+    "raw_sd": 1.1760301337362924,
+    "ctrl_mean": 0.20013911268829312,
+    "ctrl_sd": 0.0003585268010467184,
+    "between_share_multi": null,
+    "eta2_all": 0.9999729379318052,
+    "sat_lo": 1.0,
+    "sat_hi": 0.0
+   },
+   "a1": {
+    "control": "cls_scale",
+    "raw_mean": -0.6705773694264652,
+    "raw_sd": 0.33308668753705867,
+    "ctrl_mean": 0.608232923193588,
+    "ctrl_sd": 0.06278475592026724,
+    "between_share_multi": null,
+    "eta2_all": 0.9999997908596419,
+    "sat_lo": 0.0,
+    "sat_hi": 0.0
+   },
+   "a2": {
+    "control": "pres_scale",
+    "raw_mean": -2.0064556112336875,
+    "raw_sd": 0.6805800159521166,
+    "ctrl_mean": 0.46405794537404854,
+    "ctrl_sd": 0.10026917456302345,
+    "between_share_multi": null,
+    "eta2_all": 0.9998788908614574,
+    "sat_lo": 0.0,
+    "sat_hi": 0.0
+   },
+   "a3": {
+    "control": "tau (stop signal)",
+    "raw_mean": 2.4455873325689517,
+    "raw_sd": 0.8012767118024648,
+    "ctrl_mean": 0.8999080684101137,
+    "ctrl_sd": 0.0794579699429637,
+    "between_share_multi": null,
+    "eta2_all": 0.9995561582885263,
+    "sat_lo": 0.0,
+    "sat_hi": 0.0
+   },
+   "a4": {
+    "control": "extra pass 1",
+    "raw_mean": 3.0410016051572355,
+    "raw_sd": 1.0729151647458537,
+    "ctrl_mean": 1.0,
+    "ctrl_sd": 0.0,
+    "between_share_multi": null,
+    "eta2_all": 0.999734345113233,
+    "sat_lo": 0.0,
+    "sat_hi": 0.10945273631840796
+   },
+   "a5": {
+    "control": "extra pass 2",
+    "raw_mean": -6.356879266340341,
+    "raw_sd": 0.9409420819453855,
+    "ctrl_mean": 0.0,
+    "ctrl_sd": 0.0,
+    "between_share_multi": null,
+    "eta2_all": 0.9999895681413442,
+    "sat_lo": 0.9502487562189055,
+    "sat_hi": 0.0
+   },
+   "a6": {
+    "control": "strength_boost",
+    "raw_mean": 4.073682486121334,
+    "raw_sd": 0.6917815732347807,
+    "ctrl_mean": 1.1437604981030056,
+    "ctrl_sd": 0.004620688072156328,
+    "between_share_multi": null,
+    "eta2_all": 0.999936722355161,
+    "sat_lo": 0.0,
+    "sat_hi": 0.20398009950248755
+   },
+   "a7": {
+    "control": "guidance_bias",
+    "raw_mean": 6.5497491679974456,
+    "raw_sd": 1.190703209567135,
+    "ctrl_mean": 1.2985443134659733,
+    "ctrl_sd": 0.0016248683827852284,
+    "between_share_multi": null,
+    "eta2_all": 0.9999389086040882,
+    "sat_lo": 0.0,
+    "sat_hi": 0.9751243781094527
+   },
+   "a8": {
+    "control": "ramp_start_frac",
+    "raw_mean": -1.0896218951365249,
+    "raw_sd": 0.7876283581774638,
+    "ctrl_mean": 0.21050046615065557,
+    "ctrl_sd": 0.060236023312395026,
+    "between_share_multi": null,
+    "eta2_all": 0.999946359060006,
+    "sat_lo": 0.0,
+    "sat_hi": 0.0
+   }
+  },
+  "n_passes": {
+   "3.0": 201
+  },
+  "episode_length_counts": {
+   "1": 199,
+   "2": 1
+  },
+  "ep_mean": 1.005,
+  "ep_median": 1.0,
+  "gb_ge_1295": 0.9651741293532339
+ },
+ "p_to_n": {
+  "dims": {
+   "a0": {
+    "control": "strength",
+    "raw_mean": 1.7052469332374407,
+    "raw_sd": 1.685205878751561,
+    "ctrl_mean": 0.5784487268985778,
+    "ctrl_sd": 0.08740486895573851,
+    "between_share_multi": 0.7073329902906428,
+    "eta2_all": 0.7707673006895942,
+    "sat_lo": 0.0,
+    "sat_hi": 0.09332113449222323
+   },
+   "a1": {
+    "control": "cls_scale",
+    "raw_mean": 1.699959900162003,
+    "raw_sd": 0.8549270636965567,
+    "ctrl_mean": 1.0372299640638099,
+    "ctrl_sd": 0.08180288672374703,
+    "between_share_multi": 0.6960776909697445,
+    "eta2_all": 0.7335441246222768,
+    "sat_lo": 0.0,
+    "sat_hi": 0.011893870082342177
+   },
+   "a2": {
+    "control": "pres_scale",
+    "raw_mean": 0.4317953817525918,
+    "raw_sd": 0.5355206314849089,
+    "ctrl_mean": 1.02059850496842,
+    "ctrl_sd": 0.14363908315557924,
+    "between_share_multi": 0.7753136540939273,
+    "eta2_all": 0.7186472479579367,
+    "sat_lo": 0.0,
+    "sat_hi": 0.0
+   },
+   "a3": {
+    "control": "tau (stop signal)",
+    "raw_mean": 0.4857183273980515,
+    "raw_sd": 0.8259853281463558,
+    "ctrl_mean": 0.5970325465453297,
+    "ctrl_sd": 0.16507523148532222,
+    "between_share_multi": 0.6828840202052587,
+    "eta2_all": 0.7481123703322025,
+    "sat_lo": 0.0,
+    "sat_hi": 0.0
+   },
+   "a4": {
+    "control": "extra pass 1",
+    "raw_mean": -1.6072432656771583,
+    "raw_sd": 1.6797212793060277,
+    "ctrl_mean": 0.11253430924062215,
+    "ctrl_sd": 0.31602268666087596,
+    "between_share_multi": 0.7194627003434643,
+    "eta2_all": 0.770732143405877,
+    "sat_lo": 0.0878316559926807,
+    "sat_hi": 0.0
+   },
+   "a5": {
+    "control": "extra pass 2",
+    "raw_mean": -0.26044525845233635,
+    "raw_sd": 0.7184257506678963,
+    "ctrl_mean": 0.33851784080512354,
+    "ctrl_sd": 0.4732055708270568,
+    "between_share_multi": 0.7475163174593965,
+    "eta2_all": 0.7427434695730417,
+    "sat_lo": 0.0,
+    "sat_hi": 0.0
+   },
+   "a6": {
+    "control": "strength_boost",
+    "raw_mean": -1.1415609518834624,
+    "raw_sd": 0.7657729900094039,
+    "ctrl_mean": 0.9299856372878981,
+    "ctrl_sd": 0.03489373507825681,
+    "between_share_multi": 0.7482664216627232,
+    "eta2_all": 0.8076289359833876,
+    "sat_lo": 0.0,
+    "sat_hi": 0.0
+   },
+   "a7": {
+    "control": "guidance_bias",
+    "raw_mean": 2.968299724482007,
+    "raw_sd": 1.9953025110425462,
+    "ctrl_mean": 1.230408353532624,
+    "ctrl_sd": 0.06311442176871168,
+    "between_share_multi": 0.6734524679742863,
+    "eta2_all": 0.7631461830856301,
+    "sat_lo": 0.0,
+    "sat_hi": 0.22140896614821592
+   },
+   "a8": {
+    "control": "ramp_start_frac",
+    "raw_mean": -0.6077660828869711,
+    "raw_sd": 1.5720006200564214,
+    "ctrl_mean": 0.27129505491164035,
+    "ctrl_sd": 0.09381034605584312,
+    "between_share_multi": 0.7230127383433818,
+    "eta2_all": 0.8247071672922183,
+    "sat_lo": 0.023787740164684355,
+    "sat_hi": 0.0
+   }
+  },
+  "n_passes": {
+   "2.0": 655,
+   "3.0": 383,
+   "4.0": 55
+  },
+  "episode_length_counts": {
+   "1": 129,
+   "2": 15,
+   "3": 10,
+   "4": 3,
+   "5": 3,
+   "6": 2,
+   "7": 1,
+   "8": 1,
+   "11": 1,
+   "12": 1,
+   "13": 1,
+   "17": 1,
+   "22": 1,
+   "25": 31
+  },
+  "ep_mean": 5.465,
+  "ep_median": 1.0,
+  "gb_ge_1295": 0.21225983531564502
+ }
+}

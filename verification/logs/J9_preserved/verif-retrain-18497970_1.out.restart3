@@ -1,0 +1,11 @@
+109:TRAIN_SEED = 1
+167:USE_GUIDANCE_ENSEMBLE  = True
+=== retrain_ens_seed1 p_to_n on hpc-n934 at Sat Oct 31 13:22:15 CET 2026
+name, memory.total [MiB]
+NVIDIA H100 NVL, 95830 MiB
+NVIDIA H100 NVL, 95830 MiB
+NVIDIA H100 NVL, 95830 MiB
+NVIDIA H100 NVL, 95830 MiB
+[preflight] NVIDIA H100 NVL -> sm_90
+[preflight] torch 2.5.1+cu121 kernels: ['sm_50', 'sm_60', 'sm_70', 'sm_75', 'sm_80', 'sm_86', 'sm_90']
+[preflight] OK

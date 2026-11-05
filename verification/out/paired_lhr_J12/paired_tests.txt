@@ -1,0 +1,54 @@
+=== /home2020/home/insa/arbaoui/verification/out/J12_grid_fixed_schedule/shards vs /home2020/home/insa/arbaoui/verification/out/J4_perdir/shards
+
+PAIRED ARM TEST — /home2020/home/insa/arbaoui/verification/out/J12_grid_fixed_schedule/shards vs /home2020/home/insa/arbaoui/verification/out/J4_perdir/shards  (LHR lift, p→n)
+==============================================================
+paired images            : 148
+mean lift /home2020/home/insa/arbaoui/verification/out/J12_grid_fixed_schedule/shards: 2.4082  (sd 0.6491)
+mean lift /home2020/home/insa/arbaoui/verification/out/J4_perdir/shards: 2.5955  (sd 0.8945)
+paired difference       : -0.1873   95% CI [-0.2794, -0.0949]
+paired t-test           : t=-3.994  p=0.0001023
+Wilcoxon signed-rank    : W=3307.0  p=2.412e-05
+Cohen's d (paired)      : -0.328
+/home2020/home/insa/arbaoui/verification/out/J12_grid_fixed_schedule/shards better on       : 49 / 148 images
+
+READING
+  The difference is statistically detectable (p=0.000102), but read the
+  effect size before calling it meaningful: a lift gap of -0.187
+  against a between-image sd of 0.649.
+
+=== /home2020/home/insa/arbaoui/verification/out/J12_grid_fixed_schedule/shards vs /home2020/home/insa/arbaoui/verification/out/J5c_fixed_schedule_corrected/shards
+
+PAIRED ARM TEST — /home2020/home/insa/arbaoui/verification/out/J12_grid_fixed_schedule/shards vs /home2020/home/insa/arbaoui/verification/out/J5c_fixed_schedule_corrected/shards  (LHR lift, p→n)
+==============================================================
+paired images            : 148
+mean lift /home2020/home/insa/arbaoui/verification/out/J12_grid_fixed_schedule/shards: 2.4082  (sd 0.6491)
+mean lift /home2020/home/insa/arbaoui/verification/out/J5c_fixed_schedule_corrected/shards: 2.5246  (sd 0.8606)
+paired difference       : -0.1164   95% CI [-0.2172, -0.0134]
+paired t-test           : t=-2.265  p=0.02498
+Wilcoxon signed-rank    : W=4021.0  p=0.004289
+Cohen's d (paired)      : -0.186
+/home2020/home/insa/arbaoui/verification/out/J12_grid_fixed_schedule/shards better on       : 56 / 148 images
+
+READING
+  The difference is statistically detectable (p=0.025), but read the
+  effect size before calling it meaningful: a lift gap of -0.116
+  against a between-image sd of 0.649.
+
+=== /home2020/home/insa/arbaoui/verification/out/J12_grid_fixed_schedule/shards vs /home2020/home/insa/arbaoui/verification/out/J5_none_perdir/shards
+
+PAIRED ARM TEST — /home2020/home/insa/arbaoui/verification/out/J12_grid_fixed_schedule/shards vs /home2020/home/insa/arbaoui/verification/out/J5_none_perdir/shards  (LHR lift, p→n)
+==============================================================
+paired images            : 148
+mean lift /home2020/home/insa/arbaoui/verification/out/J12_grid_fixed_schedule/shards: 2.4082  (sd 0.6491)
+mean lift /home2020/home/insa/arbaoui/verification/out/J5_none_perdir/shards: 2.0639  (sd 0.6304)
+paired difference       : +0.3443   95% CI [+0.2599, +0.4320]
+paired t-test           : t=7.721  p=1.641e-12
+Wilcoxon signed-rank    : W=1816.0  p=1.472e-12
+Cohen's d (paired)      : +0.635
+/home2020/home/insa/arbaoui/verification/out/J12_grid_fixed_schedule/shards better on       : 114 / 148 images
+
+READING
+  The difference is statistically detectable (p=1.64e-12), but read the
+  effect size before calling it meaningful: a lift gap of +0.344
+  against a between-image sd of 0.649.
+
