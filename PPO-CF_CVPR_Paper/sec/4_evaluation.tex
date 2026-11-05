@@ -4,7 +4,7 @@
 \subsection{Conventional metrics}
 \label{sec:conventional-metrics}
 
-Following~\cite{singla2022explaining}, the evaluation set is split by classifier confidence into $X_n = \{x : f(x) < 0.2\}$ and $X_p = \{x : f(x) > 0.8\}$, up to $n_{\text{eval}} = 200$ each, and each directional policy generates from the corresponding group with its deterministic (mean) action. Full definitions of every metric below are given in Supp.~Sec.~R6.
+Following~\cite{singla2022explaining}, the evaluation set is split by classifier confidence into $X_n = \{x : f(x) < 0.2\}$ and $X_p = \{x : f(x) > 0.8\}$, up to $n_{\text{eval}} = 200$ each, and each directional policy generates from the corresponding group with its deterministic (mean) action. Full definitions of every metric below are given in Supp.~R6.
 
 \paragraph{Counterfactual Validity.} With $s = 2c - 1$ ($+1$ for n$\to$p, $-1$ for p$\to$n),
 \begin{equation}
@@ -22,7 +22,7 @@ where $\Delta_i = f(x^i_c) - f(x^i)$, $B_i$ requires $s\,(f(x^i_c) - 0.5) > 0$ a
 \subsection{Ground-truth-anchored Lesion Hit Rate}
 \label{sec:lhr}
 
-CV, FID and IP share a blind spot: none of them can tell whether the edit landed on the pathology. RSNA ships 9{,}555 radiologist-drawn opacity boxes~\cite{shih2019augmenting}, which we retain. LHR adapts the energy-based pointing game~\cite{wang2020scorecam}: it measures the fraction of the difference map $|x_c - x|$ falling inside the annotation, per image, against the box's own area fraction as the null, and reports the mean per-image lift (hit rate over null). What is new relative to the pointing game is the input (an edit rather than a saliency map), the area null, and the calibration below. LHR is defined only for p$\to$n, since n$\to$p sources are classifier-negative and carry no annotation. Details that the definition leaves open are listed in Supp.~Sec.~R6.
+CV, FID and IP share a blind spot: none of them can tell whether the edit landed on the pathology. RSNA ships 9{,}555 radiologist-drawn opacity boxes~\cite{shih2019augmenting}, which we retain. LHR adapts the energy-based pointing game~\cite{wang2020scorecam}: it measures the fraction of the difference map $|x_c - x|$ falling inside the annotation, per image, against the box's own area fraction as the null, and reports the mean per-image lift (hit rate over null). What is new relative to the pointing game is the input (an edit rather than a saliency map), the area null, and the calibration below. LHR is defined only for p$\to$n, since n$\to$p sources are classifier-negative and carry no annotation. Details that the definition leaves open are listed in Supp.~R6.
 
 We calibrate the metric before use on synthetic edits with known ground truth: a uniform wash scores lift 1.00 ($p=0.59$, chance, as it should), an on-lesion edit scores 12.4 ($p = 3\times10^{-49}$), an off-lesion edit scores 0.
 
@@ -41,6 +41,6 @@ A ratio below 0.15 we treat as the adversarial regime; this is a heuristic opera
 \subsection{Controls the comparison requires}
 \label{sec:controls}
 
-A control-arm comparison needs three preconditions that we had assumed and that did not hold (full account in Supp.~Sec.~E1): (i) one deterministic, persisted, patient-level split shared by LoRA fine-tuning, the PPO pool and evaluation, replacing a shared dataset object under which evaluation images had been seen during fine-tuning; (ii) seeded training, since two identical unseeded submissions produced two different policies; and (iii) control arms exercised end to end, which surfaced a routing bug and a shared output directory that would each have produced a well-formed but wrong table.
+A control-arm comparison needs three preconditions that we had assumed and that did not hold (full account in Supp.~E1): (i) one deterministic, persisted, patient-level split shared by LoRA fine-tuning, the PPO pool and evaluation, replacing a shared dataset object under which evaluation images had been seen during fine-tuning; (ii) seeded training, since two identical unseeded submissions produced two different policies; and (iii) control arms exercised end to end, which surfaced a routing bug and a shared output directory that would each have produced a well-formed but wrong table.
 Every reported run uses the 80/20 patient-level split with seed 0, LoRA seed 0, PPO seeds 1 (n$\to$p) and 2 (p$\to$n), and evaluation base seed 0. Generator fine-tuning, PPO rollouts and the validity probe use only the 80\% training fold; every evaluated image is in the 20\% test fold.
 Every default-arm number in the paper comes from one evaluation in which each direction uses its own adapter, on the same 400 test images and per-image seeds as the no-policy, fixed-schedule and second-seed runs of \S\ref{sec:main-results} and \S\ref{sec:five-arms}. The single-classifier arm shares split, seeds, reward weights, action ranges and anchoring with the default arm and differs only in the guidance flag, and through it in the classifier-selected groups (78 of 200 p$\to$n sources shared) and in hardware.
