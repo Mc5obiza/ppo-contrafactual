@@ -1,7 +1,7 @@
 % =============================================================================
 % Supplementary sections moved out of the main paper: E1 (controls),
 % E2 (clinical proxy metrics), E3 (comparison to prior methods), E4 (lock-width sensitivity),
-% E5 (same-image runs: default, no policy, fixed schedule, second seed), E6 (edit locality, FID/KID uncertainty).
+% E5 (same-image runs: default, no policy, two fixed schedules, second seed), E6 (edit locality, FID/KID uncertainty).
 % =============================================================================
 
 \section*{E. Additional Details}
@@ -71,14 +71,14 @@ Transfer mean, p$\to$n & 0.251 & $-0.038$ $[-0.062, -0.014]$ & $-0.025$ $[-0.052
 \end{table*}
 
 % -----------------------------------------------------------------------------
-\subsection*{E5. Same-image runs: default, no policy, fixed schedule, second seed}
+\subsection*{E5. Same-image runs: default, no policy, fixed schedules, second seed}
 \label{sec:suppl-fourarm}
 
-Table~\ref{tab:suppl-fourarm} compares four runs on the same 400 test images with the same per-image seeds: the default policy, the generator's default schedule without a policy, a fixed schedule that holds every control at the policy's mean action over its evaluation steps (same step budget and validity-based stopping, no training), and a second PPO seed of the default configuration. Each direction uses its own adapter, except the second seed, whose two directions share one; both of its directions were resumed from checkpoints after preemption (n$\to$p at update 15, p$\to$n at update 80) without saved random-number state. The fixed schedule's raw actions are, for n$\to$p, ($-9.114$, $-0.671$, $-2.007$, $2.446$, $3.041$, $-6.357$, $4.074$, $6.550$, $-1.090$) (strength 0.200, three passes, guidance bias 1.299), and for p$\to$n, ($1.705$, $1.700$, $0.432$, $0.486$, $-1.607$, $-0.260$, $-1.142$, $2.968$, $-0.608$), the means over 201 and 1{,}093 policy steps.
+Table~\ref{tab:suppl-fourarm} compares five runs on the same 400 test images with the same per-image seeds: the default policy, the generator's default schedule without a policy, a fixed schedule that holds every control at the policy's mean action over its evaluation steps (same step budget and validity-based stopping, no training), a tuned fixed schedule chosen without RL, and a second PPO seed of the default configuration. Each direction uses its own adapter, except the second seed, whose two directions share one; both of its directions were resumed from checkpoints after preemption (n$\to$p at update 15, p$\to$n at update 80) without saved random-number state. The fixed schedule's raw actions are, for n$\to$p, ($-9.114$, $-0.671$, $-2.007$, $2.446$, $3.041$, $-6.357$, $4.074$, $6.550$, $-1.090$) (strength 0.200, three passes, guidance bias 1.299), and for p$\to$n, ($1.705$, $1.700$, $0.432$, $0.486$, $-1.607$, $-0.260$, $-1.142$, $2.968$, $-0.608$), the means over 201 and 1{,}093 policy steps. The tuned fixed schedule is selected on training-fold images only, by the quantity PPO maximizes, the mean discounted episode reward. Candidates are 54 constant schedules on a coarse grid (strength $\{0.25, 0.45, 0.65\}$, classifier scale $\{0.50, 0.85, 1.15\}$, guidance bias $\{0.85, 1.05, 1.27\}$, two or three passes; every other control at the midpoint of its range) and a local grid around the policy's mean action (three levels each of strength, classifier and preservation scale, strength boost and, for n$\to$p, ramp start: 243 schedules for n$\to$p, 81 for p$\to$n). Each is scored on 12 training-fold images per direction, and the best of each grid on 36 more; the stop bonus that the coarse grid's neutral stop threshold forgoes is added back before ranking. Both selected schedules come from the coarse grid: strength 0.25, classifier scale 1.15, guidance bias 0.85 and two passes for n$\to$p, and strength 0.25, classifier scale 1.15, guidance bias 1.27 and three passes for p$\to$n.
 
 \begin{table*}[t]
 \centering
-\caption{Four runs on the same 400 test images and seeds. CV with Wilson 95\% CIs; LHR with a $t$-interval (concentration and fraction changed have $t$-interval half-widths $\leq 0.01$); transfer per validator with a 10{,}000-resample bootstrap, the mean with a paired bootstrap over per-image deltas. $^{\dagger}$Second seed: shared adapter, resumed training.}
+\caption{Five runs on the same 400 test images and seeds. CV with Wilson 95\% CIs; LHR with a $t$-interval (concentration and fraction changed have $t$-interval half-widths $\leq 0.01$); transfer per validator with a 10{,}000-resample bootstrap, the mean with a paired bootstrap over per-image deltas. $^{\dagger}$Second seed: shared adapter, resumed training.}
 \label{tab:suppl-fourarm}
 \scriptsize
 \setlength{\tabcolsep}{2.5pt}
@@ -90,17 +90,19 @@ Dir. & Run & CV & LHR lift & \texttt{nih} & \texttt{pc} & \texttt{mimic\_ch} & T
 n$\to$p & default policy & 0.945 [0.904, 0.969] & --- & 0.044 [0.005, 0.082] & 0.465 [0.436, 0.494] & 0.333 [0.302, 0.364] & 0.281 [0.259, 0.303] & 0.254 & 0.647 \\
 & no policy & 0.940 [0.898, 0.965] & --- & 0.101 [0.059, 0.142] & 0.474 [0.444, 0.503] & 0.345 [0.314, 0.376] & 0.307 [0.284, 0.329] & 0.268 & 0.641 \\
 & fixed schedule & 0.945 [0.904, 0.969] & --- & 0.044 [0.004, 0.083] & 0.469 [0.439, 0.499] & 0.334 [0.302, 0.365] & 0.282 [0.260, 0.304] & 0.254 & 0.647 \\
+& tuned fixed schedule & 0.940 [0.898, 0.965] & --- & 0.039 [0.002, 0.077] & 0.466 [0.437, 0.494] & 0.326 [0.294, 0.358] & 0.277 [0.256, 0.299] & 0.252 & 0.637 \\
 & second seed$^{\dagger}$ & 0.915 [0.868, 0.946] & --- & 0.204 [0.161, 0.246] & 0.458 [0.428, 0.488] & 0.334 [0.304, 0.365] & 0.332 [0.310, 0.355] & 0.279 & 0.675 \\
 \midrule
 p$\to$n & default policy & 0.670 [0.602, 0.731] & 2.595 [2.450, 2.741] & 0.165 [0.138, 0.193] & 0.306 [0.278, 0.335] & 0.357 [0.317, 0.397] & 0.276 [0.254, 0.298] & 0.314 & 0.634 \\
 & no policy & 0.225 [0.173, 0.288] & 2.064 [1.961, 2.166] & 0.113 [0.083, 0.143] & 0.245 [0.218, 0.275] & 0.149 [0.099, 0.197] & 0.169 [0.146, 0.192] & 0.278 & 0.599 \\
 & fixed schedule & 0.660 [0.592, 0.722] & 2.525 [2.385, 2.664] & 0.151 [0.124, 0.179] & 0.261 [0.236, 0.288] & 0.319 [0.278, 0.357] & 0.244 [0.224, 0.264] & 0.312 & 0.631 \\
+& tuned fixed schedule & 0.720 [0.654, 0.778] & 2.408 [2.303, 2.514] & 0.180 [0.151, 0.210] & 0.205 [0.180, 0.230] & 0.249 [0.208, 0.290] & 0.211 [0.190, 0.232] & 0.305 & 0.637 \\
 & second seed$^{\dagger}$ & 0.495 [0.426, 0.564] & 2.479 [2.350, 2.608] & 0.154 [0.126, 0.182] & 0.218 [0.192, 0.246] & 0.252 [0.208, 0.295] & 0.208 [0.187, 0.230] & 0.298 & 0.620 \\
 \bottomrule
 \end{tabular}}
 \end{table*}
 
-Against the default policy (paired, LHR on the 148 annotated p$\to$n images, CV with exact McNemar tests): the fixed schedule differs by $-0.071$ in LHR lift ($[-0.161, +0.019]$, $p=0.12$, $d=-0.13$), $0.000$ in n$\to$p CV (0 discordant) and $-0.010$ in p$\to$n CV (14 vs.\ 16 discordant, $p=0.86$); the second seed by $-0.117$ ($[-0.227, -0.006]$, $p=0.039$), $-0.030$ (0 vs.\ 6, $p=0.031$) and $-0.175$ (7 vs.\ 42, $p=3.6\times10^{-7}$); no policy by $-0.532$ ($[-0.645, -0.419]$, $p=1.9\times10^{-16}$), $-0.005$ (3 vs.\ 4, $p=1.0$) and $-0.445$ (1 vs.\ 90, $p=7.4\times10^{-26}$). Relative to no policy, the fixed schedule recovers 87\% $[71, 102]\%$ of the policy's LHR-lift gain and 98\% $[86, 111]\%$ of its p$\to$n CV gain (paired bootstrap over images, 10{,}000 resamples); in n$\to$p the policy has no gain to recover.
+Against the default policy (paired, LHR on the 148 annotated p$\to$n images, CV with exact McNemar tests): the fixed schedule differs by $-0.071$ in LHR lift ($[-0.161, +0.019]$, $p=0.12$, $d=-0.13$), $0.000$ in n$\to$p CV (0 discordant) and $-0.010$ in p$\to$n CV (14 vs.\ 16 discordant, $p=0.86$); the second seed by $-0.117$ ($[-0.227, -0.006]$, $p=0.039$), $-0.030$ (0 vs.\ 6, $p=0.031$) and $-0.175$ (7 vs.\ 42, $p=3.6\times10^{-7}$); no policy by $-0.532$ ($[-0.645, -0.419]$, $p=1.9\times10^{-16}$), $-0.005$ (3 vs.\ 4, $p=1.0$) and $-0.445$ (1 vs.\ 90, $p=7.4\times10^{-26}$). Relative to no policy, the fixed schedule recovers 87\% $[71, 102]\%$ of the policy's LHR-lift gain and 98\% $[86, 111]\%$ of its p$\to$n CV gain (paired bootstrap over images, 10{,}000 resamples); in n$\to$p the policy has no gain to recover. The tuned fixed schedule differs from the default policy by $-0.187$ in LHR lift ($[-0.279, -0.095]$, $p=1.0\times10^{-4}$, $d=-0.33$), $-0.005$ in n$\to$p CV (1 vs.\ 2 discordant, $p=1.0$) and $+0.050$ in p$\to$n CV (22 vs.\ 12, $p=0.12$); from the mean-action schedule by $-0.116$ in LHR lift ($[-0.217, -0.013]$, $p=0.025$) and $+0.060$ in p$\to$n CV (21 vs.\ 9, $p=0.043$); and from no policy by $+0.344$ in LHR lift ($[+0.260, +0.432]$, $p=1.6\times10^{-12}$). Its mean p$\to$n transfer is below that of the policy and of the mean-action schedule (paired differences $-0.065$ $[-0.085, -0.045]$ and $-0.032$ $[-0.052, -0.013]$); in n$\to$p the three schedules differ by at most 0.005. A search over fixed schedules by the training reward thus matches the policy's validity but not its lesion targeting or transfer, which the reward does not measure.
 
 \subsection*{E6. Edit locality and FID uncertainty}
 \label{sec:suppl-locality}
