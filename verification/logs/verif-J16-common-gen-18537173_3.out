@@ -97,3 +97,33 @@ STAGE GENERATE — shard 3/8
 [pipeline]   → unet_finetuned.pt + cond_proj.pt
 [adapter] p_to_n <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/archive_pre_ensemble_default_20260812/p_to_n/unet_finetuned.pt sha256=01d6c7e3bcb28317ce3d30c49a0e523a473e6896dc67959169627fa0a71a9853 | cond_proj <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/archive_pre_ensemble_default_20260812/p_to_n/cond_proj.pt | generator == file: unet LoRA 256/256, cond_proj 4/4 | expected sha256 MATCH
 [shard3 p_to_n] [1/25] global_idx=1000075  1.20 min/img  elapsed 1.2 min  eta 28.8 min
+[shard3 p_to_n] [2/25] global_idx=1000076  3.28 min/img  elapsed 6.6 min  eta 75.5 min
+[shard3 p_to_n] [3/25] global_idx=1000077  2.27 min/img  elapsed 6.8 min  eta 49.9 min
+[shard3 p_to_n] [4/25] global_idx=1000078  1.77 min/img  elapsed 7.1 min  eta 37.1 min
+[shard3 p_to_n] [5/25] global_idx=1000079  1.47 min/img  elapsed 7.4 min  eta 29.4 min
+[shard3 p_to_n] [6/25] global_idx=1000080  1.28 min/img  elapsed 7.7 min  eta 24.3 min
+[shard3 p_to_n] [7/25] global_idx=1000081  1.14 min/img  elapsed 8.0 min  eta 20.5 min
+[shard3 p_to_n] [8/25] global_idx=1000082  1.03 min/img  elapsed 8.3 min  eta 17.6 min
+[shard3 p_to_n] [9/25] global_idx=1000083  0.97 min/img  elapsed 8.7 min  eta 15.5 min
+[shard3 p_to_n] [10/25] global_idx=1000084  0.90 min/img  elapsed 9.0 min  eta 13.5 min
+[shard3 p_to_n] [11/25] global_idx=1000085  0.87 min/img  elapsed 9.6 min  eta 12.2 min
+[shard3 p_to_n] [12/25] global_idx=1000086  0.82 min/img  elapsed 9.8 min  eta 10.7 min
+[shard3 p_to_n] [13/25] global_idx=1000087  0.79 min/img  elapsed 10.2 min  eta 9.4 min
+[shard3 p_to_n] [14/25] global_idx=1000088  0.75 min/img  elapsed 10.5 min  eta 8.3 min
+[shard3 p_to_n] [15/25] global_idx=1000089  0.71 min/img  elapsed 10.7 min  eta 7.1 min
+[shard3 p_to_n] [16/25] global_idx=1000090  0.69 min/img  elapsed 11.0 min  eta 6.2 min
+[shard3 p_to_n] [17/25] global_idx=1000091  0.66 min/img  elapsed 11.2 min  eta 5.3 min
+[shard3 p_to_n] [18/25] global_idx=1000092  0.64 min/img  elapsed 11.5 min  eta 4.5 min
+[shard3 p_to_n] [19/25] global_idx=1000093  0.62 min/img  elapsed 11.8 min  eta 3.7 min
+[shard3 p_to_n] [20/25] global_idx=1000094  0.85 min/img  elapsed 17.0 min  eta 4.3 min
+[shard3 p_to_n] [21/25] global_idx=1000095  0.82 min/img  elapsed 17.3 min  eta 3.3 min
+[shard3 p_to_n] [22/25] global_idx=1000096  0.80 min/img  elapsed 17.6 min  eta 2.4 min
+[shard3 p_to_n] [23/25] global_idx=1000097  0.79 min/img  elapsed 18.1 min  eta 1.6 min
+[shard3 p_to_n] [24/25] global_idx=1000098  0.76 min/img  elapsed 18.3 min  eta 0.8 min
+[shard3 p_to_n] [25/25] global_idx=1000099  0.74 min/img  elapsed 18.6 min  eta 0.0 min
+[generator] Grad-CAM mask: not used (USE_GRADCAM_MASK off)
+
+✓ shard 3 written to '/home2020/home/insa/arbaoui/verification/out/J16_single_common/shards/cf_shard_003.pt'
+  Run the reduce stage once ALL 8 shards exist:
+    python -u eval_main.py --stage reduce --num-shards 8
+=== finished at Thu Nov  5 21:35:38 CET 2026

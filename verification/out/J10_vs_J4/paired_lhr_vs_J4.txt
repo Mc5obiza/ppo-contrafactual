@@ -1,0 +1,21 @@
+
+PAIRED ARM TEST — /home2020/home/insa/arbaoui/verification/out/J4_perdir/shards vs /home2020/home/insa/arbaoui/verification/out/J10_cyclegan/shards  (LHR lift, p→n)
+==============================================================
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+  blobs[int(m.group(1))] = torch.load(p, map_location="cpu")
+paired images            : 148
+mean lift /home2020/home/insa/arbaoui/verification/out/J4_perdir/shards: 2.5955  (sd 0.8945)
+mean lift /home2020/home/insa/arbaoui/verification/out/J10_cyclegan/shards: 1.4827  (sd 0.5760)
+paired difference       : +1.1128   95% CI [+0.9832, +1.2455]
+paired t-test           : t=16.537  p=2.306e-35
+Wilcoxon signed-rank    : W=126.0  p=6.208e-25
+Cohen's d (paired)      : +1.359
+/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards better on       : 140 / 148 images
+
+READING
+  The difference is statistically detectable (p=2.31e-35), but read the
+  effect size before calling it meaningful: a lift gap of +1.113
+  against a between-image sd of 0.895.
+

@@ -1,0 +1,7005 @@
+{
+ "settings": {
+  "guidance": [
+   "densenet121-res224-rsna",
+   "densenet121-res224-chex"
+  ],
+  "heads": {
+   "nih": [
+    "Pneumonia",
+    "Consolidation",
+    "Infiltration"
+   ],
+   "pc": [
+    "Pneumonia",
+    "Consolidation",
+    "Infiltration"
+   ],
+   "mimic_ch": [
+    "Pneumonia",
+    "Consolidation",
+    "Lung Opacity"
+   ]
+  },
+  "nboot": 2000,
+  "limit": null,
+  "device": "cpu"
+ },
+ "test_fold": {
+  "guidance": {
+   "auroc": 0.8720268607139587,
+   "mean_pos": 0.681331992149353,
+   "mean_neg": 0.3338680863380432,
+   "thresholds": {
+    "youden": 0.5693908929824829,
+    "prev_matched": 0.67750338317974
+   },
+   "sens_spec_youden": [
+    0.7986633249791144,
+    0.7797101449275362
+   ]
+  },
+  "nih:Pneumonia": {
+   "auroc": 0.7663224339485168,
+   "mean_pos": 0.47205793857574463,
+   "mean_neg": 0.31049829721450806,
+   "thresholds": {
+    "youden": 0.5012306427955627,
+    "prev_matched": 0.5095526213187592,
+    "guidance_t0.5_equiv_rate": 0.501961032247999
+   },
+   "sens_spec_youden": [
+    0.7919799498746867,
+    0.6294685990338165
+   ],
+   "rho_real_ceiling": {
+    "rho": 0.46496811509132385,
+    "ci95": [
+     0.44136881828308105,
+     0.4881930649280548
+    ]
+   }
+  },
+  "nih:Consolidation": {
+   "auroc": 0.8020442724227905,
+   "mean_pos": 0.5282334089279175,
+   "mean_neg": 0.409595787525177,
+   "thresholds": {
+    "youden": 0.5066600465774536,
+    "prev_matched": 0.5262637129320463,
+    "guidance_t0.5_equiv_rate": 0.5081808045939245
+   },
+   "sens_spec_youden": [
+    0.8320802005012531,
+    0.6475845410628019
+   ],
+   "rho_real_ceiling": {
+    "rho": 0.3414386808872223,
+    "ci95": [
+     0.325298935174942,
+     0.3572391867637634
+    ]
+   }
+  },
+  "nih:Infiltration": {
+   "auroc": 0.7402126789093018,
+   "mean_pos": 0.5668008923530579,
+   "mean_neg": 0.47748440504074097,
+   "thresholds": {
+    "youden": 0.5502194547653199,
+    "prev_matched": 0.5816582851425994,
+    "guidance_t0.5_equiv_rate": 0.5393241759831481
+   },
+   "sens_spec_youden": [
+    0.6658312447786132,
+    0.7285024154589372
+   ],
+   "rho_real_ceiling": {
+    "rho": 0.25705257058143616,
+    "ci95": [
+     0.23776885867118835,
+     0.27558887004852295
+    ]
+   }
+  },
+  "pc:Pneumonia": {
+   "auroc": 0.7825862765312195,
+   "mean_pos": 0.6310645341873169,
+   "mean_neg": 0.42862454056739807,
+   "thresholds": {
+    "youden": 0.5507971525192261,
+    "prev_matched": 0.642774362990265,
+    "guidance_t0.5_equiv_rate": 0.5652170459362413
+   },
+   "sens_spec_youden": [
+    0.8329156223893066,
+    0.6285024154589371
+   ],
+   "rho_real_ceiling": {
+    "rho": 0.5826216340065002,
+    "ci95": [
+     0.5574676394462585,
+     0.608955442905426
+    ]
+   }
+  },
+  "pc:Consolidation": {
+   "auroc": 0.7982586026191711,
+   "mean_pos": 0.5405126214027405,
+   "mean_neg": 0.32958006858825684,
+   "thresholds": {
+    "youden": 0.513734381198883,
+    "prev_matched": 0.5545584126226415,
+    "guidance_t0.5_equiv_rate": 0.5247395036817826
+   },
+   "sens_spec_youden": [
+    0.898078529657477,
+    0.6086956521739131
+   ],
+   "rho_real_ceiling": {
+    "rho": 0.6070632338523865,
+    "ci95": [
+     0.5863479375839233,
+     0.6299655437469482
+    ]
+   }
+  },
+  "pc:Infiltration": {
+   "auroc": 0.8044862747192383,
+   "mean_pos": 0.7400231957435608,
+   "mean_neg": 0.4736873507499695,
+   "thresholds": {
+    "youden": 0.6010363578796387,
+    "prev_matched": 0.7612265161478899,
+    "guidance_t0.5_equiv_rate": 0.636853060473077
+   },
+   "sens_spec_youden": [
+    0.8755221386800334,
+    0.6214975845410629
+   ],
+   "rho_real_ceiling": {
+    "rho": 0.7665137052536011,
+    "ci95": [
+     0.7380746006965637,
+     0.7935397624969482
+    ]
+   }
+  },
+  "mimic_ch:Pneumonia": {
+   "auroc": 0.7278155088424683,
+   "mean_pos": 0.5068120956420898,
+   "mean_neg": 0.3599933683872223,
+   "thresholds": {
+    "youden": 0.5065951466560363,
+    "prev_matched": 0.5419540761092059,
+    "guidance_t0.5_equiv_rate": 0.5150189492415238
+   },
+   "sens_spec_youden": [
+    0.783625730994152,
+    0.5690821256038647
+   ],
+   "rho_real_ceiling": {
+    "rho": 0.42254382371902466,
+    "ci95": [
+     0.39884665608406067,
+     0.44896945357322693
+    ]
+   }
+  },
+  "mimic_ch:Consolidation": {
+   "auroc": 0.7197424173355103,
+   "mean_pos": 0.5267216563224792,
+   "mean_neg": 0.3693476617336273,
+   "thresholds": {
+    "youden": 0.5052321529388428,
+    "prev_matched": 0.5535314542447133,
+    "guidance_t0.5_equiv_rate": 0.5191630356897459
+   },
+   "sens_spec_youden": [
+    0.8304093567251462,
+    0.5053140096618357
+   ],
+   "rho_real_ceiling": {
+    "rho": 0.4529218375682831,
+    "ci95": [
+     0.4268689453601837,
+     0.4799271523952484
+    ]
+   }
+  },
+  "mimic_ch:Lung Opacity": {
+   "auroc": 0.7697464227676392,
+   "mean_pos": 0.6706884503364563,
+   "mean_neg": 0.45250752568244934,
+   "thresholds": {
+    "youden": 0.5761854887008667,
+    "prev_matched": 0.7019662704274786,
+    "guidance_t0.5_equiv_rate": 0.6157202315460056
+   },
+   "sens_spec_youden": [
+    0.8387635756056808,
+    0.5785024154589372
+   ],
+   "rho_real_ceiling": {
+    "rho": 0.6279240250587463,
+    "ci95": [
+     0.6029587984085083,
+     0.6543851494789124
+    ]
+   }
+  }
+ },
+ "arms": {
+  "J4": {
+   "n_to_p": {
+    "n": 200,
+    "guidance_delta": 0.898152768611908,
+    "guidance_cv_tau0.5": 1.0,
+    "guidance_cv_tau0.8": 1.0,
+    "heads": {
+     "guidance": {
+      "delta": 0.898152768611908,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.03929426893591881,
+      "rho": 0.0437500961124897,
+      "ci95": [
+       0.0050066146068274975,
+       0.08349627256393433
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 184,
+       "flip_rate": 0.21739130434782608,
+       "target_side_rate_all": 0.22
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 198,
+       "flip_rate": 0.05555555555555555,
+       "target_side_rate_all": 0.055
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 187,
+       "flip_rate": 0.1925133689839572,
+       "target_side_rate_all": 0.195
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.1450827568769455,
+      "rho": 0.1615346074104309,
+      "ci95": [
+       0.13102464377880096,
+       0.1911209523677826
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 193,
+       "flip_rate": 0.2694300518134715,
+       "target_side_rate_all": 0.29
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 199,
+       "flip_rate": 0.06030150753768844,
+       "target_side_rate_all": 0.06
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.2358974358974359,
+       "target_side_rate_all": 0.25
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.09085477888584137,
+      "rho": 0.10115737468004227,
+      "ci95": [
+       0.08192520588636398,
+       0.122562937438488
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 193,
+       "flip_rate": 0.2538860103626943,
+       "target_side_rate_all": 0.275
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 199,
+       "flip_rate": 0.09045226130653267,
+       "target_side_rate_all": 0.095
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 180,
+       "flip_rate": 0.3388888888888889,
+       "target_side_rate_all": 0.395
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.41791006922721863,
+      "rho": 0.4652995467185974,
+      "ci95": [
+       0.43565279245376587,
+       0.49285009503364563
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.912568306010929,
+       "target_side_rate_all": 0.92
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 195,
+       "flip_rate": 0.5435897435897435,
+       "target_side_rate_all": 0.545
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 185,
+       "flip_rate": 0.8594594594594595,
+       "target_side_rate_all": 0.87
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.4381190538406372,
+      "rho": 0.48780015110969543,
+      "ci95": [
+       0.4623236358165741,
+       0.51381915807724
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 187,
+       "flip_rate": 0.9144385026737968,
+       "target_side_rate_all": 0.92
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 194,
+       "flip_rate": 0.5618556701030928,
+       "target_side_rate_all": 0.57
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.8359788359788359,
+       "target_side_rate_all": 0.84
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.4547908902168274,
+      "rho": 0.5063624978065491,
+      "ci95": [
+       0.4774708151817322,
+       0.533463180065155
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 186,
+       "flip_rate": 0.8225806451612904,
+       "target_side_rate_all": 0.83
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 198,
+       "flip_rate": 0.31313131313131315,
+       "target_side_rate_all": 0.315
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 191,
+       "flip_rate": 0.7591623036649214,
+       "target_side_rate_all": 0.76
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.29933685064315796,
+      "rho": 0.3332805633544922,
+      "ci95": [
+       0.30236244201660156,
+       0.3633381724357605
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 170,
+       "flip_rate": 0.6941176470588235,
+       "target_side_rate_all": 0.7
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 197,
+       "flip_rate": 0.3299492385786802,
+       "target_side_rate_all": 0.335
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 180,
+       "flip_rate": 0.6,
+       "target_side_rate_all": 0.625
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.32984572649002075,
+      "rho": 0.3672490119934082,
+      "ci95": [
+       0.3339053988456726,
+       0.4012666344642639
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 164,
+       "flip_rate": 0.7560975609756098,
+       "target_side_rate_all": 0.79
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 196,
+       "flip_rate": 0.29591836734693877,
+       "target_side_rate_all": 0.305
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 178,
+       "flip_rate": 0.5786516853932584,
+       "target_side_rate_all": 0.6
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.3418007791042328,
+      "rho": 0.3805597424507141,
+      "ci95": [
+       0.3447805643081665,
+       0.4152955412864685
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 182,
+       "flip_rate": 0.5659340659340659,
+       "target_side_rate_all": 0.595
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 198,
+       "flip_rate": 0.14646464646464646,
+       "target_side_rate_all": 0.155
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 188,
+       "flip_rate": 0.3723404255319149,
+       "target_side_rate_all": 0.405
+      }
+     }
+    },
+    "l2_mean": 12.389814376831055,
+    "linf_mean": 0.4356520175933838
+   },
+   "p_to_n": {
+    "n": 200,
+    "guidance_delta": 0.7610315084457397,
+    "guidance_cv_tau0.5": 0.935,
+    "guidance_cv_tau0.8": 0.845,
+    "heads": {
+     "guidance": {
+      "delta": 0.7610315084457397,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 0.975,
+       "target_side_rate_all": 0.975
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 0.99,
+       "target_side_rate_all": 0.99
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.12581291794776917,
+      "rho": 0.16531893610954285,
+      "ci95": [
+       0.13802464306354523,
+       0.19348683953285217
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 189,
+       "flip_rate": 0.48148148148148145,
+       "target_side_rate_all": 0.5
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 139,
+       "flip_rate": 0.7913669064748201,
+       "target_side_rate_all": 0.835
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 185,
+       "flip_rate": 0.5243243243243243,
+       "target_side_rate_all": 0.55
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.07003156840801239,
+      "rho": 0.09202190488576889,
+      "ci95": [
+       0.07889246195554733,
+       0.10708661377429962
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 197,
+       "flip_rate": 0.4873096446700508,
+       "target_side_rate_all": 0.495
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 167,
+       "flip_rate": 0.8383233532934131,
+       "target_side_rate_all": 0.865
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.5282051282051282,
+       "target_side_rate_all": 0.54
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.06751756370067596,
+      "rho": 0.0887184888124466,
+      "ci95": [
+       0.07700542360544205,
+       0.09910135716199875
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 178,
+       "flip_rate": 0.34269662921348315,
+       "target_side_rate_all": 0.395
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 152,
+       "flip_rate": 0.6578947368421053,
+       "target_side_rate_all": 0.725
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 183,
+       "flip_rate": 0.2568306010928962,
+       "target_side_rate_all": 0.305
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.23298051953315735,
+      "rho": 0.3061378002166748,
+      "ci95": [
+       0.27607670426368713,
+       0.335951566696167
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.912568306010929,
+       "target_side_rate_all": 0.915
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 87,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 0.995
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 168,
+       "flip_rate": 0.9702380952380952,
+       "target_side_rate_all": 0.97
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.19285576045513153,
+      "rho": 0.2534136474132538,
+      "ci95": [
+       0.22385703027248383,
+       0.28340741991996765
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 198,
+       "flip_rate": 0.803030303030303,
+       "target_side_rate_all": 0.805
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 102,
+       "flip_rate": 0.9803921568627451,
+       "target_side_rate_all": 0.985
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.9312169312169312,
+       "target_side_rate_all": 0.935
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.2922091782093048,
+      "rho": 0.3839646279811859,
+      "ci95": [
+       0.3545297384262085,
+       0.41238415241241455
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 194,
+       "flip_rate": 0.8814432989690721,
+       "target_side_rate_all": 0.885
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 106,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 174,
+       "flip_rate": 0.9770114942528736,
+       "target_side_rate_all": 0.975
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.2716069519519806,
+      "rho": 0.3568931818008423,
+      "ci95": [
+       0.3176984190940857,
+       0.3967393934726715
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 163,
+       "flip_rate": 0.803680981595092,
+       "target_side_rate_all": 0.805
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 102,
+       "flip_rate": 0.8921568627450981,
+       "target_side_rate_all": 0.935
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 151,
+       "flip_rate": 0.8344370860927153,
+       "target_side_rate_all": 0.85
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.26474010944366455,
+      "rho": 0.3478701114654541,
+      "ci95": [
+       0.29980528354644775,
+       0.3939763009548187
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 176,
+       "flip_rate": 0.7272727272727273,
+       "target_side_rate_all": 0.72
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 97,
+       "flip_rate": 0.8762886597938144,
+       "target_side_rate_all": 0.9
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 152,
+       "flip_rate": 0.8157894736842105,
+       "target_side_rate_all": 0.805
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.3108952045440674,
+      "rho": 0.4085181653499603,
+      "ci95": [
+       0.37061166763305664,
+       0.4483491778373718
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 185,
+       "flip_rate": 0.7297297297297297,
+       "target_side_rate_all": 0.745
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 125,
+       "flip_rate": 0.888,
+       "target_side_rate_all": 0.92
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 176,
+       "flip_rate": 0.8238636363636364,
+       "target_side_rate_all": 0.83
+      }
+     }
+    },
+    "l2_mean": 17.548603057861328,
+    "linf_mean": 0.5529235601425171
+   }
+  },
+  "J5_none": {
+   "n_to_p": {
+    "n": 200,
+    "guidance_delta": 0.8961284160614014,
+    "guidance_cv_tau0.5": 1.0,
+    "guidance_cv_tau0.8": 1.0,
+    "heads": {
+     "guidance": {
+      "delta": 0.8961284160614014,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.09043393284082413,
+      "rho": 0.10091626644134521,
+      "ci95": [
+       0.061807069927453995,
+       0.140798881649971
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 184,
+       "flip_rate": 0.25,
+       "target_side_rate_all": 0.255
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 198,
+       "flip_rate": 0.050505050505050504,
+       "target_side_rate_all": 0.05
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 187,
+       "flip_rate": 0.1925133689839572,
+       "target_side_rate_all": 0.2
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.17595091462135315,
+      "rho": 0.19634564220905304,
+      "ci95": [
+       0.16531209647655487,
+       0.22727306187152863
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 193,
+       "flip_rate": 0.38341968911917096,
+       "target_side_rate_all": 0.4
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 199,
+       "flip_rate": 0.11055276381909548,
+       "target_side_rate_all": 0.115
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.35384615384615387,
+       "target_side_rate_all": 0.37
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.09756700694561005,
+      "rho": 0.10887614637613297,
+      "ci95": [
+       0.09018164873123169,
+       0.12969839572906494
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 193,
+       "flip_rate": 0.31088082901554404,
+       "target_side_rate_all": 0.335
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 199,
+       "flip_rate": 0.12562814070351758,
+       "target_side_rate_all": 0.13
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 180,
+       "flip_rate": 0.46111111111111114,
+       "target_side_rate_all": 0.495
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.4247487783432007,
+      "rho": 0.473982036113739,
+      "ci95": [
+       0.4440407156944275,
+       0.5021213889122009
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.9398907103825137,
+       "target_side_rate_all": 0.945
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 195,
+       "flip_rate": 0.5692307692307692,
+       "target_side_rate_all": 0.58
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 185,
+       "flip_rate": 0.8972972972972973,
+       "target_side_rate_all": 0.905
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.4420272707939148,
+      "rho": 0.493263304233551,
+      "ci95": [
+       0.46741315722465515,
+       0.5173541903495789
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 187,
+       "flip_rate": 0.9572192513368984,
+       "target_side_rate_all": 0.96
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 194,
+       "flip_rate": 0.6030927835051546,
+       "target_side_rate_all": 0.615
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.8835978835978836,
+       "target_side_rate_all": 0.89
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.4730549156665802,
+      "rho": 0.5278874039649963,
+      "ci95": [
+       0.49967458844184875,
+       0.5554658770561218
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 186,
+       "flip_rate": 0.8602150537634409,
+       "target_side_rate_all": 0.87
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 198,
+       "flip_rate": 0.35858585858585856,
+       "target_side_rate_all": 0.36
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 191,
+       "flip_rate": 0.8010471204188482,
+       "target_side_rate_all": 0.81
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.3087993264198303,
+      "rho": 0.34459272027015686,
+      "ci95": [
+       0.3125220537185669,
+       0.3742000162601471
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 170,
+       "flip_rate": 0.788235294117647,
+       "target_side_rate_all": 0.78
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 197,
+       "flip_rate": 0.3604060913705584,
+       "target_side_rate_all": 0.365
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 180,
+       "flip_rate": 0.6611111111111111,
+       "target_side_rate_all": 0.675
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.3416658043861389,
+      "rho": 0.38126879930496216,
+      "ci95": [
+       0.3493930697441101,
+       0.41530826687812805
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 164,
+       "flip_rate": 0.823170731707317,
+       "target_side_rate_all": 0.855
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 196,
+       "flip_rate": 0.2857142857142857,
+       "target_side_rate_all": 0.29
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 178,
+       "flip_rate": 0.6292134831460674,
+       "target_side_rate_all": 0.655
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.36779919266700745,
+      "rho": 0.4104313552379608,
+      "ci95": [
+       0.3759874999523163,
+       0.44480061531066895
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 182,
+       "flip_rate": 0.6318681318681318,
+       "target_side_rate_all": 0.655
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 198,
+       "flip_rate": 0.16161616161616163,
+       "target_side_rate_all": 0.17
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 188,
+       "flip_rate": 0.5319148936170213,
+       "target_side_rate_all": 0.55
+      }
+     }
+    },
+    "l2_mean": 13.362632751464844,
+    "linf_mean": 0.4465002417564392
+   },
+   "p_to_n": {
+    "n": 200,
+    "guidance_delta": 0.5735557675361633,
+    "guidance_cv_tau0.5": 0.735,
+    "guidance_cv_tau0.8": 0.42,
+    "heads": {
+     "guidance": {
+      "delta": 0.5735557675361633,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 0.84,
+       "target_side_rate_all": 0.84
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 0.98,
+       "target_side_rate_all": 0.98
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.06461997330188751,
+      "rho": 0.11266554892063141,
+      "ci95": [
+       0.08256927877664566,
+       0.1449376344680786
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 189,
+       "flip_rate": 0.31216931216931215,
+       "target_side_rate_all": 0.34
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 139,
+       "flip_rate": 0.5755395683453237,
+       "target_side_rate_all": 0.675
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 185,
+       "flip_rate": 0.35135135135135137,
+       "target_side_rate_all": 0.38
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.045394573360681534,
+      "rho": 0.0791458785533905,
+      "ci95": [
+       0.06904858350753784,
+       0.09016948938369751
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 197,
+       "flip_rate": 0.25380710659898476,
+       "target_side_rate_all": 0.26
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 167,
+       "flip_rate": 0.6467065868263473,
+       "target_side_rate_all": 0.705
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.3076923076923077,
+       "target_side_rate_all": 0.315
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.05648873373866081,
+      "rho": 0.09848865121603012,
+      "ci95": [
+       0.08629536628723145,
+       0.1122245043516159
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 178,
+       "flip_rate": 0.2752808988764045,
+       "target_side_rate_all": 0.34
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 152,
+       "flip_rate": 0.4407894736842105,
+       "target_side_rate_all": 0.555
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 183,
+       "flip_rate": 0.18579234972677597,
+       "target_side_rate_all": 0.24
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.14072276651859283,
+      "rho": 0.24535149335861206,
+      "ci95": [
+       0.22013063728809357,
+       0.2745588421821594
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.6939890710382514,
+       "target_side_rate_all": 0.72
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 87,
+       "flip_rate": 0.9425287356321839,
+       "target_side_rate_all": 0.975
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 168,
+       "flip_rate": 0.7857142857142857,
+       "target_side_rate_all": 0.82
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.09026335924863815,
+      "rho": 0.1573750376701355,
+      "ci95": [
+       0.12989425659179688,
+       0.18663033843040466
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 198,
+       "flip_rate": 0.4898989898989899,
+       "target_side_rate_all": 0.49
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 102,
+       "flip_rate": 0.9411764705882353,
+       "target_side_rate_all": 0.96
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.7407407407407407,
+       "target_side_rate_all": 0.75
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.20856527984142303,
+      "rho": 0.3636355698108673,
+      "ci95": [
+       0.33503711223602295,
+       0.3935036361217499
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 194,
+       "flip_rate": 0.6185567010309279,
+       "target_side_rate_all": 0.62
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 106,
+       "flip_rate": 0.9811320754716981,
+       "target_side_rate_all": 0.99
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 174,
+       "flip_rate": 0.8103448275862069,
+       "target_side_rate_all": 0.825
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.08541189879179001,
+      "rho": 0.14891646802425385,
+      "ci95": [
+       0.0968172624707222,
+       0.19621683657169342
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 163,
+       "flip_rate": 0.4233128834355828,
+       "target_side_rate_all": 0.41
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 102,
+       "flip_rate": 0.7745098039215687,
+       "target_side_rate_all": 0.79
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 151,
+       "flip_rate": 0.5099337748344371,
+       "target_side_rate_all": 0.5
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.08176755905151367,
+      "rho": 0.14256252348423004,
+      "ci95": [
+       0.08784182369709015,
+       0.1951245814561844
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 176,
+       "flip_rate": 0.3352272727272727,
+       "target_side_rate_all": 0.325
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 97,
+       "flip_rate": 0.711340206185567,
+       "target_side_rate_all": 0.73
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 152,
+       "flip_rate": 0.4868421052631579,
+       "target_side_rate_all": 0.49
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.13178648054599762,
+      "rho": 0.22977100312709808,
+      "ci95": [
+       0.1849726438522339,
+       0.2721688449382782
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 185,
+       "flip_rate": 0.34594594594594597,
+       "target_side_rate_all": 0.34
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 125,
+       "flip_rate": 0.688,
+       "target_side_rate_all": 0.725
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 176,
+       "flip_rate": 0.4715909090909091,
+       "target_side_rate_all": 0.47
+      }
+     }
+    },
+    "l2_mean": 11.02995491027832,
+    "linf_mean": 0.5264289975166321
+   }
+  },
+  "J12_fixed_tuned": {
+   "n_to_p": {
+    "n": 200,
+    "guidance_delta": 0.8970133066177368,
+    "guidance_cv_tau0.5": 1.0,
+    "guidance_cv_tau0.8": 1.0,
+    "heads": {
+     "guidance": {
+      "delta": 0.8970133066177368,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.03539585694670677,
+      "rho": 0.039459679275751114,
+      "ci95": [
+       0.0018807246815413237,
+       0.07449068129062653
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 184,
+       "flip_rate": 0.20108695652173914,
+       "target_side_rate_all": 0.2
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 198,
+       "flip_rate": 0.045454545454545456,
+       "target_side_rate_all": 0.045
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 187,
+       "flip_rate": 0.16042780748663102,
+       "target_side_rate_all": 0.16
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.14746487140655518,
+      "rho": 0.16439540684223175,
+      "ci95": [
+       0.13694676756858826,
+       0.1921115219593048
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 193,
+       "flip_rate": 0.24870466321243523,
+       "target_side_rate_all": 0.26
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 199,
+       "flip_rate": 0.05025125628140704,
+       "target_side_rate_all": 0.05
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.2153846153846154,
+       "target_side_rate_all": 0.23
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.0966898649930954,
+      "rho": 0.10779089480638504,
+      "ci95": [
+       0.08730517327785492,
+       0.12974417209625244
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 193,
+       "flip_rate": 0.27979274611398963,
+       "target_side_rate_all": 0.305
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 199,
+       "flip_rate": 0.08040201005025126,
+       "target_side_rate_all": 0.085
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 180,
+       "flip_rate": 0.4222222222222222,
+       "target_side_rate_all": 0.46
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.41779032349586487,
+      "rho": 0.4657571017742157,
+      "ci95": [
+       0.4369781017303467,
+       0.4950007200241089
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.9016393442622951,
+       "target_side_rate_all": 0.91
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 195,
+       "flip_rate": 0.5230769230769231,
+       "target_side_rate_all": 0.535
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 185,
+       "flip_rate": 0.8540540540540541,
+       "target_side_rate_all": 0.865
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.4355149567127228,
+      "rho": 0.4855167269706726,
+      "ci95": [
+       0.45960143208503723,
+       0.5114316940307617
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 187,
+       "flip_rate": 0.93048128342246,
+       "target_side_rate_all": 0.935
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 194,
+       "flip_rate": 0.520618556701031,
+       "target_side_rate_all": 0.53
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.8624338624338624,
+       "target_side_rate_all": 0.87
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.45475345849990845,
+      "rho": 0.5069640278816223,
+      "ci95": [
+       0.4793512225151062,
+       0.535123884677887
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 186,
+       "flip_rate": 0.8440860215053764,
+       "target_side_rate_all": 0.855
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 198,
+       "flip_rate": 0.30808080808080807,
+       "target_side_rate_all": 0.315
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 191,
+       "flip_rate": 0.7643979057591623,
+       "target_side_rate_all": 0.77
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.29252269864082336,
+      "rho": 0.3261074125766754,
+      "ci95": [
+       0.294463574886322,
+       0.3577747642993927
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 170,
+       "flip_rate": 0.7294117647058823,
+       "target_side_rate_all": 0.745
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 197,
+       "flip_rate": 0.3299492385786802,
+       "target_side_rate_all": 0.335
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 180,
+       "flip_rate": 0.5944444444444444,
+       "target_side_rate_all": 0.63
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.32356491684913635,
+      "rho": 0.3607136309146881,
+      "ci95": [
+       0.3250931203365326,
+       0.3945867121219635
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 164,
+       "flip_rate": 0.7926829268292683,
+       "target_side_rate_all": 0.825
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 196,
+       "flip_rate": 0.2755102040816326,
+       "target_side_rate_all": 0.28
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 178,
+       "flip_rate": 0.5730337078651685,
+       "target_side_rate_all": 0.605
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.3357177674770355,
+      "rho": 0.374261736869812,
+      "ci95": [
+       0.3386399447917938,
+       0.40749862790107727
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 182,
+       "flip_rate": 0.5384615384615384,
+       "target_side_rate_all": 0.575
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 198,
+       "flip_rate": 0.09595959595959595,
+       "target_side_rate_all": 0.1
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 188,
+       "flip_rate": 0.3829787234042553,
+       "target_side_rate_all": 0.41
+      }
+     }
+    },
+    "l2_mean": 11.4847412109375,
+    "linf_mean": 0.4290127158164978
+   },
+   "p_to_n": {
+    "n": 200,
+    "guidance_delta": 0.7943161725997925,
+    "guidance_cv_tau0.5": 0.97,
+    "guidance_cv_tau0.8": 0.915,
+    "heads": {
+     "guidance": {
+      "delta": 0.7943161725997925,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 0.975,
+       "target_side_rate_all": 0.975
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 0.99,
+       "target_side_rate_all": 0.99
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.1432063728570938,
+      "rho": 0.1802888810634613,
+      "ci95": [
+       0.15102574229240417,
+       0.21017993986606598
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 189,
+       "flip_rate": 0.544973544973545,
+       "target_side_rate_all": 0.56
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 139,
+       "flip_rate": 0.7410071942446043,
+       "target_side_rate_all": 0.82
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 185,
+       "flip_rate": 0.6054054054054054,
+       "target_side_rate_all": 0.625
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.07746154069900513,
+      "rho": 0.09751978516578674,
+      "ci95": [
+       0.08279004693031311,
+       0.11482429504394531
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 197,
+       "flip_rate": 0.48223350253807107,
+       "target_side_rate_all": 0.49
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 167,
+       "flip_rate": 0.8323353293413174,
+       "target_side_rate_all": 0.855
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.5538461538461539,
+       "target_side_rate_all": 0.565
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.07533375918865204,
+      "rho": 0.09484102576971054,
+      "ci95": [
+       0.08488115668296814,
+       0.10523440688848495
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 178,
+       "flip_rate": 0.37640449438202245,
+       "target_side_rate_all": 0.44
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 152,
+       "flip_rate": 0.6513157894736842,
+       "target_side_rate_all": 0.725
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 183,
+       "flip_rate": 0.31693989071038253,
+       "target_side_rate_all": 0.375
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.16265727579593658,
+      "rho": 0.20477648079395294,
+      "ci95": [
+       0.1811603456735611,
+       0.23066043853759766
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.7759562841530054,
+       "target_side_rate_all": 0.79
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 87,
+       "flip_rate": 0.9655172413793104,
+       "target_side_rate_all": 0.975
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 168,
+       "flip_rate": 0.8392857142857143,
+       "target_side_rate_all": 0.845
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.1487099677324295,
+      "rho": 0.1872175931930542,
+      "ci95": [
+       0.1613747924566269,
+       0.21510381996631622
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 198,
+       "flip_rate": 0.7525252525252525,
+       "target_side_rate_all": 0.755
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 102,
+       "flip_rate": 0.9705882352941176,
+       "target_side_rate_all": 0.985
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.8783068783068783,
+       "target_side_rate_all": 0.875
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.24978984892368317,
+      "rho": 0.314471572637558,
+      "ci95": [
+       0.2898251712322235,
+       0.34249356389045715
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 194,
+       "flip_rate": 0.8041237113402062,
+       "target_side_rate_all": 0.81
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 106,
+       "flip_rate": 0.9716981132075472,
+       "target_side_rate_all": 0.985
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 174,
+       "flip_rate": 0.9080459770114943,
+       "target_side_rate_all": 0.91
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.197285994887352,
+      "rho": 0.2483721226453781,
+      "ci95": [
+       0.20741364359855652,
+       0.28969067335128784
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 163,
+       "flip_rate": 0.7300613496932515,
+       "target_side_rate_all": 0.71
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 102,
+       "flip_rate": 0.9019607843137255,
+       "target_side_rate_all": 0.925
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 151,
+       "flip_rate": 0.8145695364238411,
+       "target_side_rate_all": 0.795
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.19259262084960938,
+      "rho": 0.24246342480182648,
+      "ci95": [
+       0.1965799331665039,
+       0.2912917733192444
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 176,
+       "flip_rate": 0.5852272727272727,
+       "target_side_rate_all": 0.56
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 97,
+       "flip_rate": 0.8865979381443299,
+       "target_side_rate_all": 0.91
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 152,
+       "flip_rate": 0.756578947368421,
+       "target_side_rate_all": 0.745
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.2517872750759125,
+      "rho": 0.31698620319366455,
+      "ci95": [
+       0.2795971930027008,
+       0.3560180962085724
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 185,
+       "flip_rate": 0.6594594594594595,
+       "target_side_rate_all": 0.65
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 125,
+       "flip_rate": 0.904,
+       "target_side_rate_all": 0.93
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 176,
+       "flip_rate": 0.7784090909090909,
+       "target_side_rate_all": 0.76
+      }
+     }
+    },
+    "l2_mean": 14.472587585449219,
+    "linf_mean": 0.5458123683929443
+   }
+  },
+  "J15_latent_shift": {
+   "n_to_p": {
+    "n": 200,
+    "guidance_delta": 0.5672916769981384,
+    "guidance_cv_tau0.5": 1.0,
+    "guidance_cv_tau0.8": 0.02,
+    "heads": {
+     "guidance": {
+      "delta": 0.5672916769981384,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 0.9,
+       "target_side_rate_all": 0.9
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 0.365,
+       "target_side_rate_all": 0.365
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.09681939333677292,
+      "rho": 0.17066951096057892,
+      "ci95": [
+       0.09474477916955948,
+       0.2518767714500427
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 184,
+       "flip_rate": 0.2717391304347826,
+       "target_side_rate_all": 0.26
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 198,
+       "flip_rate": 0.1111111111111111,
+       "target_side_rate_all": 0.11
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 187,
+       "flip_rate": 0.24598930481283424,
+       "target_side_rate_all": 0.235
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.11147639900445938,
+      "rho": 0.1965063214302063,
+      "ci95": [
+       0.1424054652452469,
+       0.2544240653514862
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 193,
+       "flip_rate": 0.21761658031088082,
+       "target_side_rate_all": 0.225
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 199,
+       "flip_rate": 0.035175879396984924,
+       "target_side_rate_all": 0.035
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.17435897435897435,
+       "target_side_rate_all": 0.18
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.04441644996404648,
+      "rho": 0.07829561084508896,
+      "ci95": [
+       0.04688965156674385,
+       0.11308073997497559
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 193,
+       "flip_rate": 0.22279792746113988,
+       "target_side_rate_all": 0.235
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 199,
+       "flip_rate": 0.06532663316582915,
+       "target_side_rate_all": 0.07
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 180,
+       "flip_rate": 0.34444444444444444,
+       "target_side_rate_all": 0.36
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.27706125378608704,
+      "rho": 0.4883929491043091,
+      "ci95": [
+       0.43568751215934753,
+       0.5375915765762329
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.366120218579235,
+       "target_side_rate_all": 0.375
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 195,
+       "flip_rate": 0.005128205128205128,
+       "target_side_rate_all": 0.005
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 185,
+       "flip_rate": 0.23783783783783785,
+       "target_side_rate_all": 0.245
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.36781927943229675,
+      "rho": 0.6483777165412903,
+      "ci95": [
+       0.6018605828285217,
+       0.6935073137283325
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 187,
+       "flip_rate": 0.34759358288770054,
+       "target_side_rate_all": 0.37
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 194,
+       "flip_rate": 0.015463917525773196,
+       "target_side_rate_all": 0.015
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.1746031746031746,
+       "target_side_rate_all": 0.185
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.29698240756988525,
+      "rho": 0.5235092043876648,
+      "ci95": [
+       0.4675973653793335,
+       0.5796307921409607
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 186,
+       "flip_rate": 0.3172043010752688,
+       "target_side_rate_all": 0.305
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 198,
+       "flip_rate": 0.0,
+       "target_side_rate_all": 0.0
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 191,
+       "flip_rate": 0.09424083769633508,
+       "target_side_rate_all": 0.09
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.15135641396045685,
+      "rho": 0.2668052911758423,
+      "ci95": [
+       0.20362314581871033,
+       0.326835572719574
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 170,
+       "flip_rate": 0.3,
+       "target_side_rate_all": 0.3
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 197,
+       "flip_rate": 0.04568527918781726,
+       "target_side_rate_all": 0.045
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 180,
+       "flip_rate": 0.22777777777777777,
+       "target_side_rate_all": 0.23
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.2024141252040863,
+      "rho": 0.3568078577518463,
+      "ci95": [
+       0.29199954867362976,
+       0.4176909327507019
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 164,
+       "flip_rate": 0.4817073170731707,
+       "target_side_rate_all": 0.525
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 196,
+       "flip_rate": 0.04591836734693878,
+       "target_side_rate_all": 0.045
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 178,
+       "flip_rate": 0.2696629213483146,
+       "target_side_rate_all": 0.285
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.21245300769805908,
+      "rho": 0.3745039999485016,
+      "ci95": [
+       0.3161589205265045,
+       0.44274359941482544
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 182,
+       "flip_rate": 0.2087912087912088,
+       "target_side_rate_all": 0.215
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 198,
+       "flip_rate": 0.020202020202020204,
+       "target_side_rate_all": 0.025
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 188,
+       "flip_rate": 0.1276595744680851,
+       "target_side_rate_all": 0.135
+      }
+     }
+    },
+    "l2_mean": 34.739376068115234,
+    "linf_mean": 0.6656405925750732
+   },
+   "p_to_n": {
+    "n": 200,
+    "guidance_delta": 0.6774311661720276,
+    "guidance_cv_tau0.5": 1.0,
+    "guidance_cv_tau0.8": 0.67,
+    "heads": {
+     "guidance": {
+      "delta": 0.6774311661720276,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": -0.08224675804376602,
+      "rho": -0.12140976637601852,
+      "ci95": [
+       -0.1683211475610733,
+       -0.07322251796722412
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 189,
+       "flip_rate": 0.14814814814814814,
+       "target_side_rate_all": 0.145
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 139,
+       "flip_rate": 0.28776978417266186,
+       "target_side_rate_all": 0.29
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 185,
+       "flip_rate": 0.16756756756756758,
+       "target_side_rate_all": 0.17
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.3990214467048645,
+      "rho": 0.5890213847160339,
+      "ci95": [
+       0.5512872934341431,
+       0.626344621181488
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 197,
+       "flip_rate": 0.8984771573604061,
+       "target_side_rate_all": 0.9
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 167,
+       "flip_rate": 0.9640718562874252,
+       "target_side_rate_all": 0.965
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.9076923076923077,
+       "target_side_rate_all": 0.91
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.2531617283821106,
+      "rho": 0.37370842695236206,
+      "ci95": [
+       0.3318566083908081,
+       0.418057382106781
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 178,
+       "flip_rate": 0.8033707865168539,
+       "target_side_rate_all": 0.82
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 152,
+       "flip_rate": 0.8486842105263158,
+       "target_side_rate_all": 0.88
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 183,
+       "flip_rate": 0.7650273224043715,
+       "target_side_rate_all": 0.78
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.09840358048677444,
+      "rho": 0.14525990188121796,
+      "ci95": [
+       0.12511277198791504,
+       0.16694171726703644
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.45901639344262296,
+       "target_side_rate_all": 0.45
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 87,
+       "flip_rate": 0.9885057471264368,
+       "target_side_rate_all": 0.995
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 168,
+       "flip_rate": 0.6011904761904762,
+       "target_side_rate_all": 0.565
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.06784363090991974,
+      "rho": 0.10014837235212326,
+      "ci95": [
+       0.08223207294940948,
+       0.12018094956874847
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 198,
+       "flip_rate": 0.45454545454545453,
+       "target_side_rate_all": 0.455
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 102,
+       "flip_rate": 0.9705882352941176,
+       "target_side_rate_all": 0.98
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.6402116402116402,
+       "target_side_rate_all": 0.645
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.3330596685409546,
+      "rho": 0.49165093898773193,
+      "ci95": [
+       0.45996400713920593,
+       0.5249744653701782
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 194,
+       "flip_rate": 0.9536082474226805,
+       "target_side_rate_all": 0.955
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 106,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 174,
+       "flip_rate": 0.9770114942528736,
+       "target_side_rate_all": 0.98
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.1316479742527008,
+      "rho": 0.19433410465717316,
+      "ci95": [
+       0.1570708453655243,
+       0.23189879953861237
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 163,
+       "flip_rate": 0.6932515337423313,
+       "target_side_rate_all": 0.7
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 102,
+       "flip_rate": 0.9607843137254902,
+       "target_side_rate_all": 0.97
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 151,
+       "flip_rate": 0.8278145695364238,
+       "target_side_rate_all": 0.845
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.10527963936328888,
+      "rho": 0.15541009604930878,
+      "ci95": [
+       0.11738375574350357,
+       0.1929294914007187
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 176,
+       "flip_rate": 0.5170454545454546,
+       "target_side_rate_all": 0.54
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 97,
+       "flip_rate": 0.9072164948453608,
+       "target_side_rate_all": 0.955
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 152,
+       "flip_rate": 0.8552631578947368,
+       "target_side_rate_all": 0.865
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.23742632567882538,
+      "rho": 0.3504803776741028,
+      "ci95": [
+       0.3203776478767395,
+       0.3820604383945465
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 185,
+       "flip_rate": 0.8378378378378378,
+       "target_side_rate_all": 0.845
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 125,
+       "flip_rate": 0.976,
+       "target_side_rate_all": 0.985
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 176,
+       "flip_rate": 0.9318181818181818,
+       "target_side_rate_all": 0.94
+      }
+     }
+    },
+    "l2_mean": 80.61467742919922,
+    "linf_mean": 0.893869936466217
+   }
+  },
+  "J10_cyclegan": {
+   "n_to_p": {
+    "n": 200,
+    "guidance_delta": 0.12251371145248413,
+    "guidance_cv_tau0.5": 0.01,
+    "guidance_cv_tau0.8": 0.0,
+    "heads": {
+     "guidance": {
+      "delta": 0.12251371145248413,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 0.005,
+       "target_side_rate_all": 0.005
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 0.0,
+       "target_side_rate_all": 0.0
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.09343116730451584,
+      "rho": 0.7626180648803711,
+      "ci95": [
+       0.6218105554580688,
+       0.9103484153747559
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 184,
+       "flip_rate": 0.15217391304347827,
+       "target_side_rate_all": 0.22
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 198,
+       "flip_rate": 0.030303030303030304,
+       "target_side_rate_all": 0.03
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 187,
+       "flip_rate": 0.11764705882352941,
+       "target_side_rate_all": 0.175
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.07434449344873428,
+      "rho": 0.6068258881568909,
+      "ci95": [
+       0.5009490251541138,
+       0.7251527905464172
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 193,
+       "flip_rate": 0.04145077720207254,
+       "target_side_rate_all": 0.075
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 199,
+       "flip_rate": 0.0,
+       "target_side_rate_all": 0.005
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.035897435897435895,
+       "target_side_rate_all": 0.06
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.026626458391547203,
+      "rho": 0.21733452379703522,
+      "ci95": [
+       0.1723545640707016,
+       0.26901257038116455
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 193,
+       "flip_rate": 0.04145077720207254,
+       "target_side_rate_all": 0.075
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 199,
+       "flip_rate": 0.01507537688442211,
+       "target_side_rate_all": 0.015
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 180,
+       "flip_rate": 0.08888888888888889,
+       "target_side_rate_all": 0.175
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.14126352965831757,
+      "rho": 1.1530425548553467,
+      "ci95": [
+       1.0082345008850098,
+       1.3205411434173584
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.16939890710382513,
+       "target_side_rate_all": 0.235
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 195,
+       "flip_rate": 0.06666666666666667,
+       "target_side_rate_all": 0.09
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 185,
+       "flip_rate": 0.15135135135135136,
+       "target_side_rate_all": 0.21
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.10137203335762024,
+      "rho": 0.8274341821670532,
+      "ci95": [
+       0.6801201701164246,
+       0.9812046885490417
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 187,
+       "flip_rate": 0.11229946524064172,
+       "target_side_rate_all": 0.17
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 194,
+       "flip_rate": 0.03608247422680412,
+       "target_side_rate_all": 0.065
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.06349206349206349,
+       "target_side_rate_all": 0.115
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.16254670917987823,
+      "rho": 1.326763391494751,
+      "ci95": [
+       1.1788599491119385,
+       1.499600887298584
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 186,
+       "flip_rate": 0.13440860215053763,
+       "target_side_rate_all": 0.195
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 198,
+       "flip_rate": 0.030303030303030304,
+       "target_side_rate_all": 0.04
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 191,
+       "flip_rate": 0.1099476439790576,
+       "target_side_rate_all": 0.145
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.08206626772880554,
+      "rho": 0.6698537468910217,
+      "ci95": [
+       0.5510662794113159,
+       0.7918235659599304
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 170,
+       "flip_rate": 0.17058823529411765,
+       "target_side_rate_all": 0.285
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 197,
+       "flip_rate": 0.05583756345177665,
+       "target_side_rate_all": 0.07
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 180,
+       "flip_rate": 0.1388888888888889,
+       "target_side_rate_all": 0.205
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.07775276899337769,
+      "rho": 0.6346454620361328,
+      "ci95": [
+       0.49747246503829956,
+       0.7912036180496216
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 164,
+       "flip_rate": 0.14634146341463414,
+       "target_side_rate_all": 0.3
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 196,
+       "flip_rate": 0.04591836734693878,
+       "target_side_rate_all": 0.06
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 178,
+       "flip_rate": 0.0898876404494382,
+       "target_side_rate_all": 0.175
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.10066966712474823,
+      "rho": 0.8217012286186218,
+      "ci95": [
+       0.7000434994697571,
+       0.9675012826919556
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 182,
+       "flip_rate": 0.14285714285714285,
+       "target_side_rate_all": 0.215
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 198,
+       "flip_rate": 0.005050505050505051,
+       "target_side_rate_all": 0.01
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 188,
+       "flip_rate": 0.10106382978723404,
+       "target_side_rate_all": 0.15
+      }
+     }
+    },
+    "l2_mean": 5.8581318855285645,
+    "linf_mean": 0.3920597434043884
+   },
+   "p_to_n": {
+    "n": 200,
+    "guidance_delta": 0.05534739047288895,
+    "guidance_cv_tau0.5": 0.005,
+    "guidance_cv_tau0.8": 0.0,
+    "heads": {
+     "guidance": {
+      "delta": 0.05534739047288895,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 0.005,
+       "target_side_rate_all": 0.005
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 0.075,
+       "target_side_rate_all": 0.075
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.01153489388525486,
+      "rho": 0.20840899646282196,
+      "ci95": [
+       0.1067364290356636,
+       0.3263852000236511
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 189,
+       "flip_rate": 0.0582010582010582,
+       "target_side_rate_all": 0.105
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 139,
+       "flip_rate": 0.19424460431654678,
+       "target_side_rate_all": 0.44
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 185,
+       "flip_rate": 0.0972972972972973,
+       "target_side_rate_all": 0.16
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.009169057942926884,
+      "rho": 0.16566377878189087,
+      "ci95": [
+       0.1266503781080246,
+       0.2086658477783203
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 197,
+       "flip_rate": 0.015228426395939087,
+       "target_side_rate_all": 0.03
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 167,
+       "flip_rate": 0.1437125748502994,
+       "target_side_rate_all": 0.275
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.046153846153846156,
+       "target_side_rate_all": 0.07
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.012968326918780804,
+      "rho": 0.23430782556533813,
+      "ci95": [
+       0.17578284442424774,
+       0.29372429847717285
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 178,
+       "flip_rate": 0.05056179775280899,
+       "target_side_rate_all": 0.155
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 152,
+       "flip_rate": 0.09210526315789473,
+       "target_side_rate_all": 0.295
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 183,
+       "flip_rate": 0.03278688524590164,
+       "target_side_rate_all": 0.105
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.005632238462567329,
+      "rho": 0.1017615869641304,
+      "ci95": [
+       0.012434053234755993,
+       0.19862832129001617
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.03825136612021858,
+       "target_side_rate_all": 0.11
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 87,
+       "flip_rate": 0.1839080459770115,
+       "target_side_rate_all": 0.575
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 168,
+       "flip_rate": 0.06547619047619048,
+       "target_side_rate_all": 0.18
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.0006167766405269504,
+      "rho": 0.01114373467862606,
+      "ci95": [
+       -0.03015625663101673,
+       0.05210462212562561
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 198,
+       "flip_rate": 0.015151515151515152,
+       "target_side_rate_all": 0.02
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 102,
+       "flip_rate": 0.13725490196078433,
+       "target_side_rate_all": 0.47
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.06878306878306878,
+       "target_side_rate_all": 0.095
+      }
+     },
+     "pc:Infiltration": {
+      "delta": -0.0012148198438808322,
+      "rho": -0.021948998793959618,
+      "ci95": [
+       -0.14741945266723633,
+       0.09331269562244415
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 194,
+       "flip_rate": 0.030927835051546393,
+       "target_side_rate_all": 0.04
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 106,
+       "flip_rate": 0.11320754716981132,
+       "target_side_rate_all": 0.47
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 174,
+       "flip_rate": 0.05172413793103448,
+       "target_side_rate_all": 0.12
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.00017971053603105247,
+      "rho": 0.003246955806389451,
+      "ci95": [
+       -0.14962296187877655,
+       0.16202819347381592
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 163,
+       "flip_rate": 0.049079754601226995,
+       "target_side_rate_all": 0.16
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 102,
+       "flip_rate": 0.17647058823529413,
+       "target_side_rate_all": 0.55
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 151,
+       "flip_rate": 0.09271523178807947,
+       "target_side_rate_all": 0.29
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.004743799567222595,
+      "rho": 0.08570954203605652,
+      "ci95": [
+       -0.07967784255743027,
+       0.26535433530807495
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 176,
+       "flip_rate": 0.03409090909090909,
+       "target_side_rate_all": 0.11
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 97,
+       "flip_rate": 0.17525773195876287,
+       "target_side_rate_all": 0.555
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 152,
+       "flip_rate": 0.13157894736842105,
+       "target_side_rate_all": 0.31
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.016278689727187157,
+      "rho": 0.2941184639930725,
+      "ci95": [
+       0.18246816098690033,
+       0.41832423210144043
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 185,
+       "flip_rate": 0.032432432432432434,
+       "target_side_rate_all": 0.07
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 125,
+       "flip_rate": 0.232,
+       "target_side_rate_all": 0.49
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 176,
+       "flip_rate": 0.0625,
+       "target_side_rate_all": 0.135
+      }
+     }
+    },
+    "l2_mean": 5.869504928588867,
+    "linf_mean": 0.35597163438796997
+   }
+  }
+ },
+ "adversarial": {
+  "n_to_p": {
+   "fgsm_eps1/255": {
+    "n": 200,
+    "guidance_delta": 0.33221355080604553,
+    "guidance_cv_tau0.5": 0.25,
+    "guidance_cv_tau0.8": 0.0,
+    "heads": {
+     "guidance": {
+      "delta": 0.33221355080604553,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 0.105,
+       "target_side_rate_all": 0.105
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 0.005,
+       "target_side_rate_all": 0.005
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.03309594467282295,
+      "rho": 0.09962250292301178,
+      "ci95": [
+       0.08238743245601654,
+       0.11825540661811829
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 184,
+       "flip_rate": 0.07065217391304347,
+       "target_side_rate_all": 0.145
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 198,
+       "flip_rate": 0.010101010101010102,
+       "target_side_rate_all": 0.01
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 187,
+       "flip_rate": 0.0427807486631016,
+       "target_side_rate_all": 0.105
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.03235485032200813,
+      "rho": 0.09739172458648682,
+      "ci95": [
+       0.08281346410512924,
+       0.11290925741195679
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 193,
+       "flip_rate": 0.010362694300518135,
+       "target_side_rate_all": 0.045
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 199,
+       "flip_rate": 0.0,
+       "target_side_rate_all": 0.005
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.010256410256410256,
+       "target_side_rate_all": 0.035
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.005243679508566856,
+      "rho": 0.015784062445163727,
+      "ci95": [
+       0.011287669651210308,
+       0.020489869639277458
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 193,
+       "flip_rate": 0.0051813471502590676,
+       "target_side_rate_all": 0.04
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 199,
+       "flip_rate": 0.0,
+       "target_side_rate_all": 0.005
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 180,
+       "flip_rate": 0.027777777777777776,
+       "target_side_rate_all": 0.12
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.0504341684281826,
+      "rho": 0.15181249380111694,
+      "ci95": [
+       0.13103093206882477,
+       0.17302031815052032
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.0273224043715847,
+       "target_side_rate_all": 0.11
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 195,
+       "flip_rate": 0.020512820512820513,
+       "target_side_rate_all": 0.045
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 185,
+       "flip_rate": 0.021621621621621623,
+       "target_side_rate_all": 0.095
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.03354799002408981,
+      "rho": 0.10098320990800858,
+      "ci95": [
+       0.07959289103746414,
+       0.12456168234348297
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 187,
+       "flip_rate": 0.016042780748663103,
+       "target_side_rate_all": 0.08
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 194,
+       "flip_rate": 0.005154639175257732,
+       "target_side_rate_all": 0.035
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.005291005291005291,
+       "target_side_rate_all": 0.06
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.058490362018346786,
+      "rho": 0.17606253921985626,
+      "ci95": [
+       0.1579572856426239,
+       0.19767281413078308
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 186,
+       "flip_rate": 0.016129032258064516,
+       "target_side_rate_all": 0.085
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 198,
+       "flip_rate": 0.010101010101010102,
+       "target_side_rate_all": 0.02
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 191,
+       "flip_rate": 0.02617801047120419,
+       "target_side_rate_all": 0.07
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.027383148670196533,
+      "rho": 0.08242634683847427,
+      "ci95": [
+       0.06832600384950638,
+       0.09669734537601471
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 170,
+       "flip_rate": 0.03529411764705882,
+       "target_side_rate_all": 0.18
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 197,
+       "flip_rate": 0.015228426395939087,
+       "target_side_rate_all": 0.03
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 180,
+       "flip_rate": 0.03333333333333333,
+       "target_side_rate_all": 0.125
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.025407662615180016,
+      "rho": 0.07647991180419922,
+      "ci95": [
+       0.05985841900110245,
+       0.0947394147515297
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 164,
+       "flip_rate": 0.012195121951219513,
+       "target_side_rate_all": 0.19
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 196,
+       "flip_rate": 0.00510204081632653,
+       "target_side_rate_all": 0.025
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 178,
+       "flip_rate": 0.02247191011235955,
+       "target_side_rate_all": 0.13
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.03211696073412895,
+      "rho": 0.09667564928531647,
+      "ci95": [
+       0.08384907990694046,
+       0.11073540151119232
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 182,
+       "flip_rate": 0.027472527472527472,
+       "target_side_rate_all": 0.115
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 198,
+       "flip_rate": 0.0,
+       "target_side_rate_all": 0.01
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 188,
+       "flip_rate": 0.010638297872340425,
+       "target_side_rate_all": 0.07
+      }
+     }
+    },
+    "l2_mean": 0.9972913861274719,
+    "linf_mean": 0.003921598196029663,
+    "seconds": 83.46146035194397
+   },
+   "fgsm_eps2/255": {
+    "n": 200,
+    "guidance_delta": 0.49430176615715027,
+    "guidance_cv_tau0.5": 0.675,
+    "guidance_cv_tau0.8": 0.025,
+    "heads": {
+     "guidance": {
+      "delta": 0.49430176615715027,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 0.55,
+       "target_side_rate_all": 0.55
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 0.255,
+       "target_side_rate_all": 0.255
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.08611883968114853,
+      "rho": 0.17422321438789368,
+      "ci95": [
+       0.14844068884849548,
+       0.2027570754289627
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 184,
+       "flip_rate": 0.1358695652173913,
+       "target_side_rate_all": 0.205
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 198,
+       "flip_rate": 0.015151515151515152,
+       "target_side_rate_all": 0.015
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 187,
+       "flip_rate": 0.12299465240641712,
+       "target_side_rate_all": 0.18
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.07164870947599411,
+      "rho": 0.14494933187961578,
+      "ci95": [
+       0.12559348344802856,
+       0.1676086038351059
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 193,
+       "flip_rate": 0.02072538860103627,
+       "target_side_rate_all": 0.055
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 199,
+       "flip_rate": 0.005025125628140704,
+       "target_side_rate_all": 0.01
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.02564102564102564,
+       "target_side_rate_all": 0.05
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.013802213594317436,
+      "rho": 0.027922647073864937,
+      "ci95": [
+       0.021121976897120476,
+       0.03536154702305794
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 193,
+       "flip_rate": 0.031088082901554404,
+       "target_side_rate_all": 0.065
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 199,
+       "flip_rate": 0.010050251256281407,
+       "target_side_rate_all": 0.015
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 180,
+       "flip_rate": 0.06111111111111111,
+       "target_side_rate_all": 0.145
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.11836719512939453,
+      "rho": 0.2394634336233139,
+      "ci95": [
+       0.2156897634267807,
+       0.2644728720188141
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.09289617486338798,
+       "target_side_rate_all": 0.17
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 195,
+       "flip_rate": 0.03076923076923077,
+       "target_side_rate_all": 0.055
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 185,
+       "flip_rate": 0.0918918918918919,
+       "target_side_rate_all": 0.16
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.08649646490812302,
+      "rho": 0.17498716711997986,
+      "ci95": [
+       0.14653173089027405,
+       0.20606280863285065
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 187,
+       "flip_rate": 0.058823529411764705,
+       "target_side_rate_all": 0.12
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 194,
+       "flip_rate": 0.015463917525773196,
+       "target_side_rate_all": 0.045
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.031746031746031744,
+       "target_side_rate_all": 0.085
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.14688393473625183,
+      "rho": 0.29715436697006226,
+      "ci95": [
+       0.27182626724243164,
+       0.32483378052711487
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 186,
+       "flip_rate": 0.0967741935483871,
+       "target_side_rate_all": 0.16
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 198,
+       "flip_rate": 0.020202020202020204,
+       "target_side_rate_all": 0.03
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 191,
+       "flip_rate": 0.07329842931937172,
+       "target_side_rate_all": 0.115
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.06900054961442947,
+      "rho": 0.13959194719791412,
+      "ci95": [
+       0.12215228378772736,
+       0.15742477774620056
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 170,
+       "flip_rate": 0.12941176470588237,
+       "target_side_rate_all": 0.26
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 197,
+       "flip_rate": 0.05583756345177665,
+       "target_side_rate_all": 0.07
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 180,
+       "flip_rate": 0.08888888888888889,
+       "target_side_rate_all": 0.175
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.06827300041913986,
+      "rho": 0.13812008500099182,
+      "ci95": [
+       0.11452018469572067,
+       0.16274774074554443
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 164,
+       "flip_rate": 0.07926829268292683,
+       "target_side_rate_all": 0.245
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 196,
+       "flip_rate": 0.025510204081632654,
+       "target_side_rate_all": 0.045
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 178,
+       "flip_rate": 0.056179775280898875,
+       "target_side_rate_all": 0.155
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.08550862222909927,
+      "rho": 0.17298869788646698,
+      "ci95": [
+       0.1550951451063156,
+       0.1926659196615219
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 182,
+       "flip_rate": 0.0989010989010989,
+       "target_side_rate_all": 0.18
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 198,
+       "flip_rate": 0.015151515151515152,
+       "target_side_rate_all": 0.025
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 188,
+       "flip_rate": 0.06382978723404255,
+       "target_side_rate_all": 0.12
+      }
+     }
+    },
+    "l2_mean": 1.992438793182373,
+    "linf_mean": 0.007843165658414364,
+    "seconds": 83.30693125724792
+   },
+   "fgsm_eps4/255": {
+    "n": 200,
+    "guidance_delta": 0.6464672684669495,
+    "guidance_cv_tau0.5": 0.925,
+    "guidance_cv_tau0.8": 0.385,
+    "heads": {
+     "guidance": {
+      "delta": 0.6464672684669495,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 0.83,
+       "target_side_rate_all": 0.83
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 0.7,
+       "target_side_rate_all": 0.7
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.1998964548110962,
+      "rho": 0.3092135787010193,
+      "ci95": [
+       0.27510780096054077,
+       0.34554392099380493
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 184,
+       "flip_rate": 0.42391304347826086,
+       "target_side_rate_all": 0.47
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 198,
+       "flip_rate": 0.11616161616161616,
+       "target_side_rate_all": 0.12
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 187,
+       "flip_rate": 0.39037433155080214,
+       "target_side_rate_all": 0.43
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.14923825860023499,
+      "rho": 0.23085199296474457,
+      "ci95": [
+       0.20222488045692444,
+       0.25923478603363037
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 193,
+       "flip_rate": 0.18134715025906736,
+       "target_side_rate_all": 0.205
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 199,
+       "flip_rate": 0.04522613065326633,
+       "target_side_rate_all": 0.05
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.13846153846153847,
+       "target_side_rate_all": 0.16
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.038981031626462936,
+      "rho": 0.06029853969812393,
+      "ci95": [
+       0.04852570593357086,
+       0.07327120006084442
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 193,
+       "flip_rate": 0.11917098445595854,
+       "target_side_rate_all": 0.15
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 199,
+       "flip_rate": 0.035175879396984924,
+       "target_side_rate_all": 0.04
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 180,
+       "flip_rate": 0.17777777777777778,
+       "target_side_rate_all": 0.24
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.2691671848297119,
+      "rho": 0.416366308927536,
+      "ci95": [
+       0.3857046663761139,
+       0.4471244513988495
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.3442622950819672,
+       "target_side_rate_all": 0.4
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 195,
+       "flip_rate": 0.13333333333333333,
+       "target_side_rate_all": 0.15
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 185,
+       "flip_rate": 0.2810810810810811,
+       "target_side_rate_all": 0.335
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.22662170231342316,
+      "rho": 0.3505540192127228,
+      "ci95": [
+       0.3134180009365082,
+       0.3896028399467468
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 187,
+       "flip_rate": 0.2192513368983957,
+       "target_side_rate_all": 0.27
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 194,
+       "flip_rate": 0.07731958762886598,
+       "target_side_rate_all": 0.105
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.164021164021164,
+       "target_side_rate_all": 0.21
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.3354109823703766,
+      "rho": 0.5188367366790771,
+      "ci95": [
+       0.48808494210243225,
+       0.5509373545646667
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 186,
+       "flip_rate": 0.3870967741935484,
+       "target_side_rate_all": 0.43
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 198,
+       "flip_rate": 0.12121212121212122,
+       "target_side_rate_all": 0.13
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 191,
+       "flip_rate": 0.28272251308900526,
+       "target_side_rate_all": 0.315
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.1942664384841919,
+      "rho": 0.3005046844482422,
+      "ci95": [
+       0.26942944526672363,
+       0.33045583963394165
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 170,
+       "flip_rate": 0.3235294117647059,
+       "target_side_rate_all": 0.41
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 197,
+       "flip_rate": 0.1319796954314721,
+       "target_side_rate_all": 0.145
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 180,
+       "flip_rate": 0.24444444444444444,
+       "target_side_rate_all": 0.305
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.20876102149486542,
+      "rho": 0.3229258954524994,
+      "ci95": [
+       0.28751227259635925,
+       0.35799819231033325
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 164,
+       "flip_rate": 0.3475609756097561,
+       "target_side_rate_all": 0.46
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 196,
+       "flip_rate": 0.11734693877551021,
+       "target_side_rate_all": 0.135
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 178,
+       "flip_rate": 0.1797752808988764,
+       "target_side_rate_all": 0.255
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.23469886183738708,
+      "rho": 0.3630483150482178,
+      "ci95": [
+       0.3342517912387848,
+       0.39189478754997253
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 182,
+       "flip_rate": 0.25274725274725274,
+       "target_side_rate_all": 0.315
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 198,
+       "flip_rate": 0.09090909090909091,
+       "target_side_rate_all": 0.095
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 188,
+       "flip_rate": 0.18617021276595744,
+       "target_side_rate_all": 0.23
+      }
+     }
+    },
+    "l2_mean": 3.9785666465759277,
+    "linf_mean": 0.01568630337715149,
+    "seconds": 82.06227946281433
+   },
+   "fgsm_eps8/255": {
+    "n": 200,
+    "guidance_delta": 0.7515484690666199,
+    "guidance_cv_tau0.5": 0.995,
+    "guidance_cv_tau0.8": 0.69,
+    "heads": {
+     "guidance": {
+      "delta": 0.7515484690666199,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 0.98,
+       "target_side_rate_all": 0.98
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 0.955,
+       "target_side_rate_all": 0.955
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.3031914234161377,
+      "rho": 0.4034223258495331,
+      "ci95": [
+       0.3695860207080841,
+       0.43858540058135986
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 184,
+       "flip_rate": 0.7989130434782609,
+       "target_side_rate_all": 0.815
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 198,
+       "flip_rate": 0.37373737373737376,
+       "target_side_rate_all": 0.375
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 187,
+       "flip_rate": 0.7700534759358288,
+       "target_side_rate_all": 0.785
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.1959787756204605,
+      "rho": 0.2607666552066803,
+      "ci95": [
+       0.23218907415866852,
+       0.28993117809295654
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 193,
+       "flip_rate": 0.45595854922279794,
+       "target_side_rate_all": 0.47
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 199,
+       "flip_rate": 0.135678391959799,
+       "target_side_rate_all": 0.135
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.4307692307692308,
+       "target_side_rate_all": 0.445
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.09254727512598038,
+      "rho": 0.12314212322235107,
+      "ci95": [
+       0.10147561877965927,
+       0.14517027139663696
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 193,
+       "flip_rate": 0.3471502590673575,
+       "target_side_rate_all": 0.37
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 199,
+       "flip_rate": 0.17587939698492464,
+       "target_side_rate_all": 0.18
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 180,
+       "flip_rate": 0.45,
+       "target_side_rate_all": 0.49
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.35781052708625793,
+      "rho": 0.4760977327823639,
+      "ci95": [
+       0.4433204233646393,
+       0.5070997476577759
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.6939890710382514,
+       "target_side_rate_all": 0.72
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 195,
+       "flip_rate": 0.2358974358974359,
+       "target_side_rate_all": 0.25
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 185,
+       "flip_rate": 0.6,
+       "target_side_rate_all": 0.625
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.35783126950263977,
+      "rho": 0.4761253297328949,
+      "ci95": [
+       0.4421350359916687,
+       0.5081391334533691
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 187,
+       "flip_rate": 0.37967914438502676,
+       "target_side_rate_all": 0.42
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 194,
+       "flip_rate": 0.08247422680412371,
+       "target_side_rate_all": 0.095
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.24867724867724866,
+       "target_side_rate_all": 0.28
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.5274667143821716,
+      "rho": 0.7018399238586426,
+      "ci95": [
+       0.6668480634689331,
+       0.7398597002029419
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 186,
+       "flip_rate": 0.9193548387096774,
+       "target_side_rate_all": 0.925
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 198,
+       "flip_rate": 0.5656565656565656,
+       "target_side_rate_all": 0.57
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 191,
+       "flip_rate": 0.8638743455497382,
+       "target_side_rate_all": 0.87
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.33779293298721313,
+      "rho": 0.4494625926017761,
+      "ci95": [
+       0.4077436029911041,
+       0.4895143210887909
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 170,
+       "flip_rate": 0.8588235294117647,
+       "target_side_rate_all": 0.835
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 197,
+       "flip_rate": 0.5888324873096447,
+       "target_side_rate_all": 0.59
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 180,
+       "flip_rate": 0.8055555555555556,
+       "target_side_rate_all": 0.79
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.3841811418533325,
+      "rho": 0.5111861228942871,
+      "ci95": [
+       0.4690110981464386,
+       0.5508460998535156
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 164,
+       "flip_rate": 0.8902439024390244,
+       "target_side_rate_all": 0.89
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 196,
+       "flip_rate": 0.576530612244898,
+       "target_side_rate_all": 0.575
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 178,
+       "flip_rate": 0.7752808988764045,
+       "target_side_rate_all": 0.765
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.47029414772987366,
+      "rho": 0.6257668733596802,
+      "ci95": [
+       0.5875893235206604,
+       0.6641252636909485
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 182,
+       "flip_rate": 0.8901098901098901,
+       "target_side_rate_all": 0.885
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 198,
+       "flip_rate": 0.5808080808080808,
+       "target_side_rate_all": 0.58
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 188,
+       "flip_rate": 0.8138297872340425,
+       "target_side_rate_all": 0.81
+      }
+     }
+    },
+    "l2_mean": 7.936774730682373,
+    "linf_mean": 0.03137258067727089,
+    "seconds": 83.0303361415863
+   },
+   "pgd_linf_eps2/255": {
+    "n": 200,
+    "guidance_delta": 0.7692301869392395,
+    "guidance_cv_tau0.5": 1.0,
+    "guidance_cv_tau0.8": 0.78,
+    "heads": {
+     "guidance": {
+      "delta": 0.7692301869392395,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 0.99,
+       "target_side_rate_all": 0.99
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 0.96,
+       "target_side_rate_all": 0.96
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.1008283793926239,
+      "rho": 0.13107699155807495,
+      "ci95": [
+       0.11195478588342667,
+       0.15083765983581543
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 184,
+       "flip_rate": 0.16304347826086957,
+       "target_side_rate_all": 0.23
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 198,
+       "flip_rate": 0.015151515151515152,
+       "target_side_rate_all": 0.015
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 187,
+       "flip_rate": 0.12299465240641712,
+       "target_side_rate_all": 0.18
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.07987391203641891,
+      "rho": 0.10383616387844086,
+      "ci95": [
+       0.08992669731378555,
+       0.11747687309980392
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 193,
+       "flip_rate": 0.025906735751295335,
+       "target_side_rate_all": 0.06
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 199,
+       "flip_rate": 0.005025125628140704,
+       "target_side_rate_all": 0.01
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.02564102564102564,
+       "target_side_rate_all": 0.05
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.01416241005063057,
+      "rho": 0.018411146476864815,
+      "ci95": [
+       0.013896188698709011,
+       0.023245058953762054
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 193,
+       "flip_rate": 0.031088082901554404,
+       "target_side_rate_all": 0.065
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 199,
+       "flip_rate": 0.010050251256281407,
+       "target_side_rate_all": 0.015
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 180,
+       "flip_rate": 0.06666666666666667,
+       "target_side_rate_all": 0.15
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.12437333911657333,
+      "rho": 0.16168546676635742,
+      "ci95": [
+       0.14393340051174164,
+       0.1785145103931427
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.09836065573770492,
+       "target_side_rate_all": 0.175
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 195,
+       "flip_rate": 0.02564102564102564,
+       "target_side_rate_all": 0.05
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 185,
+       "flip_rate": 0.06486486486486487,
+       "target_side_rate_all": 0.135
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.09535539895296097,
+      "rho": 0.12396211177110672,
+      "ci95": [
+       0.1034177616238594,
+       0.14666080474853516
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 187,
+       "flip_rate": 0.0374331550802139,
+       "target_side_rate_all": 0.1
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 194,
+       "flip_rate": 0.0,
+       "target_side_rate_all": 0.03
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.021164021164021163,
+       "target_side_rate_all": 0.075
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.15511414408683777,
+      "rho": 0.2016485333442688,
+      "ci95": [
+       0.18487779796123505,
+       0.2196255773305893
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 186,
+       "flip_rate": 0.0913978494623656,
+       "target_side_rate_all": 0.155
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 198,
+       "flip_rate": 0.020202020202020204,
+       "target_side_rate_all": 0.03
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 191,
+       "flip_rate": 0.06282722513089005,
+       "target_side_rate_all": 0.105
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.08433559536933899,
+      "rho": 0.10963635891675949,
+      "ci95": [
+       0.09595852345228195,
+       0.12433549761772156
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 170,
+       "flip_rate": 0.1588235294117647,
+       "target_side_rate_all": 0.285
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 197,
+       "flip_rate": 0.04568527918781726,
+       "target_side_rate_all": 0.06
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 180,
+       "flip_rate": 0.1111111111111111,
+       "target_side_rate_all": 0.195
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.0787198394536972,
+      "rho": 0.1023358702659607,
+      "ci95": [
+       0.08534020185470581,
+       0.11957935988903046
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 164,
+       "flip_rate": 0.11585365853658537,
+       "target_side_rate_all": 0.275
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 196,
+       "flip_rate": 0.04591836734693878,
+       "target_side_rate_all": 0.065
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 178,
+       "flip_rate": 0.07865168539325842,
+       "target_side_rate_all": 0.175
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.09811094403266907,
+      "rho": 0.1275443285703659,
+      "ci95": [
+       0.11496532708406448,
+       0.14067111909389496
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 182,
+       "flip_rate": 0.11538461538461539,
+       "target_side_rate_all": 0.195
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 198,
+       "flip_rate": 0.010101010101010102,
+       "target_side_rate_all": 0.015
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 188,
+       "flip_rate": 0.06914893617021277,
+       "target_side_rate_all": 0.125
+      }
+     }
+    },
+    "l2_mean": 1.761074185371399,
+    "linf_mean": 0.007843165658414364,
+    "seconds": 237.1980333328247
+   },
+   "pgd_linf_eps4/255": {
+    "n": 200,
+    "guidance_delta": 0.9078998565673828,
+    "guidance_cv_tau0.5": 1.0,
+    "guidance_cv_tau0.8": 1.0,
+    "heads": {
+     "guidance": {
+      "delta": 0.9078998565673828,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.19803442060947418,
+      "rho": 0.2181236445903778,
+      "ci95": [
+       0.19494669139385223,
+       0.2435683012008667
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 184,
+       "flip_rate": 0.46195652173913043,
+       "target_side_rate_all": 0.505
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 198,
+       "flip_rate": 0.09090909090909091,
+       "target_side_rate_all": 0.095
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 187,
+       "flip_rate": 0.39572192513368987,
+       "target_side_rate_all": 0.435
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.1544625610113144,
+      "rho": 0.17013171315193176,
+      "ci95": [
+       0.14886237680912018,
+       0.18977661430835724
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 193,
+       "flip_rate": 0.16062176165803108,
+       "target_side_rate_all": 0.185
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 199,
+       "flip_rate": 0.02512562814070352,
+       "target_side_rate_all": 0.03
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.1282051282051282,
+       "target_side_rate_all": 0.15
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.04171299934387207,
+      "rho": 0.045944493263959885,
+      "ci95": [
+       0.036838795989751816,
+       0.0557035468518734
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 193,
+       "flip_rate": 0.12435233160621761,
+       "target_side_rate_all": 0.155
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 199,
+       "flip_rate": 0.035175879396984924,
+       "target_side_rate_all": 0.04
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 180,
+       "flip_rate": 0.18888888888888888,
+       "target_side_rate_all": 0.255
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.27882999181747437,
+      "rho": 0.3071153461933136,
+      "ci95": [
+       0.2844415307044983,
+       0.328061580657959
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.3442622950819672,
+       "target_side_rate_all": 0.4
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 195,
+       "flip_rate": 0.11794871794871795,
+       "target_side_rate_all": 0.135
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 185,
+       "flip_rate": 0.31351351351351353,
+       "target_side_rate_all": 0.365
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.25479114055633545,
+      "rho": 0.2806379199028015,
+      "ci95": [
+       0.2536526918411255,
+       0.30589839816093445
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 187,
+       "flip_rate": 0.22994652406417113,
+       "target_side_rate_all": 0.28
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 194,
+       "flip_rate": 0.02577319587628866,
+       "target_side_rate_all": 0.045
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.13227513227513227,
+       "target_side_rate_all": 0.18
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.3416294753551483,
+      "rho": 0.3762854039669037,
+      "ci95": [
+       0.35511624813079834,
+       0.39749014377593994
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 186,
+       "flip_rate": 0.3655913978494624,
+       "target_side_rate_all": 0.41
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 198,
+       "flip_rate": 0.10101010101010101,
+       "target_side_rate_all": 0.11
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 191,
+       "flip_rate": 0.2931937172774869,
+       "target_side_rate_all": 0.325
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.20591332018375397,
+      "rho": 0.226801797747612,
+      "ci95": [
+       0.2056388407945633,
+       0.24906830489635468
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 170,
+       "flip_rate": 0.37058823529411766,
+       "target_side_rate_all": 0.455
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 197,
+       "flip_rate": 0.14213197969543148,
+       "target_side_rate_all": 0.155
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 180,
+       "flip_rate": 0.3,
+       "target_side_rate_all": 0.36
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.20388084650039673,
+      "rho": 0.22456315159797668,
+      "ci95": [
+       0.19957235455513,
+       0.2495511770248413
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 164,
+       "flip_rate": 0.2926829268292683,
+       "target_side_rate_all": 0.415
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 196,
+       "flip_rate": 0.09693877551020408,
+       "target_side_rate_all": 0.115
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 178,
+       "flip_rate": 0.19662921348314608,
+       "target_side_rate_all": 0.27
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.24465739727020264,
+      "rho": 0.2694762051105499,
+      "ci95": [
+       0.24938292801380157,
+       0.2904904782772064
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 182,
+       "flip_rate": 0.2692307692307692,
+       "target_side_rate_all": 0.335
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 198,
+       "flip_rate": 0.06565656565656566,
+       "target_side_rate_all": 0.07
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 188,
+       "flip_rate": 0.2074468085106383,
+       "target_side_rate_all": 0.25
+      }
+     }
+    },
+    "l2_mean": 3.3669302463531494,
+    "linf_mean": 0.01568630337715149,
+    "seconds": 234.44645929336548
+   },
+   "pgd_linf_eps8/255": {
+    "n": 200,
+    "guidance_delta": 0.9141969084739685,
+    "guidance_cv_tau0.5": 1.0,
+    "guidance_cv_tau0.8": 1.0,
+    "heads": {
+     "guidance": {
+      "delta": 0.9141969084739685,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.24477031826972961,
+      "rho": 0.2677435278892517,
+      "ci95": [
+       0.23780715465545654,
+       0.2965044677257538
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 184,
+       "flip_rate": 0.5815217391304348,
+       "target_side_rate_all": 0.6
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 198,
+       "flip_rate": 0.22727272727272727,
+       "target_side_rate_all": 0.225
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 187,
+       "flip_rate": 0.5614973262032086,
+       "target_side_rate_all": 0.575
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.19520649313926697,
+      "rho": 0.2135278433561325,
+      "ci95": [
+       0.1885554939508438,
+       0.2366873323917389
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 193,
+       "flip_rate": 0.44559585492227977,
+       "target_side_rate_all": 0.46
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 199,
+       "flip_rate": 0.12060301507537688,
+       "target_side_rate_all": 0.125
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.37948717948717947,
+       "target_side_rate_all": 0.395
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.10056295245885849,
+      "rho": 0.11000141501426697,
+      "ci95": [
+       0.09126527607440948,
+       0.1295233815908432
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 193,
+       "flip_rate": 0.38341968911917096,
+       "target_side_rate_all": 0.405
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 199,
+       "flip_rate": 0.1708542713567839,
+       "target_side_rate_all": 0.175
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 180,
+       "flip_rate": 0.43333333333333335,
+       "target_side_rate_all": 0.485
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.38199886679649353,
+      "rho": 0.41785183548927307,
+      "ci95": [
+       0.39116668701171875,
+       0.4441574513912201
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.7923497267759563,
+       "target_side_rate_all": 0.81
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 195,
+       "flip_rate": 0.3487179487179487,
+       "target_side_rate_all": 0.36
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 185,
+       "flip_rate": 0.7243243243243244,
+       "target_side_rate_all": 0.74
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.384928435087204,
+      "rho": 0.4210563600063324,
+      "ci95": [
+       0.3941871225833893,
+       0.44602417945861816
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 187,
+       "flip_rate": 0.6149732620320856,
+       "target_side_rate_all": 0.64
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 194,
+       "flip_rate": 0.19072164948453607,
+       "target_side_rate_all": 0.2
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.4021164021164021,
+       "target_side_rate_all": 0.425
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.5082603693008423,
+      "rho": 0.5559637546539307,
+      "ci95": [
+       0.5270864963531494,
+       0.582905650138855
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 186,
+       "flip_rate": 0.9193548387096774,
+       "target_side_rate_all": 0.925
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 198,
+       "flip_rate": 0.47474747474747475,
+       "target_side_rate_all": 0.475
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 191,
+       "flip_rate": 0.8429319371727748,
+       "target_side_rate_all": 0.85
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.3426521420478821,
+      "rho": 0.37481218576431274,
+      "ci95": [
+       0.3441482484340668,
+       0.40460339188575745
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 170,
+       "flip_rate": 0.9176470588235294,
+       "target_side_rate_all": 0.91
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 197,
+       "flip_rate": 0.5532994923857868,
+       "target_side_rate_all": 0.555
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 180,
+       "flip_rate": 0.8055555555555556,
+       "target_side_rate_all": 0.8
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.35307493805885315,
+      "rho": 0.3862132132053375,
+      "ci95": [
+       0.35462042689323425,
+       0.4187115728855133
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 164,
+       "flip_rate": 0.8780487804878049,
+       "target_side_rate_all": 0.885
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 196,
+       "flip_rate": 0.40816326530612246,
+       "target_side_rate_all": 0.41
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 178,
+       "flip_rate": 0.6629213483146067,
+       "target_side_rate_all": 0.68
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.4233546555042267,
+      "rho": 0.46308913826942444,
+      "ci95": [
+       0.43316516280174255,
+       0.49316495656967163
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 182,
+       "flip_rate": 0.8296703296703297,
+       "target_side_rate_all": 0.84
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 198,
+       "flip_rate": 0.3838383838383838,
+       "target_side_rate_all": 0.385
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 188,
+       "flip_rate": 0.7074468085106383,
+       "target_side_rate_all": 0.715
+      }
+     }
+    },
+    "l2_mean": 6.142926216125488,
+    "linf_mean": 0.03137258067727089,
+    "seconds": 245.35432410240173
+   },
+   "pgd_l2_matched": {
+    "n": 200,
+    "guidance_delta": 0.9143350124359131,
+    "guidance_cv_tau0.5": 1.0,
+    "guidance_cv_tau0.8": 1.0,
+    "heads": {
+     "guidance": {
+      "delta": 0.9143350124359131,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.16606083512306213,
+      "rho": 0.18161924183368683,
+      "ci95": [
+       0.1451151967048645,
+       0.21717900037765503
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 184,
+       "flip_rate": 0.3641304347826087,
+       "target_side_rate_all": 0.385
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 198,
+       "flip_rate": 0.09090909090909091,
+       "target_side_rate_all": 0.1
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 187,
+       "flip_rate": 0.32085561497326204,
+       "target_side_rate_all": 0.34
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.06923701614141464,
+      "rho": 0.07572390139102936,
+      "ci95": [
+       0.046783071011304855,
+       0.10495614260435104
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 193,
+       "flip_rate": 0.11398963730569948,
+       "target_side_rate_all": 0.12
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 199,
+       "flip_rate": 0.020100502512562814,
+       "target_side_rate_all": 0.02
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.09743589743589744,
+       "target_side_rate_all": 0.1
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.07573498040437698,
+      "rho": 0.08283066749572754,
+      "ci95": [
+       0.06354892253875732,
+       0.10309424996376038
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 193,
+       "flip_rate": 0.21761658031088082,
+       "target_side_rate_all": 0.245
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 199,
+       "flip_rate": 0.135678391959799,
+       "target_side_rate_all": 0.14
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 180,
+       "flip_rate": 0.29444444444444445,
+       "target_side_rate_all": 0.33
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.4094471037387848,
+      "rho": 0.4478086233139038,
+      "ci95": [
+       0.41525623202323914,
+       0.48032835125923157
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.9672131147540983,
+       "target_side_rate_all": 0.965
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 195,
+       "flip_rate": 0.5282051282051282,
+       "target_side_rate_all": 0.53
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 185,
+       "flip_rate": 0.9243243243243243,
+       "target_side_rate_all": 0.925
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.40963757038116455,
+      "rho": 0.4480169415473938,
+      "ci95": [
+       0.42224112153053284,
+       0.4723805785179138
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 187,
+       "flip_rate": 0.8877005347593583,
+       "target_side_rate_all": 0.895
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 194,
+       "flip_rate": 0.211340206185567,
+       "target_side_rate_all": 0.215
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.6984126984126984,
+       "target_side_rate_all": 0.7
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.5154350399971008,
+      "rho": 0.5637266635894775,
+      "ci95": [
+       0.5331907868385315,
+       0.5924323201179504
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 186,
+       "flip_rate": 0.978494623655914,
+       "target_side_rate_all": 0.975
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 198,
+       "flip_rate": 0.5656565656565656,
+       "target_side_rate_all": 0.57
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 191,
+       "flip_rate": 0.9319371727748691,
+       "target_side_rate_all": 0.93
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.4520711600780487,
+      "rho": 0.4944261610507965,
+      "ci95": [
+       0.4578567147254944,
+       0.5308510661125183
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 170,
+       "flip_rate": 0.9823529411764705,
+       "target_side_rate_all": 0.97
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 197,
+       "flip_rate": 0.8934010152284264,
+       "target_side_rate_all": 0.89
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 180,
+       "flip_rate": 0.9555555555555556,
+       "target_side_rate_all": 0.945
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.5062877535820007,
+      "rho": 0.5537223815917969,
+      "ci95": [
+       0.5166699290275574,
+       0.5941318273544312
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 164,
+       "flip_rate": 0.9939024390243902,
+       "target_side_rate_all": 0.99
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 196,
+       "flip_rate": 0.8979591836734694,
+       "target_side_rate_all": 0.895
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 178,
+       "flip_rate": 0.9662921348314607,
+       "target_side_rate_all": 0.965
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.5730344653129578,
+      "rho": 0.6267226338386536,
+      "ci95": [
+       0.5870427489280701,
+       0.6636494994163513
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 182,
+       "flip_rate": 0.9945054945054945,
+       "target_side_rate_all": 0.995
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 198,
+       "flip_rate": 0.8686868686868687,
+       "target_side_rate_all": 0.865
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 188,
+       "flip_rate": 0.973404255319149,
+       "target_side_rate_all": 0.975
+      }
+     }
+    },
+    "l2_mean": 9.14008617401123,
+    "linf_mean": 0.3733629584312439,
+    "seconds": 230.69959473609924
+   }
+  },
+  "p_to_n": {
+   "fgsm_eps1/255": {
+    "n": 200,
+    "guidance_delta": 0.19785316288471222,
+    "guidance_cv_tau0.5": 0.03,
+    "guidance_cv_tau0.8": 0.0,
+    "heads": {
+     "guidance": {
+      "delta": 0.19785316288471222,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 0.12,
+       "target_side_rate_all": 0.12
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 0.635,
+       "target_side_rate_all": 0.635
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.0014190134825184941,
+      "rho": 0.007172053679823875,
+      "ci95": [
+       0.002358947414904833,
+       0.013409052044153214
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 189,
+       "flip_rate": 0.010582010582010581,
+       "target_side_rate_all": 0.065
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 139,
+       "flip_rate": 0.050359712230215826,
+       "target_side_rate_all": 0.335
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 185,
+       "flip_rate": 0.016216216216216217,
+       "target_side_rate_all": 0.085
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.0005202257889322937,
+      "rho": 0.002629352966323495,
+      "ci95": [
+       -0.001308323466219008,
+       0.006667648442089558
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 197,
+       "flip_rate": 0.0,
+       "target_side_rate_all": 0.01
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 167,
+       "flip_rate": 0.03592814371257485,
+       "target_side_rate_all": 0.185
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.0,
+       "target_side_rate_all": 0.025
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.0038801860064268112,
+      "rho": 0.01961144246160984,
+      "ci95": [
+       0.014305283315479755,
+       0.02504475601017475
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 178,
+       "flip_rate": 0.0056179775280898875,
+       "target_side_rate_all": 0.115
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 152,
+       "flip_rate": 0.019736842105263157,
+       "target_side_rate_all": 0.25
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 183,
+       "flip_rate": 0.0,
+       "target_side_rate_all": 0.085
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.00644296407699585,
+      "rho": 0.032564371824264526,
+      "ci95": [
+       0.023945240303874016,
+       0.04159168899059296
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.03278688524590164,
+       "target_side_rate_all": 0.115
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 87,
+       "flip_rate": 0.10344827586206896,
+       "target_side_rate_all": 0.585
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 168,
+       "flip_rate": 0.03571428571428571,
+       "target_side_rate_all": 0.19
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.0017821345245465636,
+      "rho": 0.00900735892355442,
+      "ci95": [
+       0.005030178464949131,
+       0.0130436010658741
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 198,
+       "flip_rate": 0.0,
+       "target_side_rate_all": 0.01
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 102,
+       "flip_rate": 0.0784313725490196,
+       "target_side_rate_all": 0.505
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.015873015873015872,
+       "target_side_rate_all": 0.06
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.012898449786007404,
+      "rho": 0.06519202888011932,
+      "ci95": [
+       0.05577724799513817,
+       0.07525695860385895
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 194,
+       "flip_rate": 0.03608247422680412,
+       "target_side_rate_all": 0.05
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 106,
+       "flip_rate": 0.1320754716981132,
+       "target_side_rate_all": 0.535
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 174,
+       "flip_rate": 0.034482758620689655,
+       "target_side_rate_all": 0.155
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.006358725484460592,
+      "rho": 0.032138608396053314,
+      "ci95": [
+       0.022941503673791885,
+       0.04255117475986481
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 163,
+       "flip_rate": 0.006134969325153374,
+       "target_side_rate_all": 0.19
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 102,
+       "flip_rate": 0.06862745098039216,
+       "target_side_rate_all": 0.52
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 151,
+       "flip_rate": 0.033112582781456956,
+       "target_side_rate_all": 0.27
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.0025229102466255426,
+      "rho": 0.012751427479088306,
+      "ci95": [
+       -0.00019076696480624378,
+       0.027199098840355873
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 176,
+       "flip_rate": 0.017045454545454544,
+       "target_side_rate_all": 0.135
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 97,
+       "flip_rate": 0.05154639175257732,
+       "target_side_rate_all": 0.54
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 152,
+       "flip_rate": 0.006578947368421052,
+       "target_side_rate_all": 0.235
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.005817779339849949,
+      "rho": 0.0294045303016901,
+      "ci95": [
+       0.021856509149074554,
+       0.03732970729470253
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 185,
+       "flip_rate": 0.016216216216216217,
+       "target_side_rate_all": 0.09
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 125,
+       "flip_rate": 0.056,
+       "target_side_rate_all": 0.395
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 176,
+       "flip_rate": 0.028409090909090908,
+       "target_side_rate_all": 0.145
+      }
+     }
+    },
+    "l2_mean": 1.000086784362793,
+    "linf_mean": 0.003921598196029663,
+    "seconds": 78.93766713142395
+   },
+   "fgsm_eps2/255": {
+    "n": 200,
+    "guidance_delta": 0.265850305557251,
+    "guidance_cv_tau0.5": 0.2,
+    "guidance_cv_tau0.8": 0.0,
+    "heads": {
+     "guidance": {
+      "delta": 0.265850305557251,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 0.405,
+       "target_side_rate_all": 0.405
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 0.825,
+       "target_side_rate_all": 0.825
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.0006681031081825495,
+      "rho": 0.0025130801368504763,
+      "ci95": [
+       -0.0029803758952766657,
+       0.009544572792947292
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 189,
+       "flip_rate": 0.026455026455026454,
+       "target_side_rate_all": 0.08
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 139,
+       "flip_rate": 0.1223021582733813,
+       "target_side_rate_all": 0.385
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 185,
+       "flip_rate": 0.02702702702702703,
+       "target_side_rate_all": 0.095
+      }
+     },
+     "nih:Consolidation": {
+      "delta": -0.0024805087596178055,
+      "rho": -0.009330471977591515,
+      "ci95": [
+       -0.015252982266247272,
+       -0.0036099497228860855
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 197,
+       "flip_rate": 0.005076142131979695,
+       "target_side_rate_all": 0.015
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 167,
+       "flip_rate": 0.03592814371257485,
+       "target_side_rate_all": 0.17
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.005128205128205128,
+       "target_side_rate_all": 0.025
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.006205441430211067,
+      "rho": 0.023341862484812737,
+      "ci95": [
+       0.016566485166549683,
+       0.030431196093559265
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 178,
+       "flip_rate": 0.011235955056179775,
+       "target_side_rate_all": 0.12
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 152,
+       "flip_rate": 0.03289473684210526,
+       "target_side_rate_all": 0.255
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 183,
+       "flip_rate": 0.0,
+       "target_side_rate_all": 0.085
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.013973474502563477,
+      "rho": 0.0525614395737648,
+      "ci95": [
+       0.03880374878644943,
+       0.06810572743415833
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.04371584699453552,
+       "target_side_rate_all": 0.115
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 87,
+       "flip_rate": 0.1724137931034483,
+       "target_side_rate_all": 0.605
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 168,
+       "flip_rate": 0.07142857142857142,
+       "target_side_rate_all": 0.22
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.003427164163440466,
+      "rho": 0.012891330756247044,
+      "ci95": [
+       0.0070753213949501514,
+       0.018853602930903435
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 198,
+       "flip_rate": 0.010101010101010102,
+       "target_side_rate_all": 0.02
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 102,
+       "flip_rate": 0.11764705882352941,
+       "target_side_rate_all": 0.49
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.05291005291005291,
+       "target_side_rate_all": 0.09
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.021324949339032173,
+      "rho": 0.08021412044763565,
+      "ci95": [
+       0.06616078317165375,
+       0.09621135890483856
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 194,
+       "flip_rate": 0.04639175257731959,
+       "target_side_rate_all": 0.06
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 106,
+       "flip_rate": 0.22641509433962265,
+       "target_side_rate_all": 0.575
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 174,
+       "flip_rate": 0.05172413793103448,
+       "target_side_rate_all": 0.165
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.014173208735883236,
+      "rho": 0.053312741219997406,
+      "ci95": [
+       0.03752577677369118,
+       0.07087510824203491
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 163,
+       "flip_rate": 0.03680981595092025,
+       "target_side_rate_all": 0.215
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 102,
+       "flip_rate": 0.14705882352941177,
+       "target_side_rate_all": 0.55
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 151,
+       "flip_rate": 0.06622516556291391,
+       "target_side_rate_all": 0.29
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.0018879846902564168,
+      "rho": 0.007101683411747217,
+      "ci95": [
+       -0.012199909426271915,
+       0.02909359149634838
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 176,
+       "flip_rate": 0.028409090909090908,
+       "target_side_rate_all": 0.145
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 97,
+       "flip_rate": 0.05154639175257732,
+       "target_side_rate_all": 0.5
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 152,
+       "flip_rate": 0.039473684210526314,
+       "target_side_rate_all": 0.255
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.006692649330943823,
+      "rho": 0.025174502283334732,
+      "ci95": [
+       0.014539566822350025,
+       0.03653612732887268
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 185,
+       "flip_rate": 0.03783783783783784,
+       "target_side_rate_all": 0.11
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 125,
+       "flip_rate": 0.112,
+       "target_side_rate_all": 0.415
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 176,
+       "flip_rate": 0.05113636363636364,
+       "target_side_rate_all": 0.165
+      }
+     }
+    },
+    "l2_mean": 1.9971448183059692,
+    "linf_mean": 0.007843165658414364,
+    "seconds": 78.23964381217957
+   },
+   "fgsm_eps4/255": {
+    "n": 200,
+    "guidance_delta": 0.26874324679374695,
+    "guidance_cv_tau0.5": 0.345,
+    "guidance_cv_tau0.8": 0.005,
+    "heads": {
+     "guidance": {
+      "delta": 0.26874324679374695,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 0.47,
+       "target_side_rate_all": 0.47
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 0.67,
+       "target_side_rate_all": 0.67
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": -0.0019022863125428557,
+      "rho": -0.007078452501446009,
+      "ci95": [
+       -0.020582469180226326,
+       0.005842503160238266
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 189,
+       "flip_rate": 0.042328042328042326,
+       "target_side_rate_all": 0.09
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 139,
+       "flip_rate": 0.09352517985611511,
+       "target_side_rate_all": 0.31
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 185,
+       "flip_rate": 0.043243243243243246,
+       "target_side_rate_all": 0.11
+      }
+     },
+     "nih:Consolidation": {
+      "delta": -0.017119150608778,
+      "rho": -0.06370076537132263,
+      "ci95": [
+       -0.0790862888097763,
+       -0.05001933500170708
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 197,
+       "flip_rate": 0.005076142131979695,
+       "target_side_rate_all": 0.015
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 167,
+       "flip_rate": 0.0,
+       "target_side_rate_all": 0.11
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.005128205128205128,
+       "target_side_rate_all": 0.02
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.004836771637201309,
+      "rho": 0.01799774169921875,
+      "ci95": [
+       0.0069762240163981915,
+       0.028576591983437538
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 178,
+       "flip_rate": 0.016853932584269662,
+       "target_side_rate_all": 0.115
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 152,
+       "flip_rate": 0.07236842105263158,
+       "target_side_rate_all": 0.265
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 183,
+       "flip_rate": 0.01092896174863388,
+       "target_side_rate_all": 0.08
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.029686518013477325,
+      "rho": 0.11046423763036728,
+      "ci95": [
+       0.08633322268724442,
+       0.13639436662197113
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.13114754098360656,
+       "target_side_rate_all": 0.18
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 87,
+       "flip_rate": 0.41379310344827586,
+       "target_side_rate_all": 0.7
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 168,
+       "flip_rate": 0.1488095238095238,
+       "target_side_rate_all": 0.27
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.01003261934965849,
+      "rho": 0.03733161464333534,
+      "ci95": [
+       0.02344600483775139,
+       0.0526416152715683
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 198,
+       "flip_rate": 0.030303030303030304,
+       "target_side_rate_all": 0.035
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 102,
+       "flip_rate": 0.28431372549019607,
+       "target_side_rate_all": 0.55
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.12169312169312169,
+       "target_side_rate_all": 0.14
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.023533862084150314,
+      "rho": 0.08757005631923676,
+      "ci95": [
+       0.06080612540245056,
+       0.11279411613941193
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 194,
+       "flip_rate": 0.07216494845360824,
+       "target_side_rate_all": 0.09
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 106,
+       "flip_rate": 0.25471698113207547,
+       "target_side_rate_all": 0.545
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 174,
+       "flip_rate": 0.07471264367816093,
+       "target_side_rate_all": 0.17
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.04044428840279579,
+      "rho": 0.15049415826797485,
+      "ci95": [
+       0.11025083065032959,
+       0.19505949318408966
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 163,
+       "flip_rate": 0.13496932515337423,
+       "target_side_rate_all": 0.29
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 102,
+       "flip_rate": 0.29411764705882354,
+       "target_side_rate_all": 0.565
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 151,
+       "flip_rate": 0.15894039735099338,
+       "target_side_rate_all": 0.355
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.006877237465232611,
+      "rho": 0.025590363889932632,
+      "ci95": [
+       -0.02285793609917164,
+       0.07564403861761093
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 176,
+       "flip_rate": 0.07954545454545454,
+       "target_side_rate_all": 0.185
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 97,
+       "flip_rate": 0.15463917525773196,
+       "target_side_rate_all": 0.475
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 152,
+       "flip_rate": 0.10526315789473684,
+       "target_side_rate_all": 0.3
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.008677621372044086,
+      "rho": 0.03228963539004326,
+      "ci95": [
+       0.001972049940377474,
+       0.06242375448346138
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 185,
+       "flip_rate": 0.04864864864864865,
+       "target_side_rate_all": 0.12
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 125,
+       "flip_rate": 0.184,
+       "target_side_rate_all": 0.43
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 176,
+       "flip_rate": 0.07954545454545454,
+       "target_side_rate_all": 0.19
+      }
+     }
+    },
+    "l2_mean": 3.983746290206909,
+    "linf_mean": 0.01568630337715149,
+    "seconds": 77.60188317298889
+   },
+   "fgsm_eps8/255": {
+    "n": 200,
+    "guidance_delta": 0.23070445656776428,
+    "guidance_cv_tau0.5": 0.23,
+    "guidance_cv_tau0.8": 0.0,
+    "heads": {
+     "guidance": {
+      "delta": 0.23070445656776428,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 0.41,
+       "target_side_rate_all": 0.41
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 0.635,
+       "target_side_rate_all": 0.635
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.002971191657707095,
+      "rho": 0.012878778390586376,
+      "ci95": [
+       -0.020359696820378304,
+       0.04329824447631836
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 189,
+       "flip_rate": 0.07407407407407407,
+       "target_side_rate_all": 0.11
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 139,
+       "flip_rate": 0.2014388489208633,
+       "target_side_rate_all": 0.345
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 185,
+       "flip_rate": 0.08108108108108109,
+       "target_side_rate_all": 0.135
+      }
+     },
+     "nih:Consolidation": {
+      "delta": -0.06717821210622787,
+      "rho": -0.2911873161792755,
+      "ci95": [
+       -0.344684898853302,
+       -0.24204617738723755
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 197,
+       "flip_rate": 0.005076142131979695,
+       "target_side_rate_all": 0.015
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 167,
+       "flip_rate": 0.017964071856287425,
+       "target_side_rate_all": 0.075
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.005128205128205128,
+       "target_side_rate_all": 0.015
+      }
+     },
+     "nih:Infiltration": {
+      "delta": -0.028272656723856926,
+      "rho": -0.12254924327135086,
+      "ci95": [
+       -0.15198272466659546,
+       -0.0952564999461174
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 178,
+       "flip_rate": 0.02247191011235955,
+       "target_side_rate_all": 0.08
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 152,
+       "flip_rate": 0.019736842105263157,
+       "target_side_rate_all": 0.175
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 183,
+       "flip_rate": 0.01092896174863388,
+       "target_side_rate_all": 0.05
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.05479396507143974,
+      "rho": 0.2375071793794632,
+      "ci95": [
+       0.19654859602451324,
+       0.2814052700996399
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.273224043715847,
+       "target_side_rate_all": 0.305
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 87,
+       "flip_rate": 0.6091954022988506,
+       "target_side_rate_all": 0.765
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 168,
+       "flip_rate": 0.2857142857142857,
+       "target_side_rate_all": 0.355
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.03210271894931793,
+      "rho": 0.13915084302425385,
+      "ci95": [
+       0.1177002340555191,
+       0.16353972256183624
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 198,
+       "flip_rate": 0.1414141414141414,
+       "target_side_rate_all": 0.145
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 102,
+       "flip_rate": 0.803921568627451,
+       "target_side_rate_all": 0.89
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.3968253968253968,
+       "target_side_rate_all": 0.405
+      }
+     },
+     "pc:Infiltration": {
+      "delta": -0.027101382613182068,
+      "rho": -0.11747229844331741,
+      "ci95": [
+       -0.19385181367397308,
+       -0.04824015125632286
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 194,
+       "flip_rate": 0.06701030927835051,
+       "target_side_rate_all": 0.07
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 106,
+       "flip_rate": 0.2358490566037736,
+       "target_side_rate_all": 0.42
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 174,
+       "flip_rate": 0.09195402298850575,
+       "target_side_rate_all": 0.14
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.09162088483572006,
+      "rho": 0.39713531732559204,
+      "ci95": [
+       0.2824315130710602,
+       0.5262032151222229
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 163,
+       "flip_rate": 0.3128834355828221,
+       "target_side_rate_all": 0.425
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 102,
+       "flip_rate": 0.4019607843137255,
+       "target_side_rate_all": 0.59
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 151,
+       "flip_rate": 0.3509933774834437,
+       "target_side_rate_all": 0.48
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.003885111538693309,
+      "rho": 0.016840210184454918,
+      "ci95": [
+       -0.13809120655059814,
+       0.17055295407772064
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 176,
+       "flip_rate": 0.25,
+       "target_side_rate_all": 0.325
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 97,
+       "flip_rate": 0.25773195876288657,
+       "target_side_rate_all": 0.46
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 152,
+       "flip_rate": 0.25,
+       "target_side_rate_all": 0.385
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": -0.01836288906633854,
+      "rho": -0.07959485799074173,
+      "ci95": [
+       -0.18257592618465424,
+       0.021443156525492668
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 185,
+       "flip_rate": 0.14594594594594595,
+       "target_side_rate_all": 0.21
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 125,
+       "flip_rate": 0.264,
+       "target_side_rate_all": 0.405
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 176,
+       "flip_rate": 0.18181818181818182,
+       "target_side_rate_all": 0.26
+      }
+     }
+    },
+    "l2_mean": 7.9348015785217285,
+    "linf_mean": 0.03137258067727089,
+    "seconds": 77.21897196769714
+   },
+   "pgd_linf_eps2/255": {
+    "n": 200,
+    "guidance_delta": 0.6430894732475281,
+    "guidance_cv_tau0.5": 0.99,
+    "guidance_cv_tau0.8": 0.465,
+    "heads": {
+     "guidance": {
+      "delta": 0.6430894732475281,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.005060526542365551,
+      "rho": 0.007869086228311062,
+      "ci95": [
+       0.00339855020865798,
+       0.013179690577089787
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 189,
+       "flip_rate": 0.042328042328042326,
+       "target_side_rate_all": 0.09
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 139,
+       "flip_rate": 0.1079136690647482,
+       "target_side_rate_all": 0.375
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 185,
+       "flip_rate": 0.043243243243243246,
+       "target_side_rate_all": 0.11
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.0032653636299073696,
+      "rho": 0.005077619571238756,
+      "ci95": [
+       0.0026591282803565264,
+       0.007700526621192694
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 197,
+       "flip_rate": 0.015228426395939087,
+       "target_side_rate_all": 0.025
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 167,
+       "flip_rate": 0.05389221556886228,
+       "target_side_rate_all": 0.205
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.015384615384615385,
+       "target_side_rate_all": 0.04
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.010792236775159836,
+      "rho": 0.01678185909986496,
+      "ci95": [
+       0.014244799502193928,
+       0.01932663843035698
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 178,
+       "flip_rate": 0.016853932584269662,
+       "target_side_rate_all": 0.125
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 152,
+       "flip_rate": 0.03289473684210526,
+       "target_side_rate_all": 0.265
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 183,
+       "flip_rate": 0.01639344262295082,
+       "target_side_rate_all": 0.1
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.012056512758135796,
+      "rho": 0.01874779909849167,
+      "ci95": [
+       0.013391694985330105,
+       0.024085992947220802
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.03278688524590164,
+       "target_side_rate_all": 0.115
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 87,
+       "flip_rate": 0.19540229885057472,
+       "target_side_rate_all": 0.635
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 168,
+       "flip_rate": 0.05357142857142857,
+       "target_side_rate_all": 0.19
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.0038882785011082888,
+      "rho": 0.006046248134225607,
+      "ci95": [
+       0.0036793157923966646,
+       0.008662671782076359
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 198,
+       "flip_rate": 0.020202020202020204,
+       "target_side_rate_all": 0.03
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 102,
+       "flip_rate": 0.12745098039215685,
+       "target_side_rate_all": 0.53
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.06878306878306878,
+       "target_side_rate_all": 0.1
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.030268432572484016,
+      "rho": 0.04706721752882004,
+      "ci95": [
+       0.04092566296458244,
+       0.05368802323937416
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 194,
+       "flip_rate": 0.05154639175257732,
+       "target_side_rate_all": 0.08
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 106,
+       "flip_rate": 0.25471698113207547,
+       "target_side_rate_all": 0.595
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 174,
+       "flip_rate": 0.08045977011494253,
+       "target_side_rate_all": 0.195
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.02046545222401619,
+      "rho": 0.031823646277189255,
+      "ci95": [
+       0.025048699229955673,
+       0.03954228758811951
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 163,
+       "flip_rate": 0.03680981595092025,
+       "target_side_rate_all": 0.215
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 102,
+       "flip_rate": 0.20588235294117646,
+       "target_side_rate_all": 0.59
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 151,
+       "flip_rate": 0.059602649006622516,
+       "target_side_rate_all": 0.29
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.014036004431545734,
+      "rho": 0.021825896576046944,
+      "ci95": [
+       0.012804508209228516,
+       0.03229343146085739
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 176,
+       "flip_rate": 0.028409090909090908,
+       "target_side_rate_all": 0.145
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 97,
+       "flip_rate": 0.09278350515463918,
+       "target_side_rate_all": 0.55
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 152,
+       "flip_rate": 0.05263157894736842,
+       "target_side_rate_all": 0.275
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.02005375549197197,
+      "rho": 0.031183460727334023,
+      "ci95": [
+       0.026277704164385796,
+       0.036196522414684296
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 185,
+       "flip_rate": 0.03783783783783784,
+       "target_side_rate_all": 0.11
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 125,
+       "flip_rate": 0.184,
+       "target_side_rate_all": 0.48
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 176,
+       "flip_rate": 0.06818181818181818,
+       "target_side_rate_all": 0.18
+      }
+     }
+    },
+    "l2_mean": 1.6730241775512695,
+    "linf_mean": 0.007843165658414364,
+    "seconds": 243.10731863975525
+   },
+   "pgd_linf_eps4/255": {
+    "n": 200,
+    "guidance_delta": 0.820605456829071,
+    "guidance_cv_tau0.5": 1.0,
+    "guidance_cv_tau0.8": 0.965,
+    "heads": {
+     "guidance": {
+      "delta": 0.820605456829071,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.013458847999572754,
+      "rho": 0.016401119530200958,
+      "ci95": [
+       0.008299233391880989,
+       0.02511090412735939
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 189,
+       "flip_rate": 0.07407407407407407,
+       "target_side_rate_all": 0.12
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 139,
+       "flip_rate": 0.16546762589928057,
+       "target_side_rate_all": 0.39
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 185,
+       "flip_rate": 0.08648648648648649,
+       "target_side_rate_all": 0.15
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.0015347942244261503,
+      "rho": 0.0018703192472457886,
+      "ci95": [
+       -0.00219607912003994,
+       0.00591125525534153
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 197,
+       "flip_rate": 0.015228426395939087,
+       "target_side_rate_all": 0.025
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 167,
+       "flip_rate": 0.10778443113772455,
+       "target_side_rate_all": 0.235
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.02564102564102564,
+       "target_side_rate_all": 0.05
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.01933259703218937,
+      "rho": 0.02355894260108471,
+      "ci95": [
+       0.020234208554029465,
+       0.02708946168422699
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 178,
+       "flip_rate": 0.03932584269662921,
+       "target_side_rate_all": 0.145
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 152,
+       "flip_rate": 0.09868421052631579,
+       "target_side_rate_all": 0.31
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 183,
+       "flip_rate": 0.03278688524590164,
+       "target_side_rate_all": 0.115
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.013072180561721325,
+      "rho": 0.015929922461509705,
+      "ci95": [
+       0.008389795199036598,
+       0.023652980104088783
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.07103825136612021,
+       "target_side_rate_all": 0.14
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 87,
+       "flip_rate": 0.28735632183908044,
+       "target_side_rate_all": 0.625
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 168,
+       "flip_rate": 0.09523809523809523,
+       "target_side_rate_all": 0.215
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.006968870293349028,
+      "rho": 0.00849235150963068,
+      "ci95": [
+       0.0030056817922741175,
+       0.014975780621170998
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 198,
+       "flip_rate": 0.03535353535353535,
+       "target_side_rate_all": 0.04
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 102,
+       "flip_rate": 0.19607843137254902,
+       "target_side_rate_all": 0.515
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.13756613756613756,
+       "target_side_rate_all": 0.155
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.046011921018362045,
+      "rho": 0.05607069656252861,
+      "ci95": [
+       0.046545784920454025,
+       0.06547092646360397
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 194,
+       "flip_rate": 0.11855670103092783,
+       "target_side_rate_all": 0.14
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 106,
+       "flip_rate": 0.4056603773584906,
+       "target_side_rate_all": 0.67
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 174,
+       "flip_rate": 0.11494252873563218,
+       "target_side_rate_all": 0.215
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.056556619703769684,
+      "rho": 0.06892059743404388,
+      "ci95": [
+       0.057988617569208145,
+       0.0814002975821495
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 163,
+       "flip_rate": 0.15950920245398773,
+       "target_side_rate_all": 0.315
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 102,
+       "flip_rate": 0.4803921568627451,
+       "target_side_rate_all": 0.73
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 151,
+       "flip_rate": 0.23841059602649006,
+       "target_side_rate_all": 0.42
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.043739911168813705,
+      "rho": 0.05330199748277664,
+      "ci95": [
+       0.040577951818704605,
+       0.06667675822973251
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 176,
+       "flip_rate": 0.13068181818181818,
+       "target_side_rate_all": 0.235
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 97,
+       "flip_rate": 0.41237113402061853,
+       "target_side_rate_all": 0.69
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 152,
+       "flip_rate": 0.17763157894736842,
+       "target_side_rate_all": 0.36
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.060025978833436966,
+      "rho": 0.07314839959144592,
+      "ci95": [
+       0.06453940272331238,
+       0.08276501297950745
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 185,
+       "flip_rate": 0.12432432432432433,
+       "target_side_rate_all": 0.19
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 125,
+       "flip_rate": 0.424,
+       "target_side_rate_all": 0.63
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 176,
+       "flip_rate": 0.19886363636363635,
+       "target_side_rate_all": 0.295
+      }
+     }
+    },
+    "l2_mean": 3.1702239513397217,
+    "linf_mean": 0.01568630337715149,
+    "seconds": 237.8824279308319
+   },
+   "pgd_linf_eps8/255": {
+    "n": 200,
+    "guidance_delta": 0.8366385102272034,
+    "guidance_cv_tau0.5": 1.0,
+    "guidance_cv_tau0.8": 0.99,
+    "heads": {
+     "guidance": {
+      "delta": 0.8366385102272034,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.03739066421985626,
+      "rho": 0.0446915403008461,
+      "ci95": [
+       0.029981864616274834,
+       0.06177827715873718
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 189,
+       "flip_rate": 0.1693121693121693,
+       "target_side_rate_all": 0.215
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 139,
+       "flip_rate": 0.3669064748201439,
+       "target_side_rate_all": 0.545
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 185,
+       "flip_rate": 0.1837837837837838,
+       "target_side_rate_all": 0.24
+      }
+     },
+     "nih:Consolidation": {
+      "delta": -0.01259674783796072,
+      "rho": -0.01505638100206852,
+      "ci95": [
+       -0.021593714132905006,
+       -0.008427824825048447
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 197,
+       "flip_rate": 0.015228426395939087,
+       "target_side_rate_all": 0.025
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 167,
+       "flip_rate": 0.09580838323353294,
+       "target_side_rate_all": 0.195
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.020512820512820513,
+       "target_side_rate_all": 0.035
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.02548860013484955,
+      "rho": 0.030465487390756607,
+      "ci95": [
+       0.025169765576720238,
+       0.03538710996508598
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 178,
+       "flip_rate": 0.07865168539325842,
+       "target_side_rate_all": 0.175
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 152,
+       "flip_rate": 0.16447368421052633,
+       "target_side_rate_all": 0.35
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 183,
+       "flip_rate": 0.04371584699453552,
+       "target_side_rate_all": 0.11
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.03219541534781456,
+      "rho": 0.03848187252879143,
+      "ci95": [
+       0.02903272584080696,
+       0.04960569366812706
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.15846994535519127,
+       "target_side_rate_all": 0.205
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 87,
+       "flip_rate": 0.4367816091954023,
+       "target_side_rate_all": 0.695
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 168,
+       "flip_rate": 0.20833333333333334,
+       "target_side_rate_all": 0.295
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.024279696866869926,
+      "rho": 0.029020534828305244,
+      "ci95": [
+       0.019751250743865967,
+       0.039360322058200836
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 198,
+       "flip_rate": 0.15656565656565657,
+       "target_side_rate_all": 0.165
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 102,
+       "flip_rate": 0.4117647058823529,
+       "target_side_rate_all": 0.645
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 0.25396825396825395,
+       "target_side_rate_all": 0.275
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.06467112898826599,
+      "rho": 0.07729876786470413,
+      "ci95": [
+       0.06379487365484238,
+       0.09167665988206863
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 194,
+       "flip_rate": 0.14948453608247422,
+       "target_side_rate_all": 0.17
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 106,
+       "flip_rate": 0.49056603773584906,
+       "target_side_rate_all": 0.705
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 174,
+       "flip_rate": 0.20689655172413793,
+       "target_side_rate_all": 0.29
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.14882557094097137,
+      "rho": 0.17788515985012054,
+      "ci95": [
+       0.15321609377861023,
+       0.2021915316581726
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 163,
+       "flip_rate": 0.4723926380368098,
+       "target_side_rate_all": 0.57
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 102,
+       "flip_rate": 0.7352941176470589,
+       "target_side_rate_all": 0.855
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 151,
+       "flip_rate": 0.5827814569536424,
+       "target_side_rate_all": 0.68
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": 0.12762947380542755,
+      "rho": 0.1525503247976303,
+      "ci95": [
+       0.12603700160980225,
+       0.17962311208248138
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 176,
+       "flip_rate": 0.3465909090909091,
+       "target_side_rate_all": 0.425
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 97,
+       "flip_rate": 0.6597938144329897,
+       "target_side_rate_all": 0.8
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 152,
+       "flip_rate": 0.4407894736842105,
+       "target_side_rate_all": 0.565
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": 0.11731162667274475,
+      "rho": 0.1402178257703781,
+      "ci95": [
+       0.12349666655063629,
+       0.15671348571777344
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 185,
+       "flip_rate": 0.33513513513513515,
+       "target_side_rate_all": 0.385
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 125,
+       "flip_rate": 0.68,
+       "target_side_rate_all": 0.775
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 176,
+       "flip_rate": 0.3977272727272727,
+       "target_side_rate_all": 0.47
+      }
+     }
+    },
+    "l2_mean": 5.723639488220215,
+    "linf_mean": 0.03137258067727089,
+    "seconds": 243.30059123039246
+   },
+   "pgd_l2_matched": {
+    "n": 200,
+    "guidance_delta": 0.8360350728034973,
+    "guidance_cv_tau0.5": 1.0,
+    "guidance_cv_tau0.8": 0.99,
+    "heads": {
+     "guidance": {
+      "delta": 0.8360350728034973,
+      "flip_youden": {
+       "t": 0.5693908929824829,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      },
+      "flip_prev_matched": {
+       "t": 0.67750338317974,
+       "n_source_side": 200,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      }
+     },
+     "nih:Pneumonia": {
+      "delta": 0.05621877685189247,
+      "rho": 0.0672445222735405,
+      "ci95": [
+       0.047321170568466187,
+       0.08764796704053879
+      ],
+      "flip_youden": {
+       "t": 0.5012306427955627,
+       "n_source_side": 189,
+       "flip_rate": 0.3544973544973545,
+       "target_side_rate_all": 0.365
+      },
+      "flip_prev_matched": {
+       "t": 0.5095526213187592,
+       "n_source_side": 139,
+       "flip_rate": 0.8201438848920863,
+       "target_side_rate_all": 0.78
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.501961032247999,
+       "n_source_side": 185,
+       "flip_rate": 0.42702702702702705,
+       "target_side_rate_all": 0.43
+      }
+     },
+     "nih:Consolidation": {
+      "delta": 0.1795915812253952,
+      "rho": 0.2148134559392929,
+      "ci95": [
+       0.1808168590068817,
+       0.2472689002752304
+      ],
+      "flip_youden": {
+       "t": 0.5066600465774536,
+       "n_source_side": 197,
+       "flip_rate": 0.6852791878172588,
+       "target_side_rate_all": 0.685
+      },
+      "flip_prev_matched": {
+       "t": 0.5262637129320463,
+       "n_source_side": 167,
+       "flip_rate": 0.8383233532934131,
+       "target_side_rate_all": 0.84
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5081808045939245,
+       "n_source_side": 195,
+       "flip_rate": 0.6923076923076923,
+       "target_side_rate_all": 0.7
+      }
+     },
+     "nih:Infiltration": {
+      "delta": 0.15036281943321228,
+      "rho": 0.17985229194164276,
+      "ci95": [
+       0.15990152955055237,
+       0.20052751898765564
+      ],
+      "flip_youden": {
+       "t": 0.5502194547653199,
+       "n_source_side": 178,
+       "flip_rate": 0.6404494382022472,
+       "target_side_rate_all": 0.675
+      },
+      "flip_prev_matched": {
+       "t": 0.5816582851425994,
+       "n_source_side": 152,
+       "flip_rate": 0.75,
+       "target_side_rate_all": 0.805
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5393241759831481,
+       "n_source_side": 183,
+       "flip_rate": 0.5901639344262295,
+       "target_side_rate_all": 0.625
+      }
+     },
+     "pc:Pneumonia": {
+      "delta": 0.38380250334739685,
+      "rho": 0.45907464623451233,
+      "ci95": [
+       0.424689918756485,
+       0.4930891990661621
+      ],
+      "flip_youden": {
+       "t": 0.5507971525192261,
+       "n_source_side": 183,
+       "flip_rate": 0.9890710382513661,
+       "target_side_rate_all": 0.985
+      },
+      "flip_prev_matched": {
+       "t": 0.642774362990265,
+       "n_source_side": 87,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5652170459362413,
+       "n_source_side": 168,
+       "flip_rate": 0.9880952380952381,
+       "target_side_rate_all": 0.985
+      }
+     },
+     "pc:Consolidation": {
+      "delta": 0.42439568042755127,
+      "rho": 0.5076290369033813,
+      "ci95": [
+       0.480612576007843,
+       0.5337758660316467
+      ],
+      "flip_youden": {
+       "t": 0.513734381198883,
+       "n_source_side": 198,
+       "flip_rate": 0.9696969696969697,
+       "target_side_rate_all": 0.97
+      },
+      "flip_prev_matched": {
+       "t": 0.5545584126226415,
+       "n_source_side": 102,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5247395036817826,
+       "n_source_side": 189,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 0.99
+      }
+     },
+     "pc:Infiltration": {
+      "delta": 0.464028537273407,
+      "rho": 0.5550347566604614,
+      "ci95": [
+       0.5144796371459961,
+       0.5957611799240112
+      ],
+      "flip_youden": {
+       "t": 0.6010363578796387,
+       "n_source_side": 194,
+       "flip_rate": 0.9536082474226805,
+       "target_side_rate_all": 0.955
+      },
+      "flip_prev_matched": {
+       "t": 0.7612265161478899,
+       "n_source_side": 106,
+       "flip_rate": 1.0,
+       "target_side_rate_all": 1.0
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.636853060473077,
+       "n_source_side": 174,
+       "flip_rate": 0.9770114942528736,
+       "target_side_rate_all": 0.98
+      }
+     },
+     "mimic_ch:Pneumonia": {
+      "delta": 0.015044382773339748,
+      "rho": 0.017994917929172516,
+      "ci95": [
+       -0.009585331194102764,
+       0.047795966267585754
+      ],
+      "flip_youden": {
+       "t": 0.5065951466560363,
+       "n_source_side": 163,
+       "flip_rate": 0.2331288343558282,
+       "target_side_rate_all": 0.295
+      },
+      "flip_prev_matched": {
+       "t": 0.5419540761092059,
+       "n_source_side": 102,
+       "flip_rate": 0.5196078431372549,
+       "target_side_rate_all": 0.58
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5150189492415238,
+       "n_source_side": 151,
+       "flip_rate": 0.33112582781456956,
+       "target_side_rate_all": 0.38
+      }
+     },
+     "mimic_ch:Consolidation": {
+      "delta": -0.18876305222511292,
+      "rho": -0.22578364610671997,
+      "ci95": [
+       -0.2607174515724182,
+       -0.19159109890460968
+      ],
+      "flip_youden": {
+       "t": 0.5052321529388428,
+       "n_source_side": 176,
+       "flip_rate": 0.045454545454545456,
+       "target_side_rate_all": 0.05
+      },
+      "flip_prev_matched": {
+       "t": 0.5535314542447133,
+       "n_source_side": 97,
+       "flip_rate": 0.1134020618556701,
+       "target_side_rate_all": 0.135
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.5191630356897459,
+       "n_source_side": 152,
+       "flip_rate": 0.05263157894736842,
+       "target_side_rate_all": 0.075
+      }
+     },
+     "mimic_ch:Lung Opacity": {
+      "delta": -0.14095506072044373,
+      "rho": -0.1685994565486908,
+      "ci95": [
+       -0.19044026732444763,
+       -0.1466282308101654
+      ],
+      "flip_youden": {
+       "t": 0.5761854887008667,
+       "n_source_side": 185,
+       "flip_rate": 0.03783783783783784,
+       "target_side_rate_all": 0.035
+      },
+      "flip_prev_matched": {
+       "t": 0.7019662704274786,
+       "n_source_side": 125,
+       "flip_rate": 0.048,
+       "target_side_rate_all": 0.085
+      },
+      "flip_guidance_t0.5_equiv_rate": {
+       "t": 0.6157202315460056,
+       "n_source_side": 176,
+       "flip_rate": 0.03977272727272727,
+       "target_side_rate_all": 0.045
+      }
+     }
+    },
+    "l2_mean": 13.371224403381348,
+    "linf_mean": 0.5467128157615662,
+    "seconds": 245.31175756454468
+   }
+  }
+ },
+ "test_fold_meta": {
+  "n": 5337,
+  "n_pos": 1197,
+  "seconds": 1139.8575172424316
+ }
+}

@@ -1,0 +1,240 @@
+=== J16_single_common reduce on hpc-n968 at Thu Nov  5 22:02:43 CET 2026
+name
+NVIDIA L40S
+NVIDIA L40S
+NVIDIA L40S
+NVIDIA L40S
+[adapter] per-direction mode: n_to_p <- /home2020/home/insa/arbaoui/verification/views/single_np, p_to_n <- /home2020/home/insa/arbaoui/verification/views/single_pn
+[common-images] groups <- /home2020/home/insa/arbaoui/verification/out/J4_perdir/shards; EVAL_GROUP_SOURCE stamp = 'classifier:ens2'; USE_GUIDANCE_ENSEMBLE = False
+[eval] loaded 8 shards from '/home2020/home/insa/arbaoui/verification/out/J16_single_common/shards' — Xn=200 Xp=200 Xc_n→p=200 Xc_p→n=200
+======================================================================
+STEP 1 — Dataset ingestion
+======================================================================
+[domain] rsna_pneumonia: f(.) targets 'Pneumonia' | guidance=densenet121-res224-rsna | ensemble=['densenet121-res224-rsna', 'densenet121-res224-chex'] | validators=['densenet121-res224-nih', 'densenet121-res224-pc', 'densenet121-res224-mimic_ch'] | clinical metrics: CTR, SCP
+[domain] Baseline domain. NOTE both clinical metrics are weak here: CTR is a cardiomegaly measure and SCP's sigmoid(-||yolo_feat||/50) proxy was measured degenerate (0.21% relative spread) in the last eval. Neither is pneumonia-specific.
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+[split] rsna_pneumonia: 21347 train / 5337 test (20.0% held out, seed=0)  [loaded]
+
+======================================================================
+STEP 2 — Loading pretrained models
+======================================================================
+[models] loaded XRV classifier (densenet121-res224-rsna, head='Pneumonia') as f(·)
+[models] loaded PSPNet | lung channels: [4, 5]
+[models] loaded YOLOv8 backbone from yolov8n.pt
+
+======================================================================
+STEP 3 — Building generator with LoRA
+======================================================================
+[generator] loading VAE ...
+[generator] loading UNet ...
+trainable params: 1,594,368 || all params: 861,115,332 || trainable%: 0.1852
+[generator] VRAM estimate — VAE=160 MB, UNet=1645 MB, total=1806 MB
+
+======================================================================
+STEP 4 — Restoring trained checkpoints
+======================================================================
+[pipeline] loading fine-tuned generator from '/home2020/home/insa/arbaoui/verification/views/single_np/n_to_p/'
+[pipeline]   → unet_finetuned.pt + cond_proj.pt
+
+----------------------------------------------------------------------
+Loading trained policy  [n_to_p, target_c=1.0]
+----------------------------------------------------------------------
+[env] 2451/5337 images are > 0.5 away from target_c=1.0  [training fold only]
+[env] far pool split: 2427 train / 24 held out for the CV probe (CV resolution 4.2 pts/image)
+[n_to_p] obs_dim = 73731
+[n_to_p] loaded policy from '/home2020/home/insa/arbaoui/verification/views/single_np/n_to_p/ppo_policy.pt' (37,885,462 params)
+
+----------------------------------------------------------------------
+Loading trained policy  [p_to_n, target_c=0.0]
+----------------------------------------------------------------------
+[env] 2886/5337 images are > 0.5 away from target_c=0.0  [training fold only]
+[env] far pool split: 2862 train / 24 held out for the CV probe (CV resolution 4.2 pts/image)
+[p_to_n] obs_dim = 73731
+[p_to_n] loaded policy from '/home2020/home/insa/arbaoui/verification/views/single_np/p_to_n/ppo_policy.pt' (37,885,462 params)
+
+======================================================================
+STEP 6 — Evaluation (metrics over precomputed counterfactuals)
+======================================================================
+
+======================================================================
+EVALUATION — Singla et al. (2022) metrics
+  (using PPO-guided generation)
+======================================================================
+[metrics] using PRECOMPUTED counterfactuals — skipping scan and generation. Xn=200  Xp=200
+[metrics] computing FID ...
+[metrics] computing FOP (TorchXRayVision Support Devices detector) ...
+[metrics] WARNING: 'Support Devices' head absent from weights='densenet121-res224-chex' (available heads: ['Atelectasis', 'Consolidation', '', 'Pneumothorax', 'Edema', '', '', 'Effusion', 'Pneumonia', '', 'Cardiomegaly', '', '', '', 'Lung Lesion', 'Fracture', 'Lung Opacity', 'Enlarged Cardiomediastinum']). FOP will be skipped (reported as N/A).
+[metrics] computing IP (MS-SSIM + high-freq detail preservation) ...
+[metrics] computing edit concentration ...
+[metrics] computing CTR ...
+[metrics] computing SCP ...
+[metrics] computing LHR (lesion hit rate, p→n) ...
+
+──────────────────────────────────────────────────────────────────────
+  METRIC SUMMARY  (Singla et al., 2022 — Table 1 / Fig. 9 style)
+──────────────────────────────────────────────────────────────────────
+
+► Counterfactual Validity (CV)   [τ = 0.8]
+    Xn → Xp : 0.8550
+    Xp → Xn : 0.8400
+    mean     : 0.8475
+
+► FID score  (lower = more realistic CFs)
+  vs SOURCE class — ambiguous: high can mean real class change OR artifact
+    FID(Xn,  Xc_n→p) : 99.14
+    FID(Xp,  Xc_p→n) : 57.01
+  vs TARGET class — the realism test, LOWER IS BETTER
+    FID(Xp,  Xc_n→p) : 18.40
+    FID(Xn,  Xc_p→n) : 5.91
+    (high on BOTH rows = off-manifold edit, not a class change)
+
+► Edit concentration  [model-free; top-5% of pixels' share of |Δ|]
+    Xn → Xp : 0.249  (uniform baseline 0.05) | MAE=0.0304 | changed=65.4%
+    Xp → Xn : 0.298  (uniform baseline 0.05) | MAE=0.0338 | changed=63.0%
+    >~0.5 = focal edit. Near the baseline = diffuse, i.e. adversarial-shaped.
+
+► Lesion Hit Rate (LHR)  [Xp → Xn, vs radiologist boxes — GROUND TRUTH]
+    edit mass inside lesion : 0.368 ± 0.202
+    chance baseline (area)  : 0.174 ± 0.111
+    LIFT                    : 2.30×  [t=20.13, p=4.23e-44, n=148]
+    1.0 = the edit ignores the annotation (adversarial-shaped). >1 = it targets the lesion.
+    Xn → Xp : N/A by construction — negative sources have no annotation.
+
+► Identity Preservation (IP)  [model-free FOP replacement, higher = better]
+    Xn → Xp : MS-SSIM=0.9205  HF-corr=0.9483
+    Xp → Xn : MS-SSIM=0.8835  HF-corr=0.9161
+
+► CTR — Cardiomegaly clinical metric
+    mean CTR(Xn)     = 0.4212 ± 0.0527
+    mean CTR(Xp)     = 0.4397 ± 0.1059
+    mean CTR(Xc_n→p) = 0.4147 ± 0.0507
+    mean CTR(Xc_p→n) = 0.4466 ± 0.1276
+    Δ CTR(Xn − Xc_n→p) = 0.0064 ± 0.0521  [t=1.74, p=0.0839]
+    Δ CTR(Xp − Xc_p→n) = 0.0021 ± 0.1423  [t=0.19, p=0.8499]
+
+► SCP — Pleural Effusion clinical metric
+    ⚠ DEGENERATE — relative spread 0.19% across all four groups (< 2%).
+    The sigmoid(-‖yolo_feat‖/50) proxy is saturated, so SCP is effectively a constant
+    (0.4795 ± 0.0008) and its paired t-tests are testing numerical noise.
+    Group means are retained in eval_metrics.json; the deltas and t-tests are withheld
+    from it (see _strip_unreportable). Fix the proxy (a real CP-recess detector) or drop SCP.
+──────────────────────────────────────────────────────────────────────
+
+[metrics] results saved to '/home2020/home/insa/arbaoui/verification/out/J16_single_common/eval_metrics.json'
+Evaluation metrics: CV=0.8475 (n→p=0.8550, p→n=0.8400) | FID_neg=99.1356 | FID_pos=57.0137
+Identity Preservation (IP): n→p MS-SSIM=0.9205/HF=0.9483 | p→n MS-SSIM=0.8835/HF=0.9161
+
+======================================================================
+STEP 6B — Counterfactual diff plots (n→p and p→n, PPO-guided)
+======================================================================
+
+[diff_viz] generating n→p counterfactual (normal → pneumonia) ...
+[pipeline] loading fine-tuned generator from '/home2020/home/insa/arbaoui/verification/views/single_np/n_to_p/'
+[pipeline]   → unet_finetuned.pt + cond_proj.pt
+[adapter] n_to_p <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/archive_pre_ensemble_default_20260812/n_to_p/unet_finetuned.pt sha256=db36b707817b319244ed5945fc796e09907ae88476f1143149f1e7a16e3ffe69 | cond_proj <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/archive_pre_ensemble_default_20260812/n_to_p/cond_proj.pt | generator == file: unet LoRA 256/256, cond_proj 4/4 | expected sha256 MATCH
+[diff_viz] saved figure to '/home2020/home/insa/arbaoui/verification/out/J16_single_common/counterfactual_diff_n_to_p.png'
+
+── Counterfactual difference summary ───────────────────────────
+  MAE (L1)          : 0.034622
+  MSE (L2)          : 0.002505
+  Max pixel change  : 0.382240
+  Pixels changed    : 77.11%  (threshold > 0.01)
+────────────────────────────────────────────────────────────────
+
+
+── Counterfactual difference summary (n→p) ─────────────────────
+  MAE (L1)          : 0.034622
+  MSE (L2)          : 0.002505
+  Max pixel change  : 0.382240
+  Pixels changed    : 77.11%  (threshold > 0.01)
+────────────────────────────────────────────────────────────────
+
+
+[diff_viz] generating p→n counterfactual (pneumonia → normal) ...
+[pipeline] loading fine-tuned generator from '/home2020/home/insa/arbaoui/verification/views/single_pn/p_to_n/'
+[pipeline]   → unet_finetuned.pt + cond_proj.pt
+[adapter] p_to_n <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/archive_pre_ensemble_default_20260812/p_to_n/unet_finetuned.pt sha256=01d6c7e3bcb28317ce3d30c49a0e523a473e6896dc67959169627fa0a71a9853 | cond_proj <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/archive_pre_ensemble_default_20260812/p_to_n/cond_proj.pt | generator == file: unet LoRA 256/256, cond_proj 4/4 | expected sha256 MATCH
+[diff_viz] saved figure to '/home2020/home/insa/arbaoui/verification/out/J16_single_common/counterfactual_diff_p_to_n.png'
+
+── Counterfactual difference summary ───────────────────────────
+  MAE (L1)          : 0.025619
+  MSE (L2)          : 0.001940
+  Max pixel change  : 0.744002
+  Pixels changed    : 65.23%  (threshold > 0.01)
+────────────────────────────────────────────────────────────────
+
+
+── Counterfactual difference summary (p→n) ─────────────────────
+  MAE (L1)          : 0.025619
+  MSE (L2)          : 0.001940
+  Max pixel change  : 0.744002
+  Pixels changed    : 65.23%  (threshold > 0.01)
+────────────────────────────────────────────────────────────────
+
+
+── n→p vs p→n diff comparison ─────────────────────────────────
+  metric                 n→p         p→n
+  MAE                 0.0346      0.0256
+  MSE                 0.0025      0.0019
+  max Δ               0.3822      0.7440
+  % changed            77.1%       65.2%
+────────────────────────────────────────────────────────────────
+
+[eval] saved: /home2020/home/insa/arbaoui/verification/out/J16_single_common/counterfactual_diff_n_to_p.png, /home2020/home/insa/arbaoui/verification/out/J16_single_common/counterfactual_diff_p_to_n.png
+
+✓ Evaluation complete.
+
+PAIRED ARM TEST — /home2020/home/insa/arbaoui/verification/out/J4_perdir/shards vs /home2020/home/insa/arbaoui/verification/out/J16_single_common/shards  (LHR lift, p→n)
+==============================================================
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+/home2020/home/insa/arbaoui/verification/code/49e6050_single/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  blobs[int(m.group(1))] = torch.load(p, map_location="cpu")
+paired images            : 148
+mean lift /home2020/home/insa/arbaoui/verification/out/J4_perdir/shards: 2.5955  (sd 0.8945)
+mean lift /home2020/home/insa/arbaoui/verification/out/J16_single_common/shards: 2.2957  (sd 0.7928)
+paired difference       : +0.2998   95% CI [+0.1898, +0.4155]
+paired t-test           : t=5.192  p=6.801e-07
+Wilcoxon signed-rank    : W=2474.0  p=5.975e-09
+Cohen's d (paired)      : +0.427
+/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards better on       : 111 / 148 images
+
+READING
+  The difference is statistically detectable (p=6.8e-07), but read the
+  effect size before calling it meaningful: a lift gap of +0.300
+  against a between-image sd of 0.895.
+
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+/home2020/home/insa/arbaoui/verification/out/J16_single_common/shards: 148 annotated images, mean lift 2.2957
+/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards: 148 annotated images, mean lift 2.5955
+/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards: 183 annotated images, mean lift 2.2934
+wrote /home2020/home/insa/arbaoui/verification/out/J16_single_common/per_image_lhr.json
+
+==========================================================================
+shards
+==========================================================================
+  n=200 per group | guidance = rsna | groups = classifier:ens2 | gradcam = False
+[models] loaded XRV classifier (densenet121-res224-rsna, head='Pneumonia') as f(·)
+  Δ_guidance  n→p=0.8954  p→n=0.8650
+  validator       Δ n→p    Δ p→n  ratio n→p  ratio p→n   verdict
+[models] loaded XRV classifier (densenet121-res224-nih, head='Pneumonia') as f(·)
+  nih                      0.1046   0.0767      0.117      0.089   ADVERSARIAL/ADVERSARIAL
+    rank agreement with guidance on the 400 unedited originals: rho=+0.745
+    95% CI  n→p [0.082, 0.150]   p→n [0.067, 0.112]  (10000 resamples)
+[models] loaded XRV classifier (densenet121-res224-pc, head='Pneumonia') as f(·)
+  pc                       0.3754   0.1851      0.419      0.214   partial/partial
+    rank agreement with guidance on the 400 unedited originals: rho=+0.782
+    95% CI  n→p [0.391, 0.448]   p→n [0.193, 0.235]  (10000 resamples)
+[models] loaded XRV classifier (densenet121-res224-mimic_ch, head='Pneumonia') as f(·)
+  mimic_ch                 0.1778   0.1042      0.199      0.120   partial/ADVERSARIAL
+    rank agreement with guidance on the 400 unedited originals: rho=+0.648
+    95% CI  n→p [0.167, 0.231]   p→n [0.088, 0.153]  (10000 resamples)
+  MEAN                                          0.245      0.141
+
+wrote /home2020/home/insa/arbaoui/verification/out/J16_single_common/transfer.json
+=== finished at Thu Nov  5 22:08:16 CET 2026

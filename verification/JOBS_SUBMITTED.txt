@@ -55,3 +55,21 @@ J17 seedrep single seed1  18537212  (scripts/28, array 0-1 n_to_p/p_to_n; PPO-on
 J17 seedrep single seed2  18537213  (scripts/28, array 0-1 n_to_p/p_to_n; PPO-only, own per-direction adapters; cutoff 2026-11-09 12:00)
 J18 validator AUROC 18537214 2026-11-05T21:07:14+01:00 (scripts/29; Pneumonia AUROC of guidance + validators on the 5,337-image test fold; D8/E5)
 J15 latent shift FULL 18537216 2026-11-05T21:07:37+01:00 (scripts/25; 400 images; lambda grid extended to 4.0 after smoke 18537169: 2/8 p->n at grid max 2.0)
+# 2026-11-05T21:39:24+01:00 (plan: D1 stronger baseline; J15 smoke CV=0 is genuine, see MEMO_2026-11-05_J15_smoke.md)
+J15b_smoke ls-iter 18537354  (scripts/30, LIMIT=8; iterative Latent Shift, ETA=0.02, K_MAX=150, wrapper latent_shift_iter_eval.py; mock-tested on CPU)
+J15b ls-iter FULL 18537355  (scripts/30, 400 images, afterok:18537354; cancel if smoke output is wrong)
+# 2026-11-05T21:49:08+01:00 (second review, item 1: LHR nulls)
+J19 lhr nulls   18537359  (scripts/31, CPU public; lung-restricted / editable-region / mismatched-box nulls, VAE floor, uniform in-lung wash; 13 arms)
+J19b lhr nulls J16 18537360  (scripts/31, afterok:18537173; J4 + J16 + J5)
+# 2026-11-05T21:50:55+01:00 J15 full 18537216 COMPLETED; CPU analyses cv_crossing.py (J4,J10,J15smoke,J15) + inlung_lhr.py (J4,J5,J10,J15smoke,J15) + J10 paired vs J4 -> out/cv_crossing, out/inlung_lhr, out/J10_vs_J4; see MEMO_2026-11-05_J15_smoke.md
+# 2026-11-05T21:56:14+01:00 J15b smoke 18537354 COMPLETED and checked (CV 8/8 both; search==eval; stamp latent_shift_iterative). Full 18537355 left to run.
+# 2026-11-05T22:07:21+01:00 (second review, items 2 + 10)
+J20 transfer calibration 18537367  (scripts/32, CPU public 32c; test-fold AUROC + real-pair rho ceiling + operating points for Pneumonia/Consolidation/Infiltration/Lung Opacity heads; rho + decision flips on J4/J5/J12/J15/J10; FGSM/PGD-Linf/norm-matched PGD-L2 floor on J4 sources)
+# 2026-11-05T22:24:16+01:00 J15b full 18537355 COMPLETED (CV 1.000/0.995). Combined CPU tables: out/cv_crossing/cv_crossing_all.json, out/inlung_lhr/inlung_all.json. All D1 GPU work done.
+# 2026-11-05T22:36:11+01:00 J20 18537367 edited while PENDING (smoke on login node hit its own 40-min timeout after FGSM eps4; no crash): PGD 20->10 steps, step eps/8->eps/4 (L2: budget/8->/4), PGD-Linf eps {1,2,4,8}->{2,4,8}/255, to fit 16 h on CPU. FGSM unchanged.
+# 2026-11-06T20:18:20+01:00 (J17 seed replicates trained 100 updates / 800 episodes each; evaluate on J4's images)
+J21 seedrep_ens_seed2 gen 18542413  reduce 18542414  (scripts/26+27, POLICY_DIR=out/seedrep_ens_seed2, views committed/pn_lora, code 49e6050, J4's 400 images + seeds; out/J21_seedrep_ens_seed2_common)
+J21 seedrep_single_seed1 gen 18542415  reduce 18542416  (scripts/26+27, POLICY_DIR=out/seedrep_single_seed1, views single_np/single_pn, code 49e6050_single, J4's 400 images + seeds; out/J21_seedrep_single_seed1_common)
+J21 seedrep_single_seed2 gen 18542417  reduce 18542418  (scripts/26+27, POLICY_DIR=out/seedrep_single_seed2, views single_np/single_pn, code 49e6050_single, J4's 400 images + seeds; out/J21_seedrep_single_seed2_common)
+# 2026-11-06T20:18:57+01:00
+J19c lhr nulls J15b 18542421  (scripts/31; J4 + J15b iterative Latent Shift + J15)

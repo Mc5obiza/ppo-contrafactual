@@ -1,0 +1,116 @@
+{
+  "code": "/home2020/home/insa/arbaoui/verification/code/49e6050",
+  "committed_shards": "/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards",
+  "lambda_grid": [
+    0.01,
+    0.02,
+    0.05,
+    0.1,
+    0.15,
+    0.2,
+    0.3,
+    0.4,
+    0.6,
+    0.8,
+    1.0,
+    1.5,
+    2.0,
+    3.0,
+    4.0
+  ],
+  "cv_margin": 0.8,
+  "n": {
+    "xn": 200,
+    "xp": 200,
+    "n_eval": 200
+  },
+  "idx_sha256": "37ee3624b48b3b5dbcb5ec589a9ad671341e8e31e1c6767e4582827a48f2d089",
+  "input_max_abs_diff_vs_dataset": 0.0,
+  "group_check": {
+    "xn_not_below_0.2": 0,
+    "xp_not_above_0.8": 0
+  },
+  "autoencoder": {
+    "weights": "101-elastic",
+    "file": "/home2020/home/insa/arbaoui/.torchxrayvision/models_data/nihpcrsnamimic_ch-resnet101-2-ae-test2-elastic-e250.pt",
+    "sha256": "877ded430383a2bbce756737b316d76de42defed3079eebf2cce305f7be34df9",
+    "metadata": {
+      "description": "This model was trained on the datasets: nih pc rsna mimic_ch chex datasets.",
+      "weights_url": "https://github.com/mlmed/torchxrayvision/releases/download/v1/nihpcrsnamimic_ch-resnet101-2-ae-test2-elastic-e250.pt",
+      "image_range": [
+        -1024,
+        1024
+      ],
+      "resolution": 224,
+      "class": "ResNetAE101"
+    }
+  },
+  "search": {
+    "n_to_p": {
+      "valid_by_search": 1,
+      "n": 200,
+      "lam_median": 0.15000000596046448,
+      "lam_hist": {
+        "0.01": 0,
+        "0.02": 1,
+        "0.05": 28,
+        "0.1": 51,
+        "0.15": 38,
+        "0.2": 18,
+        "0.3": 18,
+        "0.4": 10,
+        "0.6": 6,
+        "0.8": 5,
+        "1.0": 5,
+        "1.5": 12,
+        "2.0": 5,
+        "3.0": 3,
+        "4.0": 0
+      },
+      "f_source_mean": 0.0856517031788826,
+      "f_recon_mean": 0.05749896168708801
+    },
+    "p_to_n": {
+      "valid_by_search": 24,
+      "n": 200,
+      "lam_median": 4.0,
+      "lam_hist": {
+        "0.01": 1,
+        "0.02": 4,
+        "0.05": 16,
+        "0.1": 5,
+        "0.15": 4,
+        "0.2": 7,
+        "0.3": 3,
+        "0.4": 1,
+        "0.6": 0,
+        "0.8": 2,
+        "1.0": 0,
+        "1.5": 0,
+        "2.0": 0,
+        "3.0": 3,
+        "4.0": 154
+      },
+      "f_source_mean": 0.84462571144104,
+      "f_recon_mean": 0.6817692518234253
+    }
+  },
+  "delta_grouping_ensemble": {
+    "n_to_p": {
+      "mean": 0.5672461986541748,
+      "ci95": [
+        0.5561291620135307,
+        0.5786882817745209
+      ],
+      "frac_positive": 1.0
+    },
+    "p_to_n": {
+      "mean": 0.6774312853813171,
+      "ci95": [
+        0.6607807248830795,
+        0.6937490537762642
+      ],
+      "frac_positive": 1.0
+    }
+  }
+}
