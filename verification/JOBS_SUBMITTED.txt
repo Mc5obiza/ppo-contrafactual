@@ -73,3 +73,5 @@ J21 seedrep_single_seed1 gen 18542415  reduce 18542416  (scripts/26+27, POLICY_D
 J21 seedrep_single_seed2 gen 18542417  reduce 18542418  (scripts/26+27, POLICY_DIR=out/seedrep_single_seed2, views single_np/single_pn, code 49e6050_single, J4's 400 images + seeds; out/J21_seedrep_single_seed2_common)
 # 2026-11-06T20:18:57+01:00
 J19c lhr nulls J15b 18542421  (scripts/31; J4 + J15b iterative Latent Shift + J15)
+# 2026-11-06T21:12:27+01:00 (second review item 6, user: 'go on with the best decision that respects the deadline')
+J22 breast LHR 18542590  (scripts/33 -> breast_lhr.py, CPU; CBIS-DDSM shards from test-cancer, both directions, in-breast / VAE-floor / mismatched-ROI nulls; out/J22_breast_lhr)

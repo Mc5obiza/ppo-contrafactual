@@ -2,7 +2,7 @@
 % Supplementary sections moved out of the main paper: E1 (controls),
 % E2 (anatomical proxy metrics), E3 (baselines under the same protocol), E4 (lock-width sensitivity),
 % E5 (same-image runs: default, no policy, two fixed schedules, second seed), E6 (edit locality, FID/KID uncertainty),
-% E7 (LHR under alternative nulls), E8 (transfer-ratio calibration).
+% E7 (LHR under alternative nulls), E8 (transfer-ratio calibration), E9 (exploratory mammography LHR).
 % =============================================================================
 
 \section*{E. Additional Details}
@@ -262,3 +262,39 @@ p$\to$n & \textbf{default counterfactual} & 0.761 & 0.84 & 17.6 & 0.17 & 0.31 & 
 The two directions differ. Removing evidence of opacity transfers poorly when done adversarially: every PGD $L_\infty$ attack stays at or below 0.04 on \texttt{nih} and \texttt{pc} and 0.18 on \texttt{mimic\_ch}, while the counterfactuals reach 0.17--0.36. (FGSM barely moves the guidance ensemble in this direction, so its ratios have small denominators.) Adding it transfers readily: attacks with a quarter of the counterfactual's norm already reach 0.22--0.31, and the norm-matched attack matches or exceeds the counterfactual on \texttt{pc} and \texttt{mimic\_ch}. These DenseNet-121s share architecture and much of their training distribution, so shared adversarial directions are expected. The norm-matched $L_2$ attack concentrates its budget into large local changes ($L_\infty$ 0.37 n$\to$p, 0.55 p$\to$n) and may itself synthesize opacity-like structure. It is therefore an upper bound on what an attack can reach at that norm, not a pure-perturbation floor.
 
 Decision flips complement the ratio. At their own operating points, \texttt{pc} and \texttt{mimic\_ch} flip 91\% and 69\% of n$\to$p and 91\% and 80\% of p$\to$n counterfactuals, far more than a ratio near 0.3 suggests: the ratio averages score shifts, while a flip only needs enough shift to cross the threshold. Prevalence-matched thresholds (the top 22.4\% of test images called positive) sit higher and give the same ordering. In p$\to$n the counterfactuals flip 79\%, 100\% and 89\% against 17\%, 29\% and 48\% for PGD $L_\infty$ 4/255. In n$\to$p they flip 6\%, 54\% and 33\%, against 9\%, 12\% and 14\% for that attack and 9\%, 53\% and 89\% for the norm-matched one (\texttt{nih}, \texttt{pc}, \texttt{mimic\_ch}).
+
+% -----------------------------------------------------------------------------
+\subsection*{E9. Exploratory: lesion targeting on mammograms}
+\label{sec:suppl-breast}
+
+An earlier port of PPO-CF to full-field mammograms of CBIS-DDSM (Lee \etal, Sci.\ Data 2017) offers what RSNA cannot: an anchor for the n$\to$p direction. CBIS-DDSM contains no normal mammograms, so the classes are benign and malignant, and every source image in either direction carries radiologist ROI masks. The run is not part of the main results, for three reasons established by an audit of its saved counterfactuals. (i) Its guidance classifier, a DenseNet-121 we trained on CBIS-DDSM, had 336 of the 400 evaluation images (304 of 362 patients) in its training set, so its CV of 1.00 in both directions says little. (ii) No held-out validator we could build reaches AUROC 0.65 on real images: out-of-fold AUROC is 0.62--0.64 for ResNet-18 and EfficientNet-B0 validators trained on the 234 patients disjoint from the guidance model's training set, and for validators trained on CMMD, a separate mammography corpus. The transfer ratio is therefore uninterpretable and not reported. (iii) The generator and policy were trained before the split and seeding controls of main-paper Sec.~4.4, and no no-policy run exists on these images.
+
+We therefore report only LHR, which needs neither a validator nor a clean classifier, recomputed offline from the saved counterfactuals (200 per direction). The image indices were recovered by replaying the group scan, and every source image was re-checked to be pixel-identical to the dataset image at that index. The lesion mask is the union of the image's ROI masks, resized exactly like the image. The organ mask $B$ is the breast channel of the analytic segmenter (Otsu threshold and largest connected component) that gated the background lock in this run. LHR is main-paper Eq.~(5) with $B$ in place of the lung mask. Of 200 sources, 191 (benign$\to$malignant) and 196 (malignant$\to$benign) are kept: 12 ROI masks do not match their mammogram's size and one image has none.
+
+\begin{table}[h]
+\centering
+\caption{LHR on CBIS-DDSM counterfactuals (exploratory; see text for why). Mean over images with 95\% $t$-interval; paired differences with a 10{,}000-resample bootstrap CI.}
+\label{tab:suppl-breast}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcc@{}}
+\toprule
+& benign$\to$malignant & malignant$\to$benign \\
+& ($n=191$) & ($n=196$) \\
+\midrule
+In breast (Eq.~5 with $B$) & \textbf{1.547} [1.420, 1.674] & \textbf{1.892} [1.747, 2.038] \\
+In breast, vs.\ $D(E(x))$ & 1.539 & 1.857 \\
+In breast, other images' ROIs & 1.134 & 1.133 \\
+VAE round trip only, in breast & 1.249 [1.196, 1.302] & 1.276 [1.236, 1.315] \\
+Whole image & 4.053 & 4.373 \\
+Uniform wash over $B$, whole image & 3.010 & 2.734 \\
+Edit mass inside $B$ & 0.88 & 0.86 \\
+\midrule
+Own minus other ROIs & $+0.413$ [$+0.294$, $+0.547$] & $+0.760$ [$+0.615$, $+0.913$] \\
+Edit minus VAE round trip & $+0.298$ [$+0.177$, $+0.425$] & $+0.617$ [$+0.483$, $+0.756$] \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Both directions put more edit mass on the lesion than a lesion-blind edit inside the breast, more strongly than on RSNA (1.55 and 1.89 against 1.17), and here the edits beat an in-organ wash even under the whole-image null. Unlike on RSNA, the VAE round trip is itself lesion-directed (1.25 and 1.28), plausibly because masses and calcifications are the high-contrast detail the autoencoder reconstructs worst. Measuring the edit against $D(E(x))$ nevertheless leaves LHR almost unchanged, and the edits exceed the round trip by 0.30 and 0.62. Most of the lift is image-specific: other images' ROIs score 1.13. The benign$\to$malignant direction, which has no RSNA analogue, targets the lesion as well. We do not read this as evidence that the policy or the lock produces the targeting, since no no-policy run exists. Nor is it evidence of class-relevant content, since the validators are uninformative and the guidance classifier is contaminated. It shows that the in-organ LHR and its nulls transfer to a second modality, where they also give an answer in both directions.
