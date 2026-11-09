@@ -1,0 +1,17 @@
+
+PAIRED ARM TEST — checkpoints/eval_shards_ens_default vs J4_perdir/shards  (LHR lift, p→n)
+==============================================================
+paired images            : 148
+mean lift checkpoints/eval_shards_ens_default: 2.6727  (sd 0.9194)
+mean lift J4_perdir/shards: 2.5955  (sd 0.8945)
+paired difference       : +0.0772   95% CI [-0.0005, +0.1588]
+paired t-test           : t=1.900  p=0.0594
+Wilcoxon signed-rank    : W=4756.0  p=0.1473
+Cohen's d (paired)      : +0.156
+checkpoints/eval_shards_ens_default better on       : 76 / 148 images
+
+READING
+  No detectable difference (p=0.0594). With 148 paired images the
+  95% CI on the gap is [-0.0005, +0.1588] — the data are consistent with
+  the trained policy editing no closer to the lesion than an untrained one.
+

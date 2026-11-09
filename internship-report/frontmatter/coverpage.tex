@@ -1,0 +1,71 @@
+% =====================================================================
+%  Cover page
+%  LOGOS: logos/ISSATSo_logo.jpg and logos/SDU.png. Each is wrapped in
+%  \IfFileExists so the page still builds (with a text fallback) if a
+%  logo file is ever missing.
+% =====================================================================
+\thispagestyle{empty}
+
+\begin{center}
+
+{\large\scshape Tunisian Republic}\\[2pt]
+{\normalsize\scshape Ministry of Higher Education and Scientific Research}\\[10pt]
+{\normalsize\scshape University of Sousse}\\[2pt]
+{\normalsize\scshape Higher Institute of Applied Sciences and Technology of Sousse}\\[10pt]
+
+% ISSAT logo. The source JPEG (2624x1828) carries a wide white margin, so it
+% is trimmed (left bottom right top, in bp) and clipped before scaling —
+% otherwise the visible mark is only ~60% of the reserved height.
+\IfFileExists{logos/ISSATSo_logo.jpg}
+  {\includegraphics[trim=55 300 90 320,clip,height=2.75cm]{logos/ISSATSo_logo.jpg}}
+  {\parbox{0.35\textwidth}{\centering\small\textsc{ISSAT Sousse}}}
+
+\vspace{10pt}
+\rule{\textwidth}{1.2pt}
+
+\vspace{10pt}
+{\Huge\scshape Research Internship Report}
+\vspace{8pt}
+
+\rule{\textwidth}{1.2pt}
+
+\vspace{14pt}
+{\large\scshape Class: 1st Year Engineering Cycle}
+
+\vspace{12pt}
+{\itshape Presented by:}\\[6pt]
+{\Large\scshape Melki Ayoub}
+
+\vspace{14pt}
+\rule{0.85\textwidth}{0.6pt}\\[8pt]
+{\large\itshape PPO-Guided Latent Diffusion for Visual Counterfactual\\
+Explanations in Chest Radiography (RSNA Dataset)}\\[8pt]
+\rule{0.85\textwidth}{0.6pt}
+
+\vspace{14pt}
+{\large\scshape Host Institution:}\\[6pt]
+
+% SDU logo already contains the wordmark "University of Southern Denmark",
+% so the line below it is dropped when the logo is present to avoid
+% printing the institution name twice.
+\IfFileExists{logos/SDU.png}
+  {\includegraphics[height=1.9cm]{logos/SDU.png}\\[8pt]}
+  {{\large University of Southern Denmark (SDU)}\\[2pt]}
+
+{\normalsize Maersk Mc-Kinney Moller Institute}\\[2pt]
+{\itshape Remote Research Internship}
+
+\vspace{12pt}
+{\itshape Academic Supervisor:}\\[5pt]
+{\large Professor Sadok Ben Yahia}
+
+\vspace{10pt}
+{\itshape Internship Period:}\\[5pt]
+15/06/2026 \quad--\quad 15/08/2026
+
+\vspace{8pt}
+{Academic Year: 2025--2026}
+
+\end{center}
+
+\clearpage

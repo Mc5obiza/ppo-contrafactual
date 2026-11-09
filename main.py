@@ -79,6 +79,7 @@ import numpy as np
 import torch
 
 import config
+import seeding
 from pipeline import build_common
 from factory.finetuning import run_lora_finetuning
 from factory.environment import MedicalCounterfactualEnv
@@ -209,6 +210,7 @@ def _train_directional_policy(
     generator,
     seg_net,
     obj_det,
+    allowed_indices=None,
 ) -> DirectionalPolicy | None:
     """
     Build an env + policy for one direction, train it, run diagnostics,
@@ -236,6 +238,23 @@ def _train_directional_policy(
     print(f"STEP 5 — PPO training  [{label}, target_c={target_c}]")
     print("=" * 70)
 
+    # Re-seed per direction, with a distinct offset per label.
+    #
+    # Two reasons this is not redundant with the seed in main(). First,
+    # run_ppo.slurm submits the directions as SEPARATE array tasks, so without
+    # an offset both tasks start from the identical seed and draw correlated
+    # episode sequences. Second, with it, `--direction n_to_p` alone produces
+    # the same policy as the n_to_p half of `--direction both` — the array and
+    # single-process paths agree, which is the same property the eval sharding
+    # already guarantees on its side.
+    #
+    # A literal index rather than hash(label): Python string hashing is salted
+    # per process unless PYTHONHASHSEED is fixed, so hash() would hand out a
+    # different offset on every run.
+    seeding.seed_everything(
+        offset=1 + sorted(DIRECTIONS).index(label), tag=label,
+    )
+
     env = MedicalCounterfactualEnv(
         dataset=dataset,
         classifier=classifier,
@@ -245,6 +264,8 @@ def _train_directional_policy(
         obj_det=obj_det,
         budget_T=config.BUDGET_T,
         device=config.DEVICE,
+        # Rollouts draw only from the training fold — see splits.py.
+        allowed_indices=allowed_indices,
     )
 
     obs     = env.reset()
@@ -314,6 +335,11 @@ def main():
     args = parse_args()
     labels = list(DIRECTIONS) if args.direction == "both" else [args.direction]
 
+    # Seed BEFORE anything constructs a model or touches the dataset — LoRA
+    # adapter init, policy init and the far-pool scan all draw from these RNGs.
+    # See seeding.py for the (real) limits of what this guarantees.
+    seeding.seed_everything(tag="training")
+
     # ── 1-3. Dataset, pretrained models, generator ───────────────────────────
     ctx = build_common()
 
@@ -321,7 +347,9 @@ def main():
     print("\n" + "=" * 70)
     print("STEP 4 — LoRA denoising fine-tuning")
     print("=" * 70)
-    run_lora_finetuning(ctx.generator, ctx.dataset)
+    # Training fold only. Fine-tuning on the full dataset is what put the
+    # evaluation images inside the generator's training set — see splits.py.
+    run_lora_finetuning(ctx.generator, ctx.dataset, indices=ctx.train_indices())
 
     # ── 5. Train one policy per requested direction ───────────────────────────
     # MedicalCounterfactualEnv is built around a single fixed target_c per
@@ -341,6 +369,7 @@ def main():
             target_c=DIRECTIONS[label], label=label,
             dataset=ctx.dataset, classifier=ctx.classifier, generator=ctx.generator,
             seg_net=ctx.seg_net, obj_det=ctx.obj_det,
+            allowed_indices=ctx.train_indices(),
         )
         (finished if result is not None else paused).append(label)
         if result is None:

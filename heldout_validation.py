@@ -118,6 +118,42 @@ def _default_validators() -> list[str]:
     return ["mimic_ch", "pc", "nih"]
 
 
+def _config_guidance_spec(use_ensemble: bool | None = None) -> str:
+    """
+    The classifier(s) that ACTUALLY guided generation, per config.
+
+    pipeline.build_common() picks f(·) with exactly this rule (pipeline.py:147):
+    the ensemble when config.USE_GUIDANCE_ENSEMBLE is True, the domain's single
+    guidance model when it is False. This helper mirrors that so the transfer
+    ratio's denominator matches what ran.
+
+    IT PREVIOUSLY DID NOT. The --guidance-weights default was
+    config.GUIDANCE_ENSEMBLE_WEIGHTS unconditionally, so with the flag False the
+    guidance row was scored as the rsna+chex ensemble while generation had used
+    rsna alone. Measured: Δ_rsna=0.9152, Δ_chex=0.4106, mean 0.663 — exactly the
+    "guidance" delta that was reported. Because chex was never optimised against,
+    the ensemble mean UNDERSTATES the true guidance delta, so every transfer
+    ratio came out inflated (nih read 0.117 when it was 0.085). chex was also
+    dropped from the validators for the same reason, losing a legitimate
+    held-out model.
+
+    `use_ensemble` overrides the live config — used to read a cache's own stamp
+    rather than whatever config.py happens to say now.
+    """
+    if use_ensemble is None:
+        use_ensemble = config.USE_GUIDANCE_ENSEMBLE
+    try:
+        import domains
+        d = domains.active()
+        members = list(d.ensemble_weights) if use_ensemble else [d.guidance_weights]
+    except Exception as e:                      # noqa: BLE001 — advisory only
+        print(f"[heldout] could not read domain guidance weights ({e}); "
+              f"falling back to config")
+        members = (list(config.GUIDANCE_ENSEMBLE_WEIGHTS) if use_ensemble
+                   else [config.GUIDANCE_ENSEMBLE_WEIGHTS[0]])
+    return ",".join(members)
+
+
 DEFAULT_VALIDATORS = _default_validators()
 CACHE_NAME = "cf_cache.pt"
 
@@ -167,11 +203,14 @@ def _build_scorer(members: list[str], device: str):
 # Group scan + generation  (mirrors metrics.run_full_evaluation exactly)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _scan_groups(dataset, classifier, n_eval: int, device: str):
+def _scan_groups(dataset, classifier, n_eval: int, device: str, allowed_indices=None):
     """Thin alias — the scan itself now lives in src.metrics.scan_groups, so
     this script and run_full_evaluation cannot drift apart on which images
     land in Xn / Xp."""
-    return scan_groups(dataset, classifier, n_eval, device, tag="heldout")
+    return scan_groups(
+        dataset, classifier, n_eval, device, tag="heldout",
+        allowed_indices=allowed_indices,
+    )
 
 
 def _warn_if_cache_stale(cached_cfg: dict) -> None:
@@ -223,10 +262,43 @@ def _build_or_load_cache(args, cache_path: str):
               f"USE_GRADCAM_MASK={cached_cfg.get('USE_GRADCAM_MASK')}, "
               f"USE_SPARSITY_REWARD={cached_cfg.get('USE_SPARSITY_REWARD')}")
         _warn_if_cache_stale(cached_cfg)
+
+        # ── which spec describes what actually guided these counterfactuals ──
+        # Precedence, most to least authoritative:
+        #   1. an EXPLICIT --guidance-weights (the operator is asserting it)
+        #   2. the cache's own USE_GUIDANCE_ENSEMBLE stamp, if it carries one
+        #   3. the live config, for caches written before that key existed
+        #
+        # Previously this just returned blob["guidance_weights"], which had been
+        # written from the OLD unconditional default — so a cached run reported
+        # the ensemble no matter what, and an explicit --guidance-weights was
+        # silently discarded. Two corrected re-runs produced byte-identical
+        # output and looked like confirmation.
+        cached_spec = blob.get("guidance_weights")
+        if args.guidance_weights:
+            spec = args.guidance_weights
+            if cached_spec and _parse_spec(spec) != _parse_spec(cached_spec):
+                print(f"[heldout] NOTE: --guidance-weights={spec!r} overrides the "
+                      f"cached {cached_spec!r}. Using the explicit value.")
+        elif "USE_GUIDANCE_ENSEMBLE" in cached_cfg:
+            spec = _config_guidance_spec(cached_cfg["USE_GUIDANCE_ENSEMBLE"])
+        else:
+            spec = _config_guidance_spec()
+            if cached_spec and _parse_spec(spec) != _parse_spec(cached_spec):
+                print(
+                    f"[heldout] WARNING: this cache predates the "
+                    f"USE_GUIDANCE_ENSEMBLE stamp and recorded "
+                    f"guidance={cached_spec!r}, but the current config selects "
+                    f"{spec!r}. Using the config-derived value — the recorded "
+                    f"one came from an unconditional default and was not "
+                    f"evidence of what guided generation. Pass "
+                    f"--guidance-weights explicitly to settle it."
+                )
+        print(f"[heldout] guidance for the transfer denominator: {spec}")
+
         return (unstack(blob["xn"]), unstack(blob["xp"]),
                 unstack(blob["xc_np"]), unstack(blob["xc_pn"]),
-                blob.get("guidance_weights", "densenet121-res224-rsna"),
-                cached_cfg)
+                spec, cached_cfg)
 
     # ── full generation path ─────────────────────────────────────────────────
     if args.regenerate and os.path.exists(cache_path):
@@ -244,8 +316,9 @@ def _build_or_load_cache(args, cache_path: str):
         target_c=0.0, label="p_to_n", ctx=ctx, ckpt_dir=config.CKPT_DIR
     )
 
-    xn_list, xp_list = _scan_groups(
-        ctx.dataset, ctx.classifier, args.n_eval, config.DEVICE
+    xn_list, xn_idx, xp_list, xp_idx = _scan_groups(
+        ctx.dataset, ctx.classifier, args.n_eval, config.DEVICE,
+        allowed_indices=ctx.eval_indices(),
     )
 
     # index_offset values match eval_main.py's sharded generate stage (0 for
@@ -267,11 +340,17 @@ def _build_or_load_cache(args, cache_path: str):
     # Stamped so a stale cache is identifiable rather than silently mixing
     # arms of the ablation.
     cfg_stamp = _current_cfg_stamp()
+    # Record what ACTUALLY guided generation — ctx.classifier was built by
+    # build_common() under config.USE_GUIDANCE_ENSEMBLE, so derive from the same
+    # rule. Storing args.guidance_weights here is what seeded the whole problem:
+    # it wrote the unconditional default into the cache, where it then looked
+    # like a record of the run.
+    guidance_spec = args.guidance_weights or _config_guidance_spec()
     torch.save(
         {
             "xn": torch.cat(xn_list), "xp": torch.cat(xp_list),
             "xc_np": torch.cat(xc_np), "xc_pn": torch.cat(xc_pn),
-            "guidance_weights": args.guidance_weights,
+            "guidance_weights": guidance_spec,
             "config": cfg_stamp,
         },
         cache_path,
@@ -283,7 +362,7 @@ def _build_or_load_cache(args, cache_path: str):
     del ctx, policy_n_to_p, policy_p_to_n
     torch.cuda.empty_cache()
 
-    return xn_list, xp_list, xc_np, xc_pn, args.guidance_weights, cfg_stamp
+    return xn_list, xp_list, xc_np, xc_pn, guidance_spec, cfg_stamp
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -423,12 +502,17 @@ def main():
                     help="comma-separated xrv weight suffixes, e.g. 'mimic_ch,pc'. "
                          "Must be disjoint from --guidance-weights. 'all' is NOT "
                          "independent of anything (it includes RSNA).")
-    ap.add_argument("--guidance-weights", type=str,
-                    default=",".join(config.GUIDANCE_ENSEMBLE_WEIGHTS),
+    # Default None, not a string: the resolution needs the cache's own stamp,
+    # which is not available until _build_or_load_cache has run. None means
+    # "derive it"; anything else is an explicit override that must win. See
+    # _config_guidance_spec and the precedence block in _build_or_load_cache.
+    ap.add_argument("--guidance-weights", type=str, default=None,
                     help="the classifier(s) that were in the guidance loop; "
                          "comma-separated means an ensemble. Defaults to "
-                         "config.GUIDANCE_ENSEMBLE_WEIGHTS so this tracks the "
-                         "pipeline automatically.")
+                         "whichever f(.) config.USE_GUIDANCE_ENSEMBLE actually "
+                         "selects for the active domain — NOT to the ensemble "
+                         "list unconditionally, which is what made every "
+                         "transfer ratio come out inflated.")
     ap.add_argument("--tau", type=float, default=0.8, help="CV margin (paper: 0.8)")
     ap.add_argument("--regenerate", action="store_true",
                     help="ignore the cache and regenerate counterfactuals")

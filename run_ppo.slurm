@@ -4,7 +4,21 @@
 #SBATCH --account=insa
 #SBATCH --array=0-1
 #SBATCH --gres=gpu:1
-#SBATCH --constraint="gpuh200|gpuh100|gpua100|gpul40s|gpua40|gpurtx6000"
+# NARROWER THAN THE EVAL SCRIPTS, and now for a measured reason rather than a
+# guess. Benchmark job 17679788 (H200) put n_to_p at a p90 of 30.7s/episode, so
+# N_EPISODES=800 is ~6.8h there — but ~27h on a Quadro RTX 6000 from the wider
+# constraint set, i.e. past the 24h cap.
+#
+# The wall-clock budget below would survive that (it stops early and leaves a
+# resumable ppo_latest.pt), but a resumed run is NOT a reproducible one:
+# seeding.py re-seeds at the same base and then fast-forwards through a
+# different number of draws, so a two-submission policy and a one-submission
+# policy differ even at the same seed. The control arms compare systems that
+# must differ only by treatment, so finishing in ONE submission matters.
+#
+# Re-widen this if the queue for the fast cards gets long and you are willing to
+# accept a resumed run — or lower N_EPISODES to ~570 and keep the wide set.
+#SBATCH --constraint="gpuh200|gpuh100|gpua100|gpul40s"
 #SBATCH --exclude=hpc-n983
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
@@ -17,6 +31,14 @@
 # Runs the TRAINING half of the PPO counterfactual pipeline (main.py):
 # Steps 1-5 (ingestion -> pretrained models -> generator -> LoRA fine-tuning
 # -> PPO training -> checkpoints).
+#
+# RUN run_benchmark.slurm FIRST. config.N_EPISODES is an unbenchmarked
+# placeholder (config.py says so above it), and BUDGET_T=25 with
+# FIXED_EPISODE_LENGTH=False makes per-episode cost unbounded — the property
+# config.py itself calls "the thing that makes a 24h walltime impossible to plan
+# against". Six jobs have already been killed at their walltime, two of them
+# full PPO runs. The benchmark takes under 2h and prints the N_EPISODES that
+# fits.
 #
 # Evaluation is NOT run here, and main.py contains no evaluation code — the
 # metric suite and diff plots live in eval_main.py. After BOTH array tasks
@@ -105,7 +127,12 @@ cd "${SLURM_SUBMIT_DIR:-$(dirname "${BASH_SOURCE[0]}")}"
 mkdir -p logs
 
 module load python/3.12.8
-module load cuda/13.0
+# torch is built for cu121 (torch.version.cuda == "12.1") and the driver is
+# CUDA 12.6. cuda/13.0 (the module system default) prepends its lib64 to
+# LD_LIBRARY_PATH ahead of torch's own RUNPATH and only fails to break things
+# because CUDA 13 sonames are .so.13 while torch links .so.12. Load the
+# matching toolkit instead of relying on that.
+module load cuda/cuda-12.1
 source venv/bin/activate
 
 # Force offline mode: fail loudly instead of silently hanging on a network
@@ -135,6 +162,14 @@ echo "=== Job ${SLURM_JOB_ID:-?} (array task ${SLURM_ARRAY_TASK_ID:-0}, directio
 echo "=== started on $(hostname) at $(date) ==="
 nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv
 echo "=== wall-clock budget: $((PPO_WALLCLOCK_BUDGET_S / 3600))h of 24h ==="
+
+# Record commit + dirty state + the config values that drive behaviour, next to
+# both the log and the weights this run is about to write. See
+# record_run_manifest.sh — the RSNA policies behind the project's headline
+# numbers were lost with no record of what produced them, and this is the cheap
+# guard against a repeat. Per-direction, so each policy dir gets its own.
+bash record_run_manifest.sh \
+    "$(python -c 'import config; print(config.CKPT_DIR)')/${DIRECTION}" --per-task
 
 # Does this torch actually have kernels for the GPU we landed on? See
 # preflight_gpu.py — costs one torch import (~30s) and replaces an opaque CUDA

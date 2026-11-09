@@ -1,0 +1,18 @@
+[models] loaded ENSEMBLE classifier as f(·), head='Pneumonia': [rsna, chex] (2 members, mean probability)
+[models]   NOTE: f(·) is an ensemble — CV, far-pool sizes and the Xn/Xp group split are NOT comparable to single-classifier runs.
+[models] loaded XRV classifier (densenet121-res224-nih, head='Pneumonia') as f(·)
+[models] loaded XRV classifier (densenet121-res224-pc, head='Pneumonia') as f(·)
+[models] loaded XRV classifier (densenet121-res224-mimic_ch, head='Pneumonia') as f(·)
+[qual] scored guidance
+[qual] scored nih
+[qual] scored pc
+[qual] scored mimic_ch
+[qual] check guidance n_to_p        mine 0.8982 ref 0.8981 OK
+[qual] check guidance p_to_n        mine 0.7610 ref 0.7611 OK
+[qual] check nih ratio n_to_p       mine 0.0438 ref 0.0437 OK
+[qual] check nih ratio p_to_n       mine 0.1653 ref 0.1653 OK
+[qual] check pc ratio n_to_p        mine 0.4653 ref 0.4653 OK
+[qual] check pc ratio p_to_n        mine 0.3061 ref 0.3061 OK
+[qual] check mimic_ch ratio n_to_p  mine 0.3333 ref 0.3333 OK
+[qual] check mimic_ch ratio p_to_n  mine 0.3569 ref 0.3571 OK
+[qual] wrote /home2020/home/insa/arbaoui/verification/out/J23_qual/J4_scores.npz

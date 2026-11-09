@@ -1,0 +1,129 @@
+=== J21_seedrep_single_seed2_common shard 2: code /home2020/home/insa/arbaoui/verification/code/49e6050_single view=single_np pn_view=single_pn groups=/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards on hpc-n968 at Fri Nov  6 22:25:14 CET 2026
+109:TRAIN_SEED = 0
+167:USE_GUIDANCE_ENSEMBLE  = False
+name, memory.total [MiB]
+NVIDIA L40S, 46068 MiB
+NVIDIA L40S, 46068 MiB
+NVIDIA L40S, 46068 MiB
+NVIDIA L40S, 46068 MiB
+[preflight] NVIDIA L40S -> sm_89
+[preflight] torch 2.5.1+cu121 kernels: ['sm_50', 'sm_60', 'sm_70', 'sm_75', 'sm_80', 'sm_86', 'sm_90']
+[preflight] OK
+[adapter] per-direction mode: n_to_p <- /home2020/home/insa/arbaoui/verification/views/single_np, p_to_n <- /home2020/home/insa/arbaoui/verification/views/single_pn
+[common-images] groups <- /home2020/home/insa/arbaoui/verification/out/J4_perdir/shards; EVAL_GROUP_SOURCE stamp = 'classifier:ens2'; USE_GUIDANCE_ENSEMBLE = False
+======================================================================
+STEP 1 — Dataset ingestion
+======================================================================
+[domain] rsna_pneumonia: f(.) targets 'Pneumonia' | guidance=densenet121-res224-rsna | ensemble=['densenet121-res224-rsna', 'densenet121-res224-chex'] | validators=['densenet121-res224-nih', 'densenet121-res224-pc', 'densenet121-res224-mimic_ch'] | clinical metrics: CTR, SCP
+[domain] Baseline domain. NOTE both clinical metrics are weak here: CTR is a cardiomegaly measure and SCP's sigmoid(-||yolo_feat||/50) proxy was measured degenerate (0.21% relative spread) in the last eval. Neither is pneumonia-specific.
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+[split] rsna_pneumonia: 21347 train / 5337 test (20.0% held out, seed=0)  [loaded]
+
+======================================================================
+STEP 2 — Loading pretrained models
+======================================================================
+[models] loaded XRV classifier (densenet121-res224-rsna, head='Pneumonia') as f(·)
+[models] loaded PSPNet | lung channels: [4, 5]
+[models] loaded YOLOv8 backbone from yolov8n.pt
+
+======================================================================
+STEP 3 — Building generator with LoRA
+======================================================================
+[generator] loading VAE ...
+[generator] loading UNet ...
+trainable params: 1,594,368 || all params: 861,115,332 || trainable%: 0.1852
+[generator] VRAM estimate — VAE=160 MB, UNet=1645 MB, total=1806 MB
+
+======================================================================
+STEP 4 — Restoring trained checkpoints
+======================================================================
+[pipeline] loading fine-tuned generator from '/home2020/home/insa/arbaoui/verification/out/seedrep_single_seed2/n_to_p/'
+[pipeline]   → unet_finetuned.pt + cond_proj.pt
+
+----------------------------------------------------------------------
+Loading trained policy  [n_to_p, target_c=1.0]
+----------------------------------------------------------------------
+[env] 2451/5337 images are > 0.5 away from target_c=1.0  [training fold only]
+[env] far pool split: 2427 train / 24 held out for the CV probe (CV resolution 4.2 pts/image)
+[n_to_p] obs_dim = 73731
+[n_to_p] loaded policy from '/home2020/home/insa/arbaoui/verification/out/seedrep_single_seed2/n_to_p/ppo_policy.pt' (37,885,462 params)
+
+----------------------------------------------------------------------
+Loading trained policy  [p_to_n, target_c=0.0]
+----------------------------------------------------------------------
+[env] 2886/5337 images are > 0.5 away from target_c=0.0  [training fold only]
+[env] far pool split: 2862 train / 24 held out for the CV probe (CV resolution 4.2 pts/image)
+[p_to_n] obs_dim = 73731
+[p_to_n] loaded policy from '/home2020/home/insa/arbaoui/verification/out/seedrep_single_seed2/p_to_n/ppo_policy.pt' (37,885,462 params)
+
+======================================================================
+STAGE GENERATE — shard 2/8
+======================================================================
+[eval] FIXED groups from /home2020/home/insa/arbaoui/verification/out/J4_perdir/shards: Xn=200 Xp=200 (max |src - dataset| 0); under this guidance classifier: Xn f>=0.2: 28, f>=0.5: 0; Xp f<=0.8: 11, f<=0.5: 0
+[eval] shard slice: Xn[50:75] (25 imgs), Xp[50:75] (25 imgs)
+[eval] generating Xc (n→p) — this is the expensive part ...
+[pipeline] loading fine-tuned generator from '/home2020/home/insa/arbaoui/verification/views/single_np/n_to_p/'
+[pipeline]   → unet_finetuned.pt + cond_proj.pt
+[adapter] n_to_p <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/archive_pre_ensemble_default_20260812/n_to_p/unet_finetuned.pt sha256=db36b707817b319244ed5945fc796e09907ae88476f1143149f1e7a16e3ffe69 | cond_proj <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/archive_pre_ensemble_default_20260812/n_to_p/cond_proj.pt | generator == file: unet LoRA 256/256, cond_proj 4/4 | expected sha256 MATCH
+[shard2 n_to_p] [1/25] global_idx=50  0.03 min/img  elapsed 0.0 min  eta 0.7 min
+[shard2 n_to_p] [2/25] global_idx=51  0.03 min/img  elapsed 0.1 min  eta 0.6 min
+[shard2 n_to_p] [3/25] global_idx=52  0.03 min/img  elapsed 0.1 min  eta 0.6 min
+[shard2 n_to_p] [4/25] global_idx=53  0.03 min/img  elapsed 0.1 min  eta 0.5 min
+[shard2 n_to_p] [5/25] global_idx=54  0.02 min/img  elapsed 0.1 min  eta 0.5 min
+[shard2 n_to_p] [6/25] global_idx=55  0.02 min/img  elapsed 0.1 min  eta 0.5 min
+[shard2 n_to_p] [7/25] global_idx=56  0.02 min/img  elapsed 0.2 min  eta 0.4 min
+[shard2 n_to_p] [8/25] global_idx=57  0.02 min/img  elapsed 0.2 min  eta 0.4 min
+[shard2 n_to_p] [9/25] global_idx=58  0.02 min/img  elapsed 0.2 min  eta 0.4 min
+[shard2 n_to_p] [10/25] global_idx=59  0.02 min/img  elapsed 0.2 min  eta 0.4 min
+[shard2 n_to_p] [11/25] global_idx=60  0.02 min/img  elapsed 0.3 min  eta 0.3 min
+[shard2 n_to_p] [12/25] global_idx=61  0.02 min/img  elapsed 0.3 min  eta 0.3 min
+[shard2 n_to_p] [13/25] global_idx=62  0.02 min/img  elapsed 0.3 min  eta 0.3 min
+[shard2 n_to_p] [14/25] global_idx=63  0.02 min/img  elapsed 0.3 min  eta 0.3 min
+[shard2 n_to_p] [15/25] global_idx=64  0.02 min/img  elapsed 0.4 min  eta 0.2 min
+[shard2 n_to_p] [16/25] global_idx=65  0.02 min/img  elapsed 0.4 min  eta 0.2 min
+[shard2 n_to_p] [17/25] global_idx=66  0.02 min/img  elapsed 0.4 min  eta 0.2 min
+[shard2 n_to_p] [18/25] global_idx=67  0.02 min/img  elapsed 0.4 min  eta 0.2 min
+[shard2 n_to_p] [19/25] global_idx=68  0.02 min/img  elapsed 0.5 min  eta 0.1 min
+[shard2 n_to_p] [20/25] global_idx=69  0.02 min/img  elapsed 0.5 min  eta 0.1 min
+[shard2 n_to_p] [21/25] global_idx=70  0.02 min/img  elapsed 0.5 min  eta 0.1 min
+[shard2 n_to_p] [22/25] global_idx=71  0.03 min/img  elapsed 0.6 min  eta 0.1 min
+[shard2 n_to_p] [23/25] global_idx=72  0.03 min/img  elapsed 0.6 min  eta 0.1 min
+[shard2 n_to_p] [24/25] global_idx=73  0.03 min/img  elapsed 0.7 min  eta 0.0 min
+[shard2 n_to_p] [25/25] global_idx=74  0.03 min/img  elapsed 0.7 min  eta 0.0 min
+[eval] generating Xc (p→n) ...
+[pipeline] loading fine-tuned generator from '/home2020/home/insa/arbaoui/verification/views/single_pn/p_to_n/'
+[pipeline]   → unet_finetuned.pt + cond_proj.pt
+[adapter] p_to_n <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/archive_pre_ensemble_default_20260812/p_to_n/unet_finetuned.pt sha256=01d6c7e3bcb28317ce3d30c49a0e523a473e6896dc67959169627fa0a71a9853 | cond_proj <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/archive_pre_ensemble_default_20260812/p_to_n/cond_proj.pt | generator == file: unet LoRA 256/256, cond_proj 4/4 | expected sha256 MATCH
+[shard2 p_to_n] [1/25] global_idx=1000050  0.14 min/img  elapsed 0.1 min  eta 3.4 min
+[shard2 p_to_n] [2/25] global_idx=1000051  0.16 min/img  elapsed 0.3 min  eta 3.6 min
+[shard2 p_to_n] [3/25] global_idx=1000052  1.33 min/img  elapsed 4.0 min  eta 29.2 min
+[shard2 p_to_n] [4/25] global_idx=1000053  1.11 min/img  elapsed 4.4 min  eta 23.4 min
+[shard2 p_to_n] [5/25] global_idx=1000054  0.92 min/img  elapsed 4.6 min  eta 18.4 min
+[shard2 p_to_n] [6/25] global_idx=1000055  0.79 min/img  elapsed 4.8 min  eta 15.1 min
+[shard2 p_to_n] [7/25] global_idx=1000056  0.70 min/img  elapsed 4.9 min  eta 12.6 min
+[shard2 p_to_n] [8/25] global_idx=1000057  0.64 min/img  elapsed 5.1 min  eta 10.8 min
+[shard2 p_to_n] [9/25] global_idx=1000058  0.58 min/img  elapsed 5.3 min  eta 9.3 min
+[shard2 p_to_n] [10/25] global_idx=1000059  0.91 min/img  elapsed 9.1 min  eta 13.6 min
+[shard2 p_to_n] [11/25] global_idx=1000060  0.84 min/img  elapsed 9.2 min  eta 11.8 min
+[shard2 p_to_n] [12/25] global_idx=1000061  0.78 min/img  elapsed 9.4 min  eta 10.2 min
+[shard2 p_to_n] [13/25] global_idx=1000062  0.98 min/img  elapsed 12.8 min  eta 11.8 min
+[shard2 p_to_n] [14/25] global_idx=1000063  0.93 min/img  elapsed 13.0 min  eta 10.2 min
+[shard2 p_to_n] [15/25] global_idx=1000064  0.88 min/img  elapsed 13.1 min  eta 8.8 min
+[shard2 p_to_n] [16/25] global_idx=1000065  0.83 min/img  elapsed 13.3 min  eta 7.5 min
+[shard2 p_to_n] [17/25] global_idx=1000066  0.79 min/img  elapsed 13.5 min  eta 6.3 min
+[shard2 p_to_n] [18/25] global_idx=1000067  0.76 min/img  elapsed 13.6 min  eta 5.3 min
+[shard2 p_to_n] [19/25] global_idx=1000068  0.73 min/img  elapsed 13.8 min  eta 4.4 min
+[shard2 p_to_n] [20/25] global_idx=1000069  0.70 min/img  elapsed 14.0 min  eta 3.5 min
+[shard2 p_to_n] [21/25] global_idx=1000070  0.68 min/img  elapsed 14.3 min  eta 2.7 min
+[shard2 p_to_n] [22/25] global_idx=1000071  0.82 min/img  elapsed 18.0 min  eta 2.5 min
+[shard2 p_to_n] [23/25] global_idx=1000072  0.79 min/img  elapsed 18.1 min  eta 1.6 min
+[shard2 p_to_n] [24/25] global_idx=1000073  0.76 min/img  elapsed 18.3 min  eta 0.8 min
+[shard2 p_to_n] [25/25] global_idx=1000074  0.74 min/img  elapsed 18.5 min  eta 0.0 min
+[generator] Grad-CAM mask: not used (USE_GRADCAM_MASK off)
+
+✓ shard 2 written to '/home2020/home/insa/arbaoui/verification/out/J21_seedrep_single_seed2_common/shards/cf_shard_002.pt'
+  Run the reduce stage once ALL 8 shards exist:
+    python -u eval_main.py --stage reduce --num-shards 8
+=== finished at Fri Nov  6 22:48:28 CET 2026

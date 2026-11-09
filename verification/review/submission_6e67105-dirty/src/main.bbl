@@ -1,0 +1,227 @@
+\begin{thebibliography}{32}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Augustin et~al.(2022)Augustin, Boreiko, Croce, and
+  Hein]{augustin2022diffusion}
+Maximilian Augustin, Valentyn Boreiko, Francesco Croce, and Matthias Hein.
+\newblock Diffusion visual counterfactual explanations.
+\newblock In \emph{NeurIPS}, 2022.
+
+\bibitem[Avrahami et~al.(2022)Avrahami, Lischinski, and
+  Fried]{avrahami2022blended}
+Omri Avrahami, Dani Lischinski, and Ohad Fried.
+\newblock Blended diffusion for text-driven editing of natural images.
+\newblock In \emph{CVPR}, 2022.
+
+\bibitem[Black et~al.(2024)Black, Janner, Du, Kostrikov, and
+  Levine]{black2024training}
+Kevin Black, Michael Janner, Yilun Du, Ilya Kostrikov, and Sergey Levine.
+\newblock Training diffusion models with reinforcement learning.
+\newblock In \emph{ICLR}, 2024.
+
+\bibitem[Bustos et~al.(2020)Bustos, Pertusa, Salinas, and de~la
+  Iglesia-Vay{\'a}]{bustos2020padchest}
+Aurelia Bustos, Antonio Pertusa, Jose-Maria Salinas, and Maria de~la
+  Iglesia-Vay{\'a}.
+\newblock {PadChest}: A large chest {X}-ray image dataset with multi-label
+  annotated reports.
+\newblock \emph{Medical Image Analysis}, 2020.
+
+\bibitem[Cohen et~al.(2021)Cohen, Brooks, En, Zucker, Pareek, Lungren, and
+  Chaudhari]{cohen2021gifsplanation}
+Joseph~Paul Cohen, Rupert Brooks, Sovann En, Evan Zucker, Anuj Pareek,
+  Matthew~P. Lungren, and Akshay Chaudhari.
+\newblock Gifsplanation via latent shift: A simple autoencoder approach to
+  counterfactual generation for chest {X}-rays.
+\newblock In \emph{MIDL}, 2021.
+
+\bibitem[Cohen et~al.(2022)Cohen, Viviano, Bertin, Morrison, Torabian,
+  Guarrera, Lungren, Chaudhari, Brooks, Hashir, and
+  Bertrand]{cohen2022torchxrayvision}
+Joseph~Paul Cohen, Joseph~D. Viviano, Paul Bertin, Paul Morrison, Parsa
+  Torabian, Matteo Guarrera, Matthew~P. Lungren, Akshay Chaudhari, Rupert
+  Brooks, Mohammad Hashir, and Hadrien Bertrand.
+\newblock {TorchXRayVision}: A library of chest {X}-ray datasets and models.
+\newblock In \emph{MIDL}, 2022.
+
+\bibitem[Dhariwal and Nichol(2021)]{dhariwal2021diffusion}
+Prafulla Dhariwal and Alexander Nichol.
+\newblock Diffusion models beat {GANs} on image synthesis.
+\newblock In \emph{NeurIPS}, 2021.
+
+\bibitem[Farid et~al.(2023)Farid, Schrodi, Argus, and Brox]{farid2023ldce}
+Karim Farid, Simon Schrodi, Max Argus, and Thomas Brox.
+\newblock Latent diffusion counterfactual explanations.
+\newblock \emph{arXiv preprint arXiv:2310.06668}, 2023.
+
+\bibitem[Hu et~al.(2022)Hu, Shen, Wallis, Allen-Zhu, Li, Wang, Wang, and
+  Chen]{hu2022lora}
+Edward~J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean
+  Wang, Lu Wang, and Weizhu Chen.
+\newblock {LoRA}: Low-rank adaptation of large language models.
+\newblock In \emph{ICLR}, 2022.
+
+\bibitem[Irvin et~al.(2019)Irvin, Rajpurkar, Ko, et~al.]{irvin2019chexpert}
+Jeremy Irvin, Pranav Rajpurkar, Michael Ko, et~al.
+\newblock {CheXpert}: A large chest radiograph dataset with uncertainty labels
+  and expert comparison.
+\newblock In \emph{AAAI}, 2019.
+
+\bibitem[Jeanneret et~al.(2022)Jeanneret, Simon, and
+  Jurie]{jeanneret2022diffusion}
+Guillaume Jeanneret, Lo{\"i}c Simon, and Fr{\'e}d{\'e}ric Jurie.
+\newblock Diffusion models for counterfactual explanations.
+\newblock In \emph{ACCV}, 2022.
+
+\bibitem[Jeanneret et~al.(2023)Jeanneret, Simon, and
+  Jurie]{jeanneret2023adversarial}
+Guillaume Jeanneret, Lo{\"i}c Simon, and Fr{\'e}d{\'e}ric Jurie.
+\newblock Adversarial counterfactual visual explanations.
+\newblock In \emph{CVPR}, 2023.
+
+\bibitem[Johnson et~al.(2019)Johnson, Pollard, Berkowitz, Greenbaum, Lungren,
+  Deng, Mark, and Horng]{johnson2019mimic}
+Alistair E.~W. Johnson, Tom~J. Pollard, Seth~J. Berkowitz, Nathaniel~R.
+  Greenbaum, Matthew~P. Lungren, Chih-ying Deng, Roger~G. Mark, and Steven
+  Horng.
+\newblock {MIMIC-CXR}, a de-identified publicly available database of chest
+  radiographs with free-text reports.
+\newblock \emph{Scientific Data}, 2019.
+
+\bibitem[Lugmayr et~al.(2022)Lugmayr, Danelljan, Romero, Yu, Timofte, and
+  Van~Gool]{lugmayr2022repaint}
+Andreas Lugmayr, Martin Danelljan, Andres Romero, Fisher Yu, Radu Timofte, and
+  Luc Van~Gool.
+\newblock {RePaint}: Inpainting using denoising diffusion probabilistic models.
+\newblock In \emph{CVPR}, 2022.
+
+\bibitem[Luu et~al.(2025)Luu, Le, Le, and Le]{luu2025visual}
+Tung Luu, Nam Le, Duc Le, and Bac Le.
+\newblock From visual explanations to counterfactual explanations with latent
+  diffusion.
+\newblock In \emph{WACV}, pages 420--429, 2025.
+
+\bibitem[Meng et~al.(2022)Meng, He, Song, Song, Wu, Zhu, and
+  Ermon]{meng2022sdedit}
+Chenlin Meng, Yutong He, Yang Song, Jiaming Song, Jiajun Wu, Jun-Yan Zhu, and
+  Stefano Ermon.
+\newblock {SDEdit}: Guided image synthesis and editing with stochastic
+  differential equations.
+\newblock In \emph{ICLR}, 2022.
+
+\bibitem[P{\'e}rez-Garc{\'i}a et~al.(2024)P{\'e}rez-Garc{\'i}a, Bond-Taylor,
+  et~al.]{perezgarcia2024radedit}
+Fernando P{\'e}rez-Garc{\'i}a, Sam Bond-Taylor, et~al.
+\newblock {RadEdit}: Stress-testing biomedical vision models via diffusion
+  image editing.
+\newblock In \emph{ECCV}, 2024.
+
+\bibitem[Preechakul et~al.(2022)Preechakul, Chatthee, Wizadwongsa, and
+  Suwajanakorn]{preechakul2022diffusion}
+Konpat Preechakul, Nattanat Chatthee, Suttisak Wizadwongsa, and Supasorn
+  Suwajanakorn.
+\newblock Diffusion autoencoders: Toward a meaningful and decodable
+  representation.
+\newblock In \emph{CVPR}, 2022.
+
+\bibitem[Rombach et~al.(2022)Rombach, Blattmann, Lorenz, Esser, and
+  Ommer]{rombach2022highresolution}
+Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Bj{\"o}rn
+  Ommer.
+\newblock High-resolution image synthesis with latent diffusion models.
+\newblock In \emph{CVPR}, 2022.
+
+\bibitem[{RSNA}(2018)]{rsna2018}
+{RSNA}.
+\newblock {RSNA} pneumonia detection challenge.
+\newblock Kaggle, 2018.
+\newblock \url{https://www.kaggle.com/c/rsna-pneumonia-detection-challenge}.
+
+\bibitem[Sabour et~al.(2024)Sabour, Fidler, and Kreis]{sabour2024align}
+Amirmojtaba Sabour, Sanja Fidler, and Karsten Kreis.
+\newblock Align your steps: Optimizing sampling schedules in diffusion models.
+\newblock In \emph{ICML}, 2024.
+
+\bibitem[Saifullah et~al.(2025)Saifullah, Agne, Dengel, and
+  Ahmed]{saifullah2025docvce}
+Saifullah Saifullah, Stefan Agne, Andreas Dengel, and Sheraz Ahmed.
+\newblock {DocVCE}: Diffusion-based visual counterfactual explanations for
+  document image classification.
+\newblock \emph{arXiv preprint arXiv:2508.04233}, 2025.
+
+\bibitem[Schulman et~al.(2017)Schulman, Wolski, Dhariwal, Radford, and
+  Klimov]{schulman2017proximal}
+John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov.
+\newblock Proximal policy optimization algorithms.
+\newblock \emph{arXiv preprint arXiv:1707.06347}, 2017.
+
+\bibitem[Selvaraju et~al.(2017)Selvaraju, Cogswell, Das, Vedantam, Parikh, and
+  Batra]{selvaraju2017gradcam}
+Ramprasaath~R. Selvaraju, Michael Cogswell, Abhishek Das, Ramakrishna Vedantam,
+  Devi Parikh, and Dhruv Batra.
+\newblock {Grad-CAM}: Visual explanations from deep networks via gradient-based
+  localization.
+\newblock In \emph{ICCV}, 2017.
+
+\bibitem[Shih et~al.(2019)Shih, Wu, Halabi, et~al.]{shih2019augmenting}
+George Shih, Carol~C. Wu, Safwan~S. Halabi, et~al.
+\newblock Augmenting the {National Institutes of Health} chest radiograph
+  dataset with expert annotations of possible pneumonia.
+\newblock \emph{Radiology: Artificial Intelligence}, 1\penalty0 (1), 2019.
+
+\bibitem[Singla et~al.(2022)Singla, Eslami, Pollack, Wallace, and
+  Batmanghelich]{singla2022explaining}
+Sumedha Singla, Motahhare Eslami, Brian Pollack, Stephen Wallace, and Kayhan
+  Batmanghelich.
+\newblock Explaining the black-box smoothly -- a counterfactual approach.
+\newblock \emph{Medical Image Analysis}, 2022.
+
+\bibitem[Song et~al.(2021)Song, Meng, and Ermon]{song2021denoising}
+Jiaming Song, Chenlin Meng, and Stefano Ermon.
+\newblock Denoising diffusion implicit models.
+\newblock In \emph{ICLR}, 2021.
+
+\bibitem[Wang et~al.(2020)Wang, Wang, Du, Yang, Zhang, Ding, Mardziel, and
+  Hu]{wang2020scorecam}
+Haofan Wang, Zifan Wang, Mengnan Du, Fan Yang, Zijian Zhang, Sirui Ding, Piotr
+  Mardziel, and Xia Hu.
+\newblock {Score-CAM}: Score-weighted visual explanations for convolutional
+  neural networks.
+\newblock In \emph{CVPR Workshops}, 2020.
+
+\bibitem[Wang et~al.(2017)Wang, Peng, Lu, Lu, Bagheri, and
+  Summers]{wang2017chestxray8}
+Xiaosong Wang, Yifan Peng, Le Lu, Zhiyong Lu, Mohammadhadi Bagheri, and
+  Ronald~M. Summers.
+\newblock {ChestX-ray8}: Hospital-scale chest {X}-ray database and benchmarks
+  on weakly-supervised classification and localization of common thorax
+  diseases.
+\newblock In \emph{CVPR}, 2017.
+
+\bibitem[Wang et~al.(2024)Wang, Dufour, Andreou, Cani, Fern{\'a}ndez~Abrevaya,
+  Picard, and Kalogeiton]{wang2024cfgschedulers}
+Xi Wang, Nicolas Dufour, Nefeli Andreou, Marie-Paule Cani, Victoria
+  Fern{\'a}ndez~Abrevaya, David Picard, and Vicky Kalogeiton.
+\newblock Analysis of classifier-free guidance weight schedulers.
+\newblock \emph{Transactions on Machine Learning Research}, 2024.
+
+\bibitem[Weng et~al.(2024)Weng, Pegios, Petersen, Feragen, and
+  Bigdeli]{weng2024fastdime}
+Nina Weng, Paraskevas Pegios, Eike Petersen, Aasa Feragen, and Siavash Bigdeli.
+\newblock Fast diffusion-based counterfactuals for shortcut removal and
+  generation.
+\newblock In \emph{ECCV}, 2024.
+
+\bibitem[Zeng et~al.(2026)Zeng, Guo, Kristoffersen, Christensen, Hannemose, and
+  Dahl]{zeng2026fire}
+Yan Zeng, Changlu Guo, Oskar Kristoffersen, Anders~Nymark Christensen,
+  Morten~Rieger Hannemose, and Anders~Bjorholm Dahl.
+\newblock {FiRe}: Fixed-noise refinement for visual counterfactual
+  explanations.
+\newblock \emph{arXiv preprint arXiv:2608.08664}, 2026.
+
+\end{thebibliography}

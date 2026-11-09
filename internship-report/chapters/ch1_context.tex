@@ -1,0 +1,159 @@
+\chapter{Internship Context Presentation}
+\label{ch:context}
+
+This chapter establishes the context of the internship, introduces the
+host research institution, and sets out the objectives, work packages and
+expected outcomes of the project.
+
+\section{Presentation of the Host Institution}
+
+\subsection{Overview}
+
+The internship was carried out at the \textbf{Maersk Mc-Kinney Moller
+Institute}, a research institute of the \textbf{University of Southern
+Denmark (SDU)}. The Institute is an academic research environment
+organised around robotics, artificial intelligence, embedded systems and
+applied data science, and its work is structured around research
+questions and publications rather than around product delivery for
+clients.
+
+This distinction shaped the entire internship. There was no client, no
+specification document and no delivery deadline for a feature set. The
+deliverable was a defensible answer to a research question, together
+with the experimental apparatus needed to reproduce it --- which, as
+Chapter~\ref{ch:results} discusses, includes the apparatus needed to
+\emph{disprove} an initially promising result.
+
+\subsection{Internship Framework}
+
+This work fulfils the research internship requirement of the first-year
+engineering cycle at ISSAT Sousse. The internship was conducted
+\textbf{remotely}, under the academic supervision of \textbf{Professor
+Sadok Ben Yahia}, over the period 15 June 2026 to 15 August 2026.
+
+The remote format had a concrete methodological consequence. All
+computation ran as batch jobs on a high-performance computing cluster
+under the SLURM scheduler, with no interactive session and no ability to
+attach a debugger to a running job. Every experiment therefore had to be
+specified completely in advance, instrumented well enough to be
+diagnosed from its log file alone, and cheap enough to fail fast. This
+constraint is visible throughout the engineering choices described in
+Chapter~\ref{ch:tasks}.
+
+\section{Context and Objectives of the Internship}
+
+\subsection{Purpose}
+
+Explainable Artificial Intelligence (XAI) for medical imaging is
+dominated by attribution methods, which localise evidence but do not
+describe the change that would alter a decision. Counterfactual image
+generation supplies that missing description, but it introduces a
+verification problem of its own: an image that flips a classifier's
+output has not necessarily acquired --- or lost --- any disease. It may
+simply have acquired an adversarial perturbation tailored to that one
+model.
+
+The purpose of this project was therefore twofold:
+
+\begin{itemize}[leftmargin=*]
+  \item To build a counterfactual generation system for binary pneumonia
+        classification on chest radiographs, in which the diffusion
+        sampling schedule is \emph{learned} by a reinforcement-learning
+        agent rather than fixed by hand.
+  \item To evaluate that system honestly --- including with controls
+        capable of exposing the adversarial failure mode --- rather than
+        reporting only the metric that the system was optimised against.
+\end{itemize}
+
+\subsection{Main Objective}
+
+The central objective was to engineer and evaluate a complete research
+pipeline that, given a chest radiograph $x$ and a target class $c$,
+produces a counterfactual $x_c$ satisfying three simultaneous criteria:
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Validity}: a frozen classifier $f$ scores $x_c$ at the
+        target class with a large margin.
+  \item \textbf{Realism}: $x_c$ is distributionally indistinguishable
+        from genuine radiographs.
+  \item \textbf{Identity preservation}: $x_c$ differs from $x$ only in a
+        minimal, class-relevant region, leaving patient anatomy and
+        foreign objects intact.
+\end{enumerate}
+
+The methodological commitment underlying the whole system is that the
+diffusion model's \emph{weights} are never optimised by reinforcement
+learning. The PPO agent controls only the sampling procedure --- noise
+strength, guidance scales, number of refinement passes, and the stopping
+decision --- around a frozen, LoRA-adapted generator. This keeps the
+action space small and interpretable, and makes the learned policy
+reusable across arbitrary query images at inference time.
+
+\subsection{Assigned Work Packages}
+
+The project was decomposed into six work packages:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{WP1 --- Data ingestion.} Programmatic acquisition of the
+        RSNA Pneumonia Detection Challenge dataset, DICOM decoding,
+        normalisation, and derivation of a binary label from the
+        bounding-box annotations.
+  \item \textbf{WP2 --- Pretrained model integration.} Loading and
+        freezing a pneumonia classifier, a lung/heart segmentation
+        network, and an object-detector feature extractor, all serving as
+        fixed sources of guidance and reward signal.
+  \item \textbf{WP3 --- Generator adaptation.} Parameter-efficient
+        LoRA fine-tuning of a Stable Diffusion~1.5 UNet from the
+        natural-image domain to chest radiography.
+  \item \textbf{WP4 --- Reinforcement-learning control.} Design of a
+        Gym-style environment, a shaped reward function, and a PPO
+        actor-critic agent; training of two directional policies, one per
+        class-flip direction.
+  \item \textbf{WP5 --- Evaluation.} Implementation of the
+        Singla~\emph{et al.}~\cite{singla2022} metric suite (CV, FID,
+        FOP) plus clinical proxy metrics, and of pixel-level difference
+        visualisation.
+  \item \textbf{WP6 --- Validation and diagnostics.} Independent
+        held-out re-scoring to distinguish genuine disease signal from
+        adversarial perturbation, and Grad-CAM analysis of the guidance
+        classifier for shortcut learning.
+\end{itemize}
+
+WP6 was not part of the initial plan. It was added mid-internship, in
+direct response to the observation that the primary validity metric was
+computed with the same classifier that had produced the guidance
+gradient, and was therefore circular. Its results are the central finding
+of this report.
+
+A further piece of work, undertaken after WP1--WP6 and reported separately
+in Chapter~\ref{ch:breast}, was not assigned and is not counted among these
+six packages: a self-initiated extension of the pipeline to a second
+imaging domain, breast-cancer screening mammography, to test whether the
+architecture and the WP6 evaluation discipline generalise beyond chest
+radiography.
+
+\section{Expected Results}
+
+The anticipated deliverables at the outset of the internship were:
+
+\begin{itemize}[leftmargin=*]
+  \item A reproducible, end-to-end research pipeline covering ingestion,
+        generator adaptation, policy training and evaluation, executable
+        as batch jobs on an HPC cluster.
+  \item Two trained directional policies together with their
+        checkpoints and configuration provenance.
+  \item A quantitative evaluation under the reference metric protocol,
+        with the numbers traceable to serialised artefacts rather than
+        to transcription.
+  \item A critical assessment of what the system does and does not
+        demonstrate, including its failure modes.
+\end{itemize}
+
+\section{Conclusion}
+
+This chapter has set out the academic research context of the
+internship, introduced the Maersk Mc-Kinney Moller Institute as host
+institution, and defined the objectives and work packages of the
+project. The following chapter details the research and development
+environment --- the cluster, the frameworks, and the pretrained model
+zoo --- within which this work was carried out.

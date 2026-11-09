@@ -1,0 +1,67 @@
+{
+  "code": "/home2020/home/insa/arbaoui/verification/code/49e6050",
+  "committed_shards": "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default",
+  "n": {
+    "xn": 200,
+    "xp": 200,
+    "n_eval": 200
+  },
+  "idx_sha256": "37ee3624b48b3b5dbcb5ec589a9ad671341e8e31e1c6767e4582827a48f2d089",
+  "input_max_abs_diff_vs_dataset": 0.0,
+  "group_check": {
+    "xn_not_below_0.2": 0,
+    "xp_not_above_0.8": 0
+  },
+  "cyclegan": {
+    "src": "/home2020/home/insa/arbaoui/verification/code/HEAD/src/cyclegan.py",
+    "src_sha256": "266922a71cd29ea7549b4e2602d94db867583799e9c8573058c28a2ea1de3c95",
+    "G_AtoB_sha256": "1553dd72f38063d204a294368c22e8fcda7674a4a61ba5826166440764177662",
+    "G_BtoA_sha256": "b06e6e767eaf192fac6baba22813d1503057207b7f5150cde82bcb61e9b19018",
+    "train_manifest": {
+      "architecture": "ResnetGenerator(9 resblocks, ngf=64, InstanceNorm) + 70x70 PatchGAN NLayerDiscriminator(ndf=64)",
+      "n_epochs": 40,
+      "decay_start_epoch": 20,
+      "batch_size": 4,
+      "lr": 0.0002,
+      "betas": [
+        0.5,
+        0.999
+      ],
+      "lambda_cycle": 10.0,
+      "lambda_identity": 0.5,
+      "pool_size": 50,
+      "ngf": 64,
+      "ndf": 64,
+      "n_blocks": 9,
+      "img_size": 256,
+      "seed": 0,
+      "epoch_len": 16532,
+      "domain": "rsna_pneumonia",
+      "split_seed": 0,
+      "split_test_frac": 0.2,
+      "n_train_A": 16532,
+      "n_train_B": 4815,
+      "epochs_completed": 40,
+      "elapsed_s": 32315.67649579048,
+      "paused": false
+    }
+  },
+  "delta_grouping_ensemble": {
+    "n_to_p": {
+      "mean": 0.12256021797657013,
+      "ci95": [
+        0.10993367936462164,
+        0.13585223518311978
+      ],
+      "frac_positive": 1.0
+    },
+    "p_to_n": {
+      "mean": 0.05531899631023407,
+      "ci95": [
+        0.048093354888260366,
+        0.06308586411178112
+      ],
+      "frac_positive": 0.905
+    }
+  }
+}

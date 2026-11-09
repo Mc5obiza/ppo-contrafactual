@@ -1,0 +1,22 @@
+
+PAIRED ARM TEST — /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default vs /home2020/home/insa/arbaoui/verification/out/J10_cyclegan/shards  (LHR lift, p→n)
+==============================================================
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+/home2020/home/insa/arbaoui/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  blobs[int(m.group(1))] = torch.load(p, map_location="cpu")
+paired images            : 148
+mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default: 2.6727  (sd 0.9194)
+mean lift /home2020/home/insa/arbaoui/verification/out/J10_cyclegan/shards: 1.4827  (sd 0.5760)
+paired difference       : +1.1900   95% CI [+1.0565, +1.3260]
+paired t-test           : t=17.241  p=3.984e-37
+Wilcoxon signed-rank    : W=89.0  p=2.963e-25
+Cohen's d (paired)      : +1.417
+/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default better on       : 142 / 148 images
+
+READING
+  The difference is statistically detectable (p=3.98e-37), but read the
+  effect size before calling it meaningful: a lift gap of +1.190
+  against a between-image sd of 0.919.
+

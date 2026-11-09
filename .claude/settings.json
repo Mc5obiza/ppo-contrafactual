@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import json; json.load\\(open\\('checkpoints_ens_default/eval_metrics.json'\\)\\); print\\('valid JSON'\\)\")",
+      "Bash(git checkout *)"
+    ]
+  }
+}

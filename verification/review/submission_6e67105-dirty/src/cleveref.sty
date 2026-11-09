@@ -1,0 +1,17 @@
+% Minimal local stub for the `cleveref` package, which is not installed on
+% this system and not reachable (no network access to CTAN here). cvpr.sty
+% only uses it to configure \crefname/\Crefname and does not itself call
+% \cref/\Cref, and this paper's body text spells out "Table~\ref{...}" /
+% "Section~\ref{...}" manually rather than relying on cleveref's
+% type-detection, so a minimal stand-in (plain \ref under the \cref/\Cref
+% names, ignoring the [capitalize] option and the name-configuration calls)
+% is sufficient here.
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{cleveref}[2026/01/01 local no-op stub]
+\DeclareOption{capitalize}{}
+\ProcessOptions\relax
+\newcommand{\crefname}[3]{}
+\newcommand{\Crefname}[3]{}
+\newcommand{\cref}[1]{\ref{#1}}
+\newcommand{\Cref}[1]{\ref{#1}}
+\endinput

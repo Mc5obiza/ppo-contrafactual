@@ -62,39 +62,174 @@ DIFFUSION_MODEL_ID = "runwayml/stable-diffusion-v1-5"
 # ─────────────────────────────────────────────
 # Selects the images, the xrv pathology head f(.) targets, the guidance /
 # validator weight sets and which clinical metrics apply — all four move
-# together. See domains/base.py. Registered: "rsna_pneumonia", "node21_nodule".
+# together. See domains/base.py. Registered: "rsna_pneumonia", "node21_nodule",
+# "cbis_ddsm_breast", "cmmd_breast".
 #
 # Adding a dataset is a new module in domains/ plus a line in domains._REGISTRY.
 # It is NOT an edit to ingestion.py, src/xrv_classifier.py or src/metrics.py.
-DATASET_DOMAIN = "rsna_pneumonia"
+# PPO_DOMAIN overrides this from the environment, following the same pattern as
+# PPO_CKPT_DIR below. Scoring one domain's shards must not require editing this
+# file, because that edit silently changes CKPT_DIR for every other job on the
+# node and shows up in the run manifest as a dirty tree.
+DATASET_DOMAIN = os.environ.get("PPO_DOMAIN", "rsna_pneumonia")
 
 # Root of an extracted NODE21 release (grand-challenge registration required,
 # so there is no auto-download). Only read by domains/node21_nodule.py.
 NODE21_ROOT = ""
 
-# The weight sets below are the rsna_pneumonia defaults, kept for backwards
-# compatibility. The ACTIVE values come from the domain profile — see
-# pipeline.build_common — so switching DATASET_DOMAIN switches them too.
+# ─────────────────────────────────────────────
+# Breast / mammography domain (cbis_ddsm_breast)
+# ─────────────────────────────────────────────
+# Root of the extracted CBIS-DDSM Kaggle mirror
+# (awsaf49/cbis-ddsm-breast-cancer-image-dataset). setup_env.sh downloads it on
+# the login node and prints the path to put here. Expected layout:
+#     <root>/csv/{dicom_info,mass_case_description_train_set,...}.csv
+#     <root>/jpeg/<SeriesUID>/<n>.jpg
+CBIS_DDSM_ROOT = (
+    "/home2020/home/insa/arbaoui/.cache/kagglehub/datasets/awsaf49/"
+    "cbis-ddsm-breast-cancer-image-dataset/versions/1"
+)
+
+# Where train_breast_classifier.py and train_breast_validator.py write, and
+# where src/breast_classifier.py reads from. Separate from CKPT_DIR because
+# these are INPUTS to a run (frozen f(.)), not outputs of one — they are
+# trained once and reused across every PPO run and ablation arm.
+BREAST_CKPT_DIR = "checkpoint/breast"
+
+# Backbones train_breast_classifier.py trains. The first two become the
+# guidance ensemble and the third the same-corpus validator; see
+# domains/cbis_ddsm_breast.py, which is the authority on that split. densenet121
+# is deliberately first: GRADCAM_TARGET_LAYER="features" resolves cleanly on it,
+# and it is the ensemble's cam_member.
+#
+# These three all trained on ONE patient-level split of CBIS-DDSM (seed 0,
+# val_frac 0.2 -> 1168 train patients / 292 val), so the third is a weak
+# independence check. train_breast_validator.py trains the genuinely
+# patient-disjoint ones; see BREAST_VALIDATOR_* below.
+BREAST_BACKBONES = ["densenet121", "efficientnet_b0", "resnet18"]
+
+# The disjoint held-out validators train_breast_validator.py produces. Their
+# training pool is the 292 patients NO guidance backbone was fit on, minus
+# every patient appearing in the eval groups — so they have seen neither the
+# guidance models' training data nor the images they are asked to score.
+BREAST_VALIDATOR_ARCHS = ["resnet18", "efficientnet_b0"]
+BREAST_VALIDATOR_FOLDS = 5
+
+# Root of the extracted CMMD (Chinese Mammography Database) Kaggle mirror
+# (nguynththanhho/cmmd-mammography). Read only by domains/cmmd_breast.py, which
+# is a VALIDATION-ONLY domain: nothing is ever generated on it. It is the one
+# mammography corpus available here that shares no patients, no scanner and no
+# curation with CBIS-DDSM, which is what makes a validator trained on it
+# independent in the sense the chest domain's nih/pc/mimic_ch validators are.
+CMMD_ROOT = (
+    "/home2020/home/insa/arbaoui/.cache/kagglehub/datasets/nguynththanhho/"
+    "cmmd-mammography/versions/1"
+)
+
+# ─────────────────────────────────────────────
+# Train / test split
+# ─────────────────────────────────────────────
+# THE LEAKAGE THIS FIXES. Before this existed, pipeline.build_common() built one
+# dataset and gave the same object to LoRA fine-tuning, the PPO far-pool and the
+# metrics group scan, so every reported number was measured on images the
+# generator had been trained on and the policy had done rollouts against. See
+# splits.py for why the assignment has to be persisted rather than recomputed
+# (the generate stage runs as 8 separate processes).
+#
+# USE_SPLIT=False reproduces the old no-split behaviour exactly, for comparing
+# against the pre-split numbers. It is NOT a valid setting for a reported
+# result — splits.py is bypassed entirely and train == test == everything.
+USE_SPLIT = True
+
+# Patient-level, not image-level: two views of one patient must not straddle the
+# fold boundary. Moot for RSNA (one sample per patientId) but not for domains
+# with several views per patient.
+SPLIT_SEED = 0
+
+# 0.2 leaves ~5.3k held-out RSNA patients, far more than the n_eval=200 the
+# metrics use, so the eval set can grow (see the FID sample-size problem) without
+# renegotiating the split.
+TEST_FRAC  = 0.2
+
+# ─────────────────────────────────────────────
+# Reproducibility
+# ─────────────────────────────────────────────
+# The training path was entirely unseeded — two identical submissions of
+# run_ppo.slurm produced two different policies, and nothing recorded which one
+# a checkpoint came from. That is fatal for the control arms, where the whole
+# claim is that trained / random / no-policy differ by TREATMENT. See seeding.py
+# for what this does and does not guarantee (notably: a RESUMED run does not
+# replay an uninterrupted one).
+TRAIN_SEED = 0
+
+# ─────────────────────────────────────────────
+# How the Xn / Xp evaluation groups are chosen
+# ─────────────────────────────────────────────
+#   "classifier" — Xn = {f(x) < 0.2}, Xp = {f(x) > 0.8}. Singla et al.'s
+#                  protocol, and what every number reported so far used. Keep it
+#                  to stay comparable with those numbers and with the paper.
+#   "label"      — Xn / Xp from the RADIOLOGIST LABEL instead.
+#
+# WHY "label" IS THE MORE HONEST OPTION, AND WHY IT IS NOT THE DEFAULT.
+# Under "classifier", the groups are selected by the same model that provides
+# the guidance gradient and then scores CV. So "Xp" means "images f is confident
+# about", not "images with pneumonia" — the evaluation set is defined by the
+# model being evaluated, and easy cases are selected for on both ends. Under
+# "label" the groups are defined by ground truth and that circularity is gone.
+#
+# But it also changes what CV MEANS: on a label-selected Xp, f is no longer
+# guaranteed to start confident, so the CV numbers stop being comparable to the
+# published protocol or to anything measured here before. That is a scientific
+# call about which claim is being made, not a cleanup, so the default preserves
+# the existing semantics and the honest variant is one config line away.
+#
+# Recommended: report both. They answer different questions.
+EVAL_GROUP_SOURCE = "classifier"
+
+# torch.use_deterministic_algorithms(True). OFF by default: several ops in the
+# diffusion path have no deterministic CUDA kernel and this RAISES rather than
+# falling back, so leaving it on trades a reproducible run for a crashing one.
+# Turn on only to investigate a specific nondeterminism.
+STRICT_DETERMINISM = False
+
+# THIS LIST IS THE ACTIVE ONE, not the domain profile's ensemble_weights —
+# pipeline.build_common uses `config.GUIDANCE_ENSEMBLE_WEIGHTS or
+# domain.ensemble_weights`, so a non-empty list here always wins (see
+# pipeline.py:147-155's comment on why membership is deliberately
+# config-driven, not domain-driven). Keep domains/rsna_pneumonia.py's
+# ensemble_weights in sync anyway — arm_transfer.py's default validator
+# resolution and the disjointness check both read the domain's copy.
+#
+# Committed default (2-member). A 3-member variant [rsna, chex, mimic_nb]
+# was trained and evaluated for the gap-2 experiment (checkpoints_ens3/,
+# see internship-report ch7, "A Trained 3-Model Ensemble") and reverted
+# back to this default afterward — see that section for the results and
+# domains/rsna_pneumonia.py's git history for the matching validator-set
+# revert.
 GUIDANCE_ENSEMBLE_WEIGHTS = [
     "densenet121-res224-rsna",
     "densenet121-res224-chex",
 ]
 
-# REVERTED 2026-08-07 to False, i.e. back to v1's single-model f(·).
+# SET TO True on 2026-08-12: the cm0/cm1 countermeasure comparison (replicated
+# across 3 seeds) and the ensemble-size sweep both show ensemble guidance is
+# the one tested countermeasure that raises lesion-targeting lift and held-out
+# transfer, so it is now the default for new training/eval runs.
 #
 # True  -> f(·) is the mean-probability ensemble over GUIDANCE_ENSEMBLE_WEIGHTS.
 # False -> f(·) is the single GUIDANCE_SINGLE_WEIGHTS model, which is what the
 #          archived checkpoints/archive_v1_rank8/ policies were trained against
 #          and what produced the CV=0.975 numbers in checkpoints/eval_metrics.json.
+#          Set this back to False to reproduce those or the cm0 baseline arm.
 #
 # READ THIS BEFORE QUOTING CV. The ensemble exists because held-out validation
 # (checkpoints/heldout/heldout_validation.json, job 17649721) showed the
 # single-rsna counterfactuals do NOT transfer: strict CV 0.0 on nih and 0.0-0.08
 # on chex, transfer ratio 0.13-0.20, with the original-image agreement control
-# passing. So with this False, CV measures gradient descent against rsna
-# succeeding against rsna, and is NOT evidence the counterfactuals are
-# explanatory. Run heldout_validation.py alongside any CV reported from here.
-USE_GUIDANCE_ENSEMBLE  = False
+# passing. Even with this True, transfer is only partial (see
+# logs/ppo-counterfactual-heldout-*.out) — run heldout_validation.py alongside
+# any CV reported from here rather than trusting CV on its own.
+USE_GUIDANCE_ENSEMBLE  = True
 GUIDANCE_SINGLE_WEIGHTS = "densenet121-res224-rsna"
 
 # Default root for CXRDataset (src/models.py) — an ImageFolder-style
@@ -149,7 +284,16 @@ BG_MASK_FEATHER  = 1.0    # Gaussian sigma (latent cells) for seam feathering
 # named_modules() and silently returns members.0's `features`, producing an
 # rsna-only CAM labelled as the ensemble's. Verified behaviour, not a guess.
 # Watch the degenerate-CAM rate PPOTrainer.train reports at the end of a run.
-USE_GRADCAM_MASK = False   # REVERTED 2026-08-07 (was ARM 2)
+#
+# REVERTED again after a second, isolated attempt: GRADCAM_TARGET_LAYER=
+# features.denseblock3 was trained for real (checkpoints_gradcam_fix/, see
+# internship-report ch7, "A Trained Grad-CAM-Fix Arm") to test whether the
+# finer layer actually helps a trained policy, not just the offline
+# diagnostic. It does not — CV collapsed to 0.017 (from 0.838), LHR lift
+# dropped to 1.636 (d=1.205 vs the default, the largest paired effect size
+# measured anywhere in this project), and held-out transfer fell across
+# all three validators. Confirmed, not merely diagnosed: this is not a fix.
+USE_GRADCAM_MASK = False
 
 # Grad-CAM hook target inside the FROZEN classifier. Spatial resolution of the
 # xrv DenseNet-121 at its 224 input (cell size quoted for IMG_SIZE=256):
@@ -324,7 +468,12 @@ ENV_REFINEMENT_PASSES = 2
 # uniform baseline (top-5% of pixels' share of |Δ|), i.e. mostly diffuse.
 # PPOTrainer used to log "the annealing schedule is inert" at startup; that
 # line should stop firing now.
-USE_SPARSITY_REWARD    = False   # REVERTED 2026-08-07 (was ARM 3)
+# Committed default (off). Re-enabled once, isolated, for the gap-4 retrain
+# (checkpoints_sparsity/, see internship-report ch7, "A Trained
+# Sparsity-Reward Arm") — result: did not concentrate edits and measurably
+# hurt LHR lift (p=4.7e-9, d=0.512) and p→n transfer. Reverted back to
+# False afterward; see that section for the full numbers.
+USE_SPARSITY_REWARD    = False   # REVERTED (gap-4 retrain complete)
 USE_SPARSITY_ANNEALING = True
 
 # Target weight. Same scale as LAM_FID, which is worth noting: R_fid is already

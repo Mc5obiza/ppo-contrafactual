@@ -1,0 +1,10 @@
+/home2020/home/insa/arbaoui/.torchxrayvision/models_data/nihpcrsnamimic_ch-resnet101-2-ae-test2-elastic-e250.pt: OK
+=== J15_latent_shift_smoke (LIMIT=8) on hpc-n932 at Thu Nov  5 21:00:25 CET 2026
+name, memory.total [MiB]
+NVIDIA H100 PCIe, 81559 MiB
+NVIDIA H100 PCIe, 81559 MiB
+NVIDIA H100 PCIe, 81559 MiB
+NVIDIA H100 PCIe, 81559 MiB
+[preflight] NVIDIA H100 PCIe -> sm_90
+[preflight] torch 2.5.1+cu121 kernels: ['sm_50', 'sm_60', 'sm_70', 'sm_75', 'sm_80', 'sm_86', 'sm_90']
+[preflight] OK

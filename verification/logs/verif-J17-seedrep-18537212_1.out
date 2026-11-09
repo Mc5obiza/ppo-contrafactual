@@ -1,0 +1,99 @@
+109:TRAIN_SEED = 1
+167:USE_GUIDANCE_ENSEMBLE  = False
+=== seedrep_single_seed1 p_to_n on hpc-n978 at Fri Nov  6 02:04:23 CET 2026
+name, memory.total [MiB]
+NVIDIA H200, 143771 MiB
+NVIDIA H200, 143771 MiB
+NVIDIA H200, 143771 MiB
+NVIDIA H200, 143771 MiB
+NVIDIA H200, 143771 MiB
+NVIDIA H200, 143771 MiB
+NVIDIA H200, 143771 MiB
+NVIDIA H200, 143771 MiB
+[preflight] NVIDIA H200 -> sm_90
+[preflight] torch 2.5.1+cu121 kernels: ['sm_50', 'sm_60', 'sm_70', 'sm_75', 'sm_80', 'sm_86', 'sm_90']
+[preflight] OK
+[seedrep] TRAIN_SEED=1 USE_GUIDANCE_ENSEMBLE=False direction=p_to_n PPO_CKPT_DIR=/home2020/home/insa/arbaoui/verification/out/seedrep_single_seed1 PPO_WALLCLOCK_BUDGET_S=41400
+[seed] training: seed=1 | cudnn.deterministic=True, benchmark=False
+======================================================================
+STEP 1 — Dataset ingestion
+======================================================================
+[domain] rsna_pneumonia: f(.) targets 'Pneumonia' | guidance=densenet121-res224-rsna | ensemble=['densenet121-res224-rsna', 'densenet121-res224-chex'] | validators=['densenet121-res224-nih', 'densenet121-res224-pc', 'densenet121-res224-mimic_ch'] | clinical metrics: CTR, SCP
+[domain] Baseline domain. NOTE both clinical metrics are weak here: CTR is a cardiomegaly measure and SCP's sigmoid(-||yolo_feat||/50) proxy was measured degenerate (0.21% relative spread) in the last eval. Neither is pneumonia-specific.
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+[split] rsna_pneumonia: 21347 train / 5337 test (20.0% held out, seed=0)  [loaded]
+
+======================================================================
+STEP 2 — Loading pretrained models
+======================================================================
+[models] loaded XRV classifier (densenet121-res224-rsna, head='Pneumonia') as f(·)
+[models] loaded PSPNet | lung channels: [4, 5]
+[models] loaded YOLOv8 backbone from yolov8n.pt
+
+======================================================================
+STEP 3 — Building generator with LoRA
+======================================================================
+[generator] loading VAE ...
+[generator] loading UNet ...
+trainable params: 1,594,368 || all params: 861,115,332 || trainable%: 0.1852
+[generator] VRAM estimate — VAE=160 MB, UNet=1645 MB, total=1806 MB
+
+======================================================================
+STEP 4 — LoRA denoising fine-tuning
+======================================================================
+[seedrep] Step 4 skipped: loading the trained p_to_n adapter instead of fine-tuning
+[pipeline] loading fine-tuned generator from '/home2020/home/insa/arbaoui/verification/views/single_pn/p_to_n/'
+[pipeline]   → unet_finetuned.pt + cond_proj.pt
+[adapter] p_to_n <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/archive_pre_ensemble_default_20260812/p_to_n/unet_finetuned.pt sha256=01d6c7e3bcb28317ce3d30c49a0e523a473e6896dc67959169627fa0a71a9853 | cond_proj <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/archive_pre_ensemble_default_20260812/p_to_n/cond_proj.pt | generator == file: unet LoRA 256/256, cond_proj 4/4 | expected sha256 MATCH
+
+======================================================================
+STEP 5 — PPO training  [p_to_n, target_c=0.0]
+======================================================================
+[seed] p_to_n: seed=3 (base 1 + offset 2) | cudnn.deterministic=True, benchmark=False
+[env] 11406/21347 images are > 0.5 away from target_c=0.0  [training fold only]
+[env] far pool split: 11382 train / 24 held out for the CV probe (CV resolution 4.2 pts/image)
+[p_to_n] obs_dim = 73731
+[p_to_n] policy params = 37,885,462
+[ppo] found resumable state at /home2020/home/insa/arbaoui/verification/out/seedrep_single_seed1/p_to_n/ppo_latest.pt — resuming
+[ppo] resumed from update 75 (600 episodes done)
+[ppo] wall-clock budget: 11.50h for the whole process (0.10h already spent on startup) — will checkpoint and exit before it is reached
+[ppo] NOTE: USE_SPARSITY_ANNEALING=True but USE_SPARSITY_REWARD=False — the annealing schedule is inert.
+Update   80 | episodes= 640 | avg_ep_len= 4.12 | avg_return=   1.559 | L_ppo=-0.0455 | L_value=2.0545 | std_mean=0.6080 | lam_sparse=0.0000
+           reward split [flip=47% pres=17%] hit=+0.424(23%) stop=+0.424(23%) val=-0.254(14%) prog=+0.252(14%) pres=-0.251(14%) bud=-0.100(5%) fid=-0.061(3%) close2=-0.057(3%) sparsity=+0.000(0%)
+           edit_L1=0.0305 (budget inf) | steps score_ok=21% budget_ok=100% valid=21% | |logit|max=14.55 (sat>3.0)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/seedrep_single_seed1/p_to_n/ppo_latest.pt (update 80, 640 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/seedrep_single_seed1/p_to_n/ppo_latest.pt (update 85, 680 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/seedrep_single_seed1/p_to_n/ppo_latest.pt (update 90, 720 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/seedrep_single_seed1/p_to_n/ppo_latest.pt (update 95, 760 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/seedrep_single_seed1/p_to_n/ppo_latest.pt (update 100, 800 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/seedrep_single_seed1/p_to_n/ppo_latest.pt (update 100, 800 episodes)
+step |   flat R_t |  shaped R~_t |  advantage |  tau_t
+   0 |     5.0748 |       5.0748 |     0.0000 |  0.935
+
+──────────────────────────────────────────────────────────────────────
+  GUIDANCE DIAGNOSTICS  (target_c = 0.0)
+──────────────────────────────────────────────────────────────────────
+  episodes sampled          : 20  (56 steps)
+  avg guidance_bias         : 0.8876 ± 0.0926
+  avg n_passes              : 2.25
+  avg pres_suppression      : 1.1391  (floor = 0.60)
+  min pres_suppression seen : 0.9252
+  ✓ suppression is comfortably above the floor on average.
+  avg reward                : 0.2077
+──────────────────────────────────────────────────────────────────────
+[main] guidance diagnostics saved to '/home2020/home/insa/arbaoui/verification/out/seedrep_single_seed1/guidance_diagnostics_p_to_n.json'
+[evaluate] saved checkpoints to '/home2020/home/insa/arbaoui/verification/out/seedrep_single_seed1/p_to_n/'
+  → ppo_policy.pt
+  → unet_finetuned.pt
+  → cond_proj.pt
+
+======================================================================
+✓ TRAINING COMPLETE
+======================================================================
+  p_to_n: done → /home2020/home/insa/arbaoui/verification/out/seedrep_single_seed1/p_to_n/  (ppo_policy.pt, unet_finetuned.pt, cond_proj.pt)
+
+  Still to train before evaluation: n_to_p
+        python main.py --direction n_to_p
+=== finished at Fri Nov  6 02:41:05 CET 2026

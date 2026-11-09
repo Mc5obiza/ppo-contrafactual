@@ -1,0 +1,59 @@
+{
+ "(a) n$\\to$p, typical": {
+  "idx": 2029,
+  "f0": 0.03969990089535713,
+  "f1": 0.9860066175460815,
+  "v0": {
+   "nih": 0.009208074770867825,
+   "pc": 0.3807247579097748,
+   "mimic_ch": 0.07083404064178467
+  },
+  "v1": {
+   "nih": 0.015555055812001228,
+   "pc": 0.7353155612945557,
+   "mimic_ch": 0.5183318853378296
+  },
+  "lift": null,
+  "held": 0.26947854304065305
+ },
+ "(b) p$\\to$n, typical": {
+  "idx": 12032,
+  "f0": 0.8553668260574341,
+  "f1": 0.014110131189227104,
+  "v0": {
+   "nih": 0.5343718528747559,
+   "pc": 0.5745663642883301,
+   "mimic_ch": 0.7017030715942383
+  },
+  "v1": {
+   "nih": 0.501258909702301,
+   "pc": 0.528599739074707,
+   "mimic_ch": 0.01927441917359829
+  },
+  "lift": 1.1598325967788696,
+  "held": -0.2538360736022393
+ },
+ "(c) p$\\to$n, worst lesion hit": {
+  "idx": 2535,
+  "f0": 0.8949713110923767,
+  "f1": 0.005668009165674448,
+  "v0": {
+   "nih": 0.21037456393241882,
+   "pc": 0.6663545370101929,
+   "mimic_ch": 0.5151149034500122
+  },
+  "v1": {
+   "nih": 0.4723445177078247,
+   "pc": 0.13179616630077362,
+   "mimic_ch": 0.13479110598564148
+  },
+  "lift": 0.5107321739196777,
+  "held": -0.21763740479946136
+ },
+ "rule": "Main-paper qualitative figure: three J4 (default policy) examples chosen by a stated rule,\nnot by eye. CPU, offline from saved shards.\n\n  (a) n->p, typical : among CV-valid n->p images, the one at the median (lower middle) of the\n                      mean held-out shift (mean over nih, pc, mimic_ch of f_v(x_c) - f_v(x)).\n  (b) p->n, typical : among CV-valid, annotated p->n images, median in-lung lift (Eq. 5).\n  (c) p->n, failure : among CV-valid, annotated p->n images, the lowest in-lung lift.",
+ "positions": {
+  "a_np": 108,
+  "b_pn": 190,
+  "c_pn": 56
+ }
+}

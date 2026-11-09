@@ -1,0 +1,59 @@
+run manifest
+================================================================
+written        : 2026-08-13T13:03:19+02:00
+job            : ppo-eval-cf-17695832_2
+node           : hpc-n931
+slurm partition: publicgpu
+
+-- git ---------------------------------------------------------
+commit         : 49e6050548e5376d26997e08027fb84a99383843
+branch         : evaluation-integrity
+tree           : DIRTY — the commit above does not describe this run
+                  D checkpoints/counterfactual_diff_n_to_p.png
+                  D checkpoints/counterfactual_diff_p_to_n.png
+                  M checkpoints/n_to_p/run_manifest.txt
+                  M checkpoints/p_to_n/run_manifest.txt
+                  D checkpoints/reward_trace.png
+                  M report/report.tex
+                 ?? logs/ppo-counterfactual-17694482_0.manifest
+                 ?? logs/ppo-counterfactual-17694482_1.manifest
+                 ?? report/report.aux
+                 ?? report/report.log
+                 ?? report/report.out
+                 ?? report/report.pdf
+                 ?? report/report.toc
+                 ?? social_media/
+
+-- environment -------------------------------------------------
+python         : Python 3.12.8
+torch          : 2.5.1+cu121 cuda 12.1
+gpu            : NVIDIA A100-SXM4-80GB, 81920 MiB
+n/a
+
+-- config.py ---------------------------------------------------
+sha256         : f687e57a2cf782840e0ffd46ac8262c8e85e0db09d9a216984c3a5dc719b78fe
+  DATASET_DOMAIN          = rsna_pneumonia
+  CKPT_DIR                = checkpoints
+  DEVICE                  = cuda
+  DTYPE                   = torch.float16
+  IMG_SIZE                = 256
+  USE_SPLIT               = True
+  SPLIT_SEED              = 0
+  TEST_FRAC               = 0.2
+  EVAL_GROUP_SOURCE       = classifier
+  TRAIN_SEED              = 0
+  STRICT_DETERMINISM      = False
+  USE_GUIDANCE_ENSEMBLE   = True
+  USE_GRADCAM_MASK        = False
+  USE_SPARSITY_REWARD     = False
+  USE_SPARSITY_ANNEALING  = True
+  FIXED_EPISODE_LENGTH    = False
+  EDIT_BUDGET_L1          = inf
+  BUDGET_T                = 25
+  N_EPISODES              = 800
+  N_DENOISE_EPOCHS        = 30
+  T_DIFF                  = 50
+  POLICY_TRUNK            = mlp
+  LORA_R                  = 8
+  ALPHA_CLS               = 4.0
+  ALPHA_PRES              = 0.05

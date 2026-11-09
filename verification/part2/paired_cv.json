@@ -1,0 +1,56 @@
+{
+ "J4": {
+  "cpu_cv_np": 0.9449999928474426,
+  "cpu_cv_pn": 0.6700000166893005,
+  "json_cv_np": 0.9449999928474426,
+  "json_cv_pn": 0.6700000166893005
+ },
+ "J5": {
+  "cpu_cv_np": 0.9399999976158142,
+  "cpu_cv_pn": 0.22499999403953552,
+  "json_cv_np": 0.9399999976158142,
+  "json_cv_pn": 0.22499999403953552
+ },
+ "J5b": {
+  "cpu_cv_np": 0.9449999928474426,
+  "cpu_cv_pn": 0.6100000143051147,
+  "json_cv_np": 0.9449999928474426,
+  "json_cv_pn": 0.6100000143051147
+ },
+ "J4_vs_J5_n_to_p": {
+  "diff": 0.004999995231628418,
+  "only_first_valid": 4,
+  "only_second_valid": 3,
+  "mcnemar_exact_p": 1.0
+ },
+ "J4_vs_J5_p_to_n": {
+  "diff": 0.445000022649765,
+  "only_first_valid": 90,
+  "only_second_valid": 1,
+  "mcnemar_exact_p": 7.431700815906108e-26
+ },
+ "J4_vs_J5b_n_to_p": {
+  "diff": 0.0,
+  "only_first_valid": 0,
+  "only_second_valid": 0,
+  "mcnemar_exact_p": 1.0
+ },
+ "J4_vs_J5b_p_to_n": {
+  "diff": 0.06000000238418579,
+  "only_first_valid": 22,
+  "only_second_valid": 10,
+  "mcnemar_exact_p": 0.050102459732443094
+ },
+ "J5b_vs_J5_n_to_p": {
+  "diff": 0.004999995231628418,
+  "only_first_valid": 4,
+  "only_second_valid": 3,
+  "mcnemar_exact_p": 1.0
+ },
+ "J5b_vs_J5_p_to_n": {
+  "diff": 0.3850000202655792,
+  "only_first_valid": 77,
+  "only_second_valid": 0,
+  "mcnemar_exact_p": 1.3234889800848443e-23
+ }
+}

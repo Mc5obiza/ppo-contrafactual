@@ -1,0 +1,26 @@
+{
+ "committed": {
+  "cpu_cv_np": 0.9599999785423279,
+  "cpu_cv_pn": 0.7149999737739563,
+  "json_cv_np": 0.9599999785423279,
+  "json_cv_pn": 0.7149999737739563
+ },
+ "J4": {
+  "cpu_cv_np": 0.9449999928474426,
+  "cpu_cv_pn": 0.6700000166893005,
+  "json_cv_np": 0.9449999928474426,
+  "json_cv_pn": 0.6700000166893005
+ },
+ "committed_vs_J4_n_to_p": {
+  "diff": 0.014999985694885254,
+  "only_first_valid": 3,
+  "only_second_valid": 0,
+  "mcnemar_exact_p": 0.25
+ },
+ "committed_vs_J4_p_to_n": {
+  "diff": 0.04499995708465576,
+  "only_first_valid": 19,
+  "only_second_valid": 10,
+  "mcnemar_exact_p": 0.13604594767093658
+ }
+}

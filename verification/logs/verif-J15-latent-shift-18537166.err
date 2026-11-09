@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home2020/home/insa/arbaoui/verification/scripts/latent_shift_eval.py", line 53, in <module>
+    from pipeline import build_common
+  File "/home2020/home/insa/arbaoui/verification/code/49e6050/pipeline.py", line 42, in <module>
+    import domains
+  File "/home2020/home/insa/arbaoui/verification/code/49e6050/domains/__init__.py", line 40, in <module>
+    raise ImportError(
+ImportError: the imported `config` is not this project's config.py — got /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/venv/lib/python3.12/site-packages/torchxrayvision/baseline_models/jfhealthcare/config/__init__.py. torchxrayvision registers its own top-level `config` package, so importing torchxrayvision BEFORE the project's `import config` shadows it. Fix: import config first, before torchxrayvision (and before this package).

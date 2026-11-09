@@ -1,0 +1,18 @@
+=== J6 vs checkpoints/eval_shards
+paired images            : 76
+paired difference       : +0.2298   95% CI [+0.0916, +0.3702]
+paired t-test           : t=3.221  p=0.001892
+Cohen's d (paired)      : +0.369
+J6_as_shards/shards better on       : 51 / 76 images
+=== J6 vs checkpoints_sparsity/eval_shards
+paired images            : 148
+paired difference       : +0.1822   95% CI [+0.1024, +0.2633]
+paired t-test           : t=4.415  p=1.947e-05
+Cohen's d (paired)      : +0.363
+J6_as_shards/shards better on       : 94 / 148 images
+=== J6 vs checkpoints_gradcam_fix/eval_shards
+paired images            : 148
+paired difference       : +0.9443   95% CI [+0.8135, +1.0769]
+paired t-test           : t=14.057  p=5.506e-29
+Cohen's d (paired)      : +1.155
+J6_as_shards/shards better on       : 140 / 148 images

@@ -1,0 +1,126 @@
+{
+ "name": "g0.45_1.15_1.27_2",
+ "eligible": true,
+ "controls": {
+  "strength": 0.45,
+  "cls_scale": 1.15,
+  "guidance_bias": 1.27,
+  "n_passes": 2
+ },
+ "raw": [
+  0.0,
+  2.8332133440562135,
+  0.0,
+  0.0,
+  -2.0,
+  -2.0,
+  0.0,
+  2.9444389791664443,
+  0.0
+ ],
+ "stage": 1,
+ "direction": "n_to_p",
+ "n_images": 12,
+ "rows": [
+  {
+   "dataset_idx": 5,
+   "ret": 6.951729878320335,
+   "ret_undiscounted": 6.951729878320335,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 4.33225679397583
+  },
+  {
+   "dataset_idx": 8,
+   "ret": 6.732324935341874,
+   "ret_undiscounted": 6.732324935341874,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 4.326998710632324
+  },
+  {
+   "dataset_idx": 9,
+   "ret": 6.67057009529517,
+   "ret_undiscounted": 6.67057009529517,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 4.330150365829468
+  },
+  {
+   "dataset_idx": 10,
+   "ret": 6.574925705972405,
+   "ret_undiscounted": 6.574925705972405,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 4.331000328063965
+  },
+  {
+   "dataset_idx": 15,
+   "ret": 6.847738784350699,
+   "ret_undiscounted": 6.847738784350699,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 4.327693939208984
+  },
+  {
+   "dataset_idx": 20,
+   "ret": 6.7903265943932505,
+   "ret_undiscounted": 6.7903265943932505,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 4.326024532318115
+  },
+  {
+   "dataset_idx": 26,
+   "ret": 6.761602894408695,
+   "ret_undiscounted": 6.761602894408695,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 4.326190233230591
+  },
+  {
+   "dataset_idx": 31,
+   "ret": 6.709205462771522,
+   "ret_undiscounted": 6.709205462771522,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 4.328503608703613
+  },
+  {
+   "dataset_idx": 33,
+   "ret": 6.541009522135552,
+   "ret_undiscounted": 6.541009522135552,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 4.338295936584473
+  },
+  {
+   "dataset_idx": 36,
+   "ret": 6.498865660037027,
+   "ret_undiscounted": 6.498865660037027,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 4.331293821334839
+  },
+  {
+   "dataset_idx": 38,
+   "ret": 6.34793764809747,
+   "ret_undiscounted": 6.34793764809747,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 4.32679295539856
+  },
+  {
+   "dataset_idx": 40,
+   "ret": 6.6102345407090395,
+   "ret_undiscounted": 6.6102345407090395,
+   "valid": true,
+   "n_steps": 1,
+   "seconds": 4.3254172801971436
+  }
+ ],
+ "mean_return": 6.66970597681942,
+ "valid_rate": 1.0,
+ "mean_steps": 1.0,
+ "gpu": "NVIDIA L40S"
+}

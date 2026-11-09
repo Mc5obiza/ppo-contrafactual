@@ -138,6 +138,7 @@ class MedicalCounterfactualEnv:
         far_threshold: float = config.FAR_THRESHOLD,
         scan_batch_size: int = config.ENV_SCAN_BATCH_SIZE,
         scan_num_workers: int = config.DATALOADER_NUM_WORKERS,
+        allowed_indices=None,
     ):
         self.dataset   = dataset
         self.f         = classifier
@@ -150,10 +151,20 @@ class MedicalCounterfactualEnv:
         self.device    = device
         self.far_threshold = far_threshold
 
+        # Dataset indices this env may draw episodes from — the training fold
+        # (splits.py). None means "the whole dataset", which is the pre-split
+        # behaviour and leaks the evaluation images into PPO rollouts. Held as a
+        # set because _build_far_index_pool membership-tests once per candidate.
+        self.allowed_indices = None if allowed_indices is None else set(
+            int(i) for i in allowed_indices
+        )
+
         self._far_indices = self._build_far_index_pool(scan_batch_size, scan_num_workers)
+        denom = len(dataset) if self.allowed_indices is None else len(self.allowed_indices)
         print(
-            f"[env] {len(self._far_indices)}/{len(dataset)} images are "
+            f"[env] {len(self._far_indices)}/{denom} images are "
             f"> {far_threshold} away from target_c={target_c}"
+            + ("" if self.allowed_indices is None else "  [training fold only]")
         )
 
         # Split the far pool so the CV safeguard probe has genuinely held-out
@@ -216,7 +227,13 @@ class MedicalCounterfactualEnv:
         """
         Pre-scan the dataset and collect indices of images whose classifier
         output is far from the target class.
+
+        Restricted to self.allowed_indices when set (the training fold from
+        splits.py). Without that restriction the policy does its rollouts on the
+        same images the evaluation later scores, so a counterfactual at eval time
+        is being produced for an image the policy already practised on.
         """
+        allowed = self.allowed_indices
         far_indices = []
         loader = DataLoader(
             self.dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
@@ -230,13 +247,21 @@ class MedicalCounterfactualEnv:
                 diffs   = (p_batch - self.c).abs()
                 mask    = diffs > self.far_threshold
                 hits    = torch.nonzero(mask, as_tuple=True)[0]
-                far_indices.extend((base_idx + hits).tolist())
+                # Scan the whole dataset (shuffle=False keeps indices aligned)
+                # and filter after, rather than building a Subset — a Subset
+                # would renumber indices and break the alignment every caller
+                # of the far pool assumes.
+                batch_hits = (base_idx + hits).tolist()
+                if allowed is not None:
+                    batch_hits = [i for i in batch_hits if i in allowed]
+                far_indices.extend(batch_hits)
                 base_idx += x_batch.shape[0]
 
         if not far_indices:
             raise RuntimeError(
-                f"No images with |f(x) - {self.c}| > {self.far_threshold}. "
-                f"Lower far_threshold and try again."
+                f"No images with |f(x) - {self.c}| > {self.far_threshold}"
+                + ("" if allowed is None else " within the training fold")
+                + f". Lower far_threshold and try again."
             )
         return far_indices
 

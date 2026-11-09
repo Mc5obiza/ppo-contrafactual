@@ -1,0 +1,74 @@
+=== J5_none_perdir shard 7: code 49e6050 view=committed pn_view=pn_lora arm=none on hpc-n977 at Wed Oct 28 23:18:45 CET 2026
+name, memory.total [MiB]
+NVIDIA H200, 143771 MiB
+NVIDIA H200, 143771 MiB
+NVIDIA H200, 143771 MiB
+NVIDIA H200, 143771 MiB
+NVIDIA H200, 143771 MiB
+NVIDIA H200, 143771 MiB
+NVIDIA H200, 143771 MiB
+NVIDIA H200, 143771 MiB
+[preflight] NVIDIA H200 -> sm_90
+[preflight] torch 2.5.1+cu121 kernels: ['sm_50', 'sm_60', 'sm_70', 'sm_75', 'sm_80', 'sm_86', 'sm_90']
+[preflight] OK
+[adapter] per-direction mode: n_to_p <- /home2020/home/insa/arbaoui/verification/views/committed, p_to_n <- /home2020/home/insa/arbaoui/verification/views/pn_lora
+======================================================================
+STEP 1 — Dataset ingestion
+======================================================================
+[domain] rsna_pneumonia: f(.) targets 'Pneumonia' | guidance=densenet121-res224-rsna | ensemble=['densenet121-res224-rsna', 'densenet121-res224-chex'] | validators=['densenet121-res224-nih', 'densenet121-res224-pc', 'densenet121-res224-mimic_ch'] | clinical metrics: CTR, SCP
+[domain] Baseline domain. NOTE both clinical metrics are weak here: CTR is a cardiomegaly measure and SCP's sigmoid(-||yolo_feat||/50) proxy was measured degenerate (0.21% relative spread) in the last eval. Neither is pneumonia-specific.
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+[split] rsna_pneumonia: 21347 train / 5337 test (20.0% held out, seed=0)  [loaded]
+
+======================================================================
+STEP 2 — Loading pretrained models
+======================================================================
+[models] loaded ENSEMBLE classifier as f(·), head='Pneumonia': [rsna, chex] (2 members, mean probability)
+[models]   NOTE: f(·) is an ensemble — CV, far-pool sizes and the Xn/Xp group split are NOT comparable to single-classifier runs.
+[models] loaded PSPNet | lung channels: [4, 5]
+[models] loaded YOLOv8 backbone from yolov8n.pt
+
+======================================================================
+STEP 3 — Building generator with LoRA
+======================================================================
+[generator] loading VAE ...
+[generator] loading UNet ...
+trainable params: 1,594,368 || all params: 861,115,332 || trainable%: 0.1852
+[generator] VRAM estimate — VAE=160 MB, UNet=1645 MB, total=1806 MB
+
+======================================================================
+STEP 4 — Restoring trained checkpoints
+======================================================================
+[pipeline] loading fine-tuned generator from '/home2020/home/insa/arbaoui/verification/views/committed/n_to_p/'
+[pipeline]   → unet_finetuned.pt + cond_proj.pt
+
+[eval] ARM = none — no policy; gradient guidance with the generator's default fixed schedule.
+
+======================================================================
+STAGE GENERATE — shard 7/8
+======================================================================
+[eval] scanning dataset for Xn / Xp (n_eval=200) over 5337 held-out images ...
+[eval] Xn=200  Xp=200
+[eval] shard slice: Xn[175:200] (25 imgs), Xp[175:200] (25 imgs)
+[eval] generating Xc (n→p) — this is the expensive part ...
+[pipeline] loading fine-tuned generator from '/home2020/home/insa/arbaoui/verification/views/committed/n_to_p/'
+[pipeline]   → unet_finetuned.pt + cond_proj.pt
+[adapter] n_to_p <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/n_to_p/unet_finetuned.pt sha256=658cdd7956a858c16a6b13c136ec01e4a61668b738826c74b51cdbf5ddc86f99 | cond_proj <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/n_to_p/cond_proj.pt | generator == file: unet LoRA 256/256, cond_proj 4/4 | expected sha256 MATCH
+[shard7 n_to_p] [10/25] global_idx=184  0.03 min/img  elapsed 0.3 min
+[shard7 n_to_p] [20/25] global_idx=194  0.03 min/img  elapsed 0.5 min
+[shard7 n_to_p] [25/25] global_idx=199  0.03 min/img  elapsed 0.7 min
+[eval] generating Xc (p→n) ...
+[pipeline] loading fine-tuned generator from '/home2020/home/insa/arbaoui/verification/views/pn_lora/p_to_n/'
+[pipeline]   → unet_finetuned.pt + cond_proj.pt
+[adapter] p_to_n <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/p_to_n/unet_finetuned.pt sha256=6ae442301a803162fd66d020521c36d8aa800138acb209e27f20ec59766c9651 | cond_proj <- /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/p_to_n/cond_proj.pt | generator == file: unet LoRA 256/256, cond_proj 4/4 | expected sha256 MATCH
+[shard7 p_to_n] [10/25] global_idx=1000184  0.03 min/img  elapsed 0.3 min
+[shard7 p_to_n] [20/25] global_idx=1000194  0.03 min/img  elapsed 0.5 min
+[shard7 p_to_n] [25/25] global_idx=1000199  0.03 min/img  elapsed 0.7 min
+[generator] Grad-CAM mask: not used (USE_GRADCAM_MASK off)
+
+✓ shard 7 written to '/home2020/home/insa/arbaoui/verification/out/J5_none_perdir/shards/cf_shard_007.pt'
+  Run the reduce stage once ALL 8 shards exist:
+    python -u eval_main.py --stage reduce --num-shards 8
+=== finished at Wed Oct 28 23:21:22 CET 2026

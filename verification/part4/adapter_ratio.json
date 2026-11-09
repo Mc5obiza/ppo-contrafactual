@@ -1,0 +1,22 @@
+{
+ "2-ens committed (default)": {
+  "lora": 0.3854421655474391,
+  "cond_proj": 0.25116721514001344
+ },
+ "single-classifier": {
+  "lora": 0.011827502943270543,
+  "cond_proj": 0.006824574538903287
+ },
+ "3-model ensemble": {
+  "lora": 0.003936476800809649,
+  "cond_proj": 0.002024482687996073
+ },
+ "sparsity reward": {
+  "lora": 0.0014906065739465034,
+  "cond_proj": 0.001023169445996286
+ },
+ "Grad-CAM constraint": {
+  "lora": 0.0,
+  "cond_proj": 0.0
+ }
+}

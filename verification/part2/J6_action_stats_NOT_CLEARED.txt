@@ -1,0 +1,49 @@
+J6 (18497965) repaired step records; near-replica of committed outputs (check 5 FAILED). NOT CLEARED.
+
+== n_to_p: 200 images, 201 steps; episode length: mean 1.00, median 1, max 2, distribution {1: 199, 2: 1}
+ raw action per dim: mean / sd (all steps) / sd of step-0 across images / within-image sd (multi-step images) / share of variance between images
+  a0: -9.114 / 1.176 / 1.173 / 0.061 / 1.00
+  a1: -0.671 / 0.333 / 0.330 / 0.002 / 1.00
+  a2: -2.006 / 0.681 / 0.682 / 0.075 / 0.99
+  a3: +2.446 / 0.801 / 0.802 / 0.169 / 0.96
+  a4: +3.041 / 1.073 / 1.075 / 0.175 / 0.97
+  a5: -6.357 / 0.941 / 0.940 / 0.030 / 1.00
+  a6: +4.074 / 0.692 / 0.692 / 0.055 / 0.99
+  a7: +6.550 / 1.191 / 1.193 / 0.093 / 0.99
+  a8: -1.090 / 0.788 / 0.789 / 0.058 / 0.99
+ mapped controls: mean [min, max]
+  strength         0.2001 [0.2000, 0.2030]
+  cls_scale        0.6082 [0.3958, 0.7705]
+  pres_scale       0.4641 [0.3321, 0.7922]
+  tau              0.8999 [0.4798, 0.9878]
+  strength_boost   1.1438 [1.1162, 1.1495]
+  guidance_bias    1.2985 [1.2885, 1.3000]
+  ramp_start_frac  0.2105 [0.1221, 0.3689]
+  n_passes         3.0000 [3.0000, 3.0000]
+ guidance_bias >= 1.295 (bound 1.30): 96.5% of steps; >= 1.29: 99.0%; n_passes==3: 100.0%
+
+== p_to_n: 200 images, 1093 steps; episode length: mean 5.46, median 1, max 25, distribution {1: 129, 2: 15, 3: 10, 4: 3, 5: 3, 6: 2, 7: 1, 8: 1, 11: 1, 12: 1, 13: 1, 17: 1, 22: 1, 25: 31}
+ raw action per dim: mean / sd (all steps) / sd of step-0 across images / within-image sd (multi-step images) / share of variance between images
+  a0: +1.705 / 1.685 / 1.250 / 0.929 / 0.77
+  a1: +1.700 / 0.855 / 1.183 / 0.493 / 0.84
+  a2: +0.432 / 0.536 / 0.655 / 0.276 / 0.83
+  a3: +0.486 / 0.826 / 0.470 / 0.489 / 0.71
+  a4: -1.607 / 1.680 / 1.799 / 0.985 / 0.79
+  a5: -0.260 / 0.718 / 1.226 / 0.405 / 0.88
+  a6: -1.142 / 0.766 / 0.808 / 0.422 / 0.81
+  a7: +2.968 / 1.995 / 1.367 / 1.136 / 0.74
+  a8: -0.608 / 1.572 / 1.187 / 0.886 / 0.77
+ mapped controls: mean [min, max]
+  strength         0.5784 [0.3852, 0.6996]
+  cls_scale        1.0372 [0.7252, 1.1987]
+  pres_scale       1.0206 [0.5630, 1.3671]
+  tau              0.5970 [0.2913, 0.9447]
+  strength_boost   0.9300 [0.8540, 1.0246]
+  guidance_bias    1.2304 [1.0018, 1.2999]
+  ramp_start_frac  0.2713 [0.1013, 0.4308]
+  n_passes         2.4511 [2.0000, 4.0000]
+ guidance_bias >= 1.295 (bound 1.30): 21.2% of steps; >= 1.29: 25.6%; n_passes==3: 35.0%
+  a0 step-0 vs episode length corr -0.31
+  a3 step-0 vs episode length corr -0.45
+  a7 step-0 vs episode length corr -0.37
+  a8 step-0 vs episode length corr +0.49

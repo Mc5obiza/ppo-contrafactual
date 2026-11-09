@@ -48,8 +48,10 @@ if not hasattr(config, "DATASET_DOMAIN"):
 
 # registry key -> module in this package exposing a module-level PROFILE
 _REGISTRY: dict[str, str] = {
-    "rsna_pneumonia": ".rsna_pneumonia",
-    "node21_nodule":  ".node21_nodule",
+    "rsna_pneumonia":   ".rsna_pneumonia",
+    "node21_nodule":    ".node21_nodule",
+    "cbis_ddsm_breast": ".cbis_ddsm_breast",
+    "cmmd_breast":      ".cmmd_breast",
 }
 
 _cache: dict[str, DomainProfile] = {}

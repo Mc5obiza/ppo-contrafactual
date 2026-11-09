@@ -32,10 +32,23 @@ source venv/bin/activate
 pip install --upgrade pip setuptools wheel
 
 echo "=== 3/6  Installing dependencies ==="
-# torch/torchvision are installed separately, pinned to CUDA 12.1 wheels
-# (matches the driver on this cluster's V100 nodes; also works on newer GPUs).
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-pip install -r requirements.txt
+# INSTALL FROM THE LOCK, NOT THE FLOORS. requirements.txt states `>=` minimums
+# only; installing from it reproduces "whatever was current today", which is how
+# the working venv drifted several MAJOR versions above its own floors. The lock
+# is the exact set that produced the results in checkpoints/. See its header.
+#
+# torch/torchvision are installed first and separately: their +cu121 local
+# version tag is not on PyPI, so they must come from the PyTorch index. The
+# version is pinned to match torch.version.cuda == "12.1", which is also the
+# `module load cuda/cuda-12.1` every slurm script now loads.
+pip install torch==2.5.1 torchvision==0.20.1 \
+    --index-url https://download.pytorch.org/whl/cu121
+
+# `grep -v` drops the two +cu121 lines the lock records for provenance — pip
+# cannot resolve them from PyPI and they are already installed above.
+grep -viE '^(torch|torchvision)==' requirements.lock.txt > /tmp/req.lock.$$
+pip install -r /tmp/req.lock.$$
+rm -f /tmp/req.lock.$$
 
 echo "=== 4/6  Prefetching pretrained model weights (needs internet) ==="
 python - <<'PYEOF'

@@ -1,0 +1,30 @@
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+[J19] J4: 200 p->n, 148 annotated, 148 new masks/VAE
+[J19] J4: lift_img 2.595  lung 1.165  m 1.660  obs/pred 1.178  uniL 3.206  shuf_img 1.998  shuf_lung 1.089  floor 1.058
+[J19] J5_none: 200 p->n, 148 annotated, 0 new masks/VAE
+[J19] J5_none: lift_img 2.064  lung 1.088  m 1.447  obs/pred 1.099  uniL 3.206  shuf_img 1.683  shuf_lung 1.043  floor 1.058
+[J19] J5c_fixed: 200 p->n, 148 annotated, 0 new masks/VAE
+[J19] J5c_fixed: lift_img 2.525  lung 1.162  m 1.634  obs/pred 1.174  uniL 3.206  shuf_img 1.924  shuf_lung 1.071  floor 1.058
+[J19] J12_fixed_tuned: 200 p->n, 148 annotated, 0 new masks/VAE
+[J19] J12_fixed_tuned: lift_img 2.408  lung 1.177  m 1.612  obs/pred 1.184  uniL 3.206  shuf_img 1.864  shuf_lung 1.080  floor 1.058
+[J19] J9_seed1: 200 p->n, 148 annotated, 0 new masks/VAE
+[J19] J9_seed1: lift_img 2.479  lung 1.190  m 1.644  obs/pred 1.200  uniL 3.206  shuf_img 1.899  shuf_lung 1.094  floor 1.058
+[J19] J15_latent_shift: 200 p->n, 148 annotated, 0 new masks/VAE
+[J19] J15_latent_shift: lift_img 1.174  lung 1.055  m 1.118  obs/pred 1.048  uniL 3.206  shuf_img 1.088  shuf_lung 1.022  floor 1.058
+[J19] J10_cyclegan: 200 p->n, 148 annotated, 0 new masks/VAE
+[J19] J10_cyclegan: lift_img 1.483  lung 1.160  m 1.339  obs/pred 1.142  uniL 3.206  shuf_img 1.268  shuf_lung 1.096  floor 1.058
+[J19] evalA_ens_default: 200 p->n, 148 annotated, 0 new masks/VAE
+[J19] evalA_ens_default: lift_img 2.673  lung 1.193  m 1.702  obs/pred 1.208  uniL 3.206  shuf_img 2.028  shuf_lung 1.107  floor 1.058
+[J19] v1_single: 200 p->n, 183 annotated, 107 new masks/VAE
+[J19] v1_single: lift_img 2.293  lung 1.084  m 1.507  obs/pred 1.100  uniL 3.112  shuf_img 1.793  shuf_lung 1.020  floor 1.094
+[J19] v1_random: 200 p->n, 183 annotated, 0 new masks/VAE
+[J19] v1_random: lift_img 2.204  lung 1.081  m 1.483  obs/pred 1.096  uniL 3.112  shuf_img 1.740  shuf_lung 1.021  floor 1.094
+[J19] ens3: 32 p->n, 27 annotated, 14 new masks/VAE
+[J19] ens3: lift_img 2.492  lung 1.216  m 1.626  obs/pred 1.219  uniL 3.140  shuf_img 1.808  shuf_lung 1.017  floor 1.123
+[J19] sparsity: 200 p->n, 148 annotated, 0 new masks/VAE
+[J19] sparsity: lift_img 2.398  lung 1.167  m 1.605  obs/pred 1.177  uniL 3.206  shuf_img 1.851  shuf_lung 1.075  floor 1.058
+[J19] gradcam: 200 p->n, 148 annotated, 0 new masks/VAE
+[J19] gradcam: lift_img 1.636  lung 1.140  m 1.368  obs/pred 1.135  uniL 3.206  shuf_img 1.376  shuf_lung 1.078  floor 1.058
+[J19] wrote /home2020/home/insa/arbaoui/verification/out/J19_lhr_nulls

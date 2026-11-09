@@ -1,0 +1,3161 @@
+{
+  "target_layer": "features",
+  "entries": [
+    {
+      "idx": 25941,
+      "member": "rsna",
+      "prob": 0.09956774115562439,
+      "degenerate": false
+    },
+    {
+      "idx": 25941,
+      "member": "chex",
+      "prob": 0.02156108245253563,
+      "degenerate": false
+    },
+    {
+      "idx": 7435,
+      "member": "rsna",
+      "prob": 0.12190497666597366,
+      "degenerate": false
+    },
+    {
+      "idx": 7435,
+      "member": "chex",
+      "prob": 0.22598998248577118,
+      "degenerate": false
+    },
+    {
+      "idx": 24756,
+      "member": "rsna",
+      "prob": 0.016977675259113312,
+      "degenerate": false
+    },
+    {
+      "idx": 24756,
+      "member": "chex",
+      "prob": 0.044750913977622986,
+      "degenerate": true
+    },
+    {
+      "idx": 6985,
+      "member": "rsna",
+      "prob": 0.5622637271881104,
+      "degenerate": false
+    },
+    {
+      "idx": 6985,
+      "member": "chex",
+      "prob": 0.1618034392595291,
+      "degenerate": false
+    },
+    {
+      "idx": 6093,
+      "member": "rsna",
+      "prob": 0.4042796194553375,
+      "degenerate": false
+    },
+    {
+      "idx": 6093,
+      "member": "chex",
+      "prob": 0.22952015697956085,
+      "degenerate": true
+    },
+    {
+      "idx": 16131,
+      "member": "rsna",
+      "prob": 0.41811200976371765,
+      "degenerate": false
+    },
+    {
+      "idx": 16131,
+      "member": "chex",
+      "prob": 0.01774296909570694,
+      "degenerate": true
+    },
+    {
+      "idx": 5533,
+      "member": "rsna",
+      "prob": 0.5993263721466064,
+      "degenerate": false
+    },
+    {
+      "idx": 5533,
+      "member": "chex",
+      "prob": 0.5059405565261841,
+      "degenerate": true
+    },
+    {
+      "idx": 23248,
+      "member": "rsna",
+      "prob": 0.993363618850708,
+      "degenerate": false
+    },
+    {
+      "idx": 23248,
+      "member": "chex",
+      "prob": 0.7697819471359253,
+      "degenerate": false
+    },
+    {
+      "idx": 24415,
+      "member": "rsna",
+      "prob": 0.7741889357566833,
+      "degenerate": false
+    },
+    {
+      "idx": 24415,
+      "member": "chex",
+      "prob": 0.5753438472747803,
+      "degenerate": false
+    },
+    {
+      "idx": 2193,
+      "member": "rsna",
+      "prob": 0.22863507270812988,
+      "degenerate": false
+    },
+    {
+      "idx": 2193,
+      "member": "chex",
+      "prob": 0.5176336765289307,
+      "degenerate": false
+    },
+    {
+      "idx": 24763,
+      "member": "rsna",
+      "prob": 0.8950063586235046,
+      "degenerate": false
+    },
+    {
+      "idx": 24763,
+      "member": "chex",
+      "prob": 0.6671789884567261,
+      "degenerate": false
+    },
+    {
+      "idx": 1603,
+      "member": "rsna",
+      "prob": 0.0339006707072258,
+      "degenerate": false
+    },
+    {
+      "idx": 1603,
+      "member": "chex",
+      "prob": 0.2438676804304123,
+      "degenerate": false
+    },
+    {
+      "idx": 10152,
+      "member": "rsna",
+      "prob": 0.5366562604904175,
+      "degenerate": false
+    },
+    {
+      "idx": 10152,
+      "member": "chex",
+      "prob": 0.5774132013320923,
+      "degenerate": false
+    },
+    {
+      "idx": 8838,
+      "member": "rsna",
+      "prob": 0.06982579082250595,
+      "degenerate": false
+    },
+    {
+      "idx": 8838,
+      "member": "chex",
+      "prob": 0.10969056189060211,
+      "degenerate": true
+    },
+    {
+      "idx": 24055,
+      "member": "rsna",
+      "prob": 0.08228763192892075,
+      "degenerate": false
+    },
+    {
+      "idx": 24055,
+      "member": "chex",
+      "prob": 0.015241085551679134,
+      "degenerate": true
+    },
+    {
+      "idx": 18042,
+      "member": "rsna",
+      "prob": 0.3101421594619751,
+      "degenerate": false
+    },
+    {
+      "idx": 18042,
+      "member": "chex",
+      "prob": 0.6283773183822632,
+      "degenerate": false
+    },
+    {
+      "idx": 21348,
+      "member": "rsna",
+      "prob": 0.5570042729377747,
+      "degenerate": false
+    },
+    {
+      "idx": 21348,
+      "member": "chex",
+      "prob": 0.08523328602313995,
+      "degenerate": true
+    },
+    {
+      "idx": 13682,
+      "member": "rsna",
+      "prob": 0.8325328230857849,
+      "degenerate": false
+    },
+    {
+      "idx": 13682,
+      "member": "chex",
+      "prob": 0.5370714664459229,
+      "degenerate": false
+    },
+    {
+      "idx": 21222,
+      "member": "rsna",
+      "prob": 0.38471201062202454,
+      "degenerate": false
+    },
+    {
+      "idx": 21222,
+      "member": "chex",
+      "prob": 0.05651830509305,
+      "degenerate": true
+    },
+    {
+      "idx": 4666,
+      "member": "rsna",
+      "prob": 0.6296374797821045,
+      "degenerate": false
+    },
+    {
+      "idx": 4666,
+      "member": "chex",
+      "prob": 0.8251026272773743,
+      "degenerate": false
+    },
+    {
+      "idx": 11368,
+      "member": "rsna",
+      "prob": 0.1459444910287857,
+      "degenerate": false
+    },
+    {
+      "idx": 11368,
+      "member": "chex",
+      "prob": 0.005956187378615141,
+      "degenerate": true
+    },
+    {
+      "idx": 498,
+      "member": "rsna",
+      "prob": 0.5224809050559998,
+      "degenerate": false
+    },
+    {
+      "idx": 498,
+      "member": "chex",
+      "prob": 0.7606273889541626,
+      "degenerate": false
+    },
+    {
+      "idx": 13403,
+      "member": "rsna",
+      "prob": 0.9968242049217224,
+      "degenerate": false
+    },
+    {
+      "idx": 13403,
+      "member": "chex",
+      "prob": 0.7881709337234497,
+      "degenerate": false
+    },
+    {
+      "idx": 7059,
+      "member": "rsna",
+      "prob": 0.18693864345550537,
+      "degenerate": false
+    },
+    {
+      "idx": 7059,
+      "member": "chex",
+      "prob": 0.00523541122674942,
+      "degenerate": true
+    },
+    {
+      "idx": 20362,
+      "member": "rsna",
+      "prob": 0.576785147190094,
+      "degenerate": false
+    },
+    {
+      "idx": 20362,
+      "member": "chex",
+      "prob": 0.6996359825134277,
+      "degenerate": false
+    },
+    {
+      "idx": 13310,
+      "member": "rsna",
+      "prob": 0.9933555722236633,
+      "degenerate": false
+    },
+    {
+      "idx": 13310,
+      "member": "chex",
+      "prob": 0.6866642236709595,
+      "degenerate": false
+    },
+    {
+      "idx": 25269,
+      "member": "rsna",
+      "prob": 0.9635106325149536,
+      "degenerate": false
+    },
+    {
+      "idx": 25269,
+      "member": "chex",
+      "prob": 0.5833566188812256,
+      "degenerate": false
+    },
+    {
+      "idx": 1303,
+      "member": "rsna",
+      "prob": 0.5447399616241455,
+      "degenerate": false
+    },
+    {
+      "idx": 1303,
+      "member": "chex",
+      "prob": 0.504252016544342,
+      "degenerate": false
+    },
+    {
+      "idx": 1423,
+      "member": "rsna",
+      "prob": 0.9989053010940552,
+      "degenerate": false
+    },
+    {
+      "idx": 1423,
+      "member": "chex",
+      "prob": 0.627670407295227,
+      "degenerate": false
+    },
+    {
+      "idx": 25030,
+      "member": "rsna",
+      "prob": 0.9027433395385742,
+      "degenerate": false
+    },
+    {
+      "idx": 25030,
+      "member": "chex",
+      "prob": 0.794378936290741,
+      "degenerate": false
+    },
+    {
+      "idx": 15205,
+      "member": "rsna",
+      "prob": 0.8804470300674438,
+      "degenerate": false
+    },
+    {
+      "idx": 15205,
+      "member": "chex",
+      "prob": 0.27541887760162354,
+      "degenerate": false
+    },
+    {
+      "idx": 22910,
+      "member": "rsna",
+      "prob": 0.5143967866897583,
+      "degenerate": false
+    },
+    {
+      "idx": 22910,
+      "member": "chex",
+      "prob": 0.1067240908741951,
+      "degenerate": true
+    },
+    {
+      "idx": 10235,
+      "member": "rsna",
+      "prob": 0.4177878201007843,
+      "degenerate": false
+    },
+    {
+      "idx": 10235,
+      "member": "chex",
+      "prob": 0.5249032974243164,
+      "degenerate": false
+    },
+    {
+      "idx": 23275,
+      "member": "rsna",
+      "prob": 0.7779624462127686,
+      "degenerate": false
+    },
+    {
+      "idx": 23275,
+      "member": "chex",
+      "prob": 0.7691429853439331,
+      "degenerate": false
+    },
+    {
+      "idx": 20619,
+      "member": "rsna",
+      "prob": 0.46102169156074524,
+      "degenerate": false
+    },
+    {
+      "idx": 20619,
+      "member": "chex",
+      "prob": 0.5560838580131531,
+      "degenerate": false
+    },
+    {
+      "idx": 207,
+      "member": "rsna",
+      "prob": 0.5429033041000366,
+      "degenerate": false
+    },
+    {
+      "idx": 207,
+      "member": "chex",
+      "prob": 0.07068115472793579,
+      "degenerate": false
+    },
+    {
+      "idx": 18366,
+      "member": "rsna",
+      "prob": 0.5046043395996094,
+      "degenerate": false
+    },
+    {
+      "idx": 18366,
+      "member": "chex",
+      "prob": 0.5545693635940552,
+      "degenerate": false
+    },
+    {
+      "idx": 489,
+      "member": "rsna",
+      "prob": 0.07822510600090027,
+      "degenerate": false
+    },
+    {
+      "idx": 489,
+      "member": "chex",
+      "prob": 0.18227435648441315,
+      "degenerate": false
+    },
+    {
+      "idx": 26148,
+      "member": "rsna",
+      "prob": 0.014508548192679882,
+      "degenerate": false
+    },
+    {
+      "idx": 26148,
+      "member": "chex",
+      "prob": 0.03440827503800392,
+      "degenerate": false
+    },
+    {
+      "idx": 24444,
+      "member": "rsna",
+      "prob": 0.5217884182929993,
+      "degenerate": false
+    },
+    {
+      "idx": 24444,
+      "member": "chex",
+      "prob": 0.5878422856330872,
+      "degenerate": false
+    },
+    {
+      "idx": 16002,
+      "member": "rsna",
+      "prob": 0.5606327652931213,
+      "degenerate": false
+    },
+    {
+      "idx": 16002,
+      "member": "chex",
+      "prob": 0.004949409514665604,
+      "degenerate": true
+    },
+    {
+      "idx": 23131,
+      "member": "rsna",
+      "prob": 0.8737116456031799,
+      "degenerate": false
+    },
+    {
+      "idx": 23131,
+      "member": "chex",
+      "prob": 0.5852155685424805,
+      "degenerate": false
+    },
+    {
+      "idx": 24963,
+      "member": "rsna",
+      "prob": 0.11158467829227448,
+      "degenerate": false
+    },
+    {
+      "idx": 24963,
+      "member": "chex",
+      "prob": 0.015248773619532585,
+      "degenerate": true
+    },
+    {
+      "idx": 9281,
+      "member": "rsna",
+      "prob": 0.9012658596038818,
+      "degenerate": false
+    },
+    {
+      "idx": 9281,
+      "member": "chex",
+      "prob": 0.7239845991134644,
+      "degenerate": false
+    },
+    {
+      "idx": 17081,
+      "member": "rsna",
+      "prob": 0.01650935411453247,
+      "degenerate": false
+    },
+    {
+      "idx": 17081,
+      "member": "chex",
+      "prob": 0.12875692546367645,
+      "degenerate": false
+    },
+    {
+      "idx": 25776,
+      "member": "rsna",
+      "prob": 0.0772104561328888,
+      "degenerate": false
+    },
+    {
+      "idx": 25776,
+      "member": "chex",
+      "prob": 0.018738599494099617,
+      "degenerate": true
+    },
+    {
+      "idx": 2903,
+      "member": "rsna",
+      "prob": 0.12870676815509796,
+      "degenerate": false
+    },
+    {
+      "idx": 2903,
+      "member": "chex",
+      "prob": 0.13272643089294434,
+      "degenerate": false
+    },
+    {
+      "idx": 18605,
+      "member": "rsna",
+      "prob": 0.48613670468330383,
+      "degenerate": false
+    },
+    {
+      "idx": 18605,
+      "member": "chex",
+      "prob": 0.16335982084274292,
+      "degenerate": true
+    },
+    {
+      "idx": 25404,
+      "member": "rsna",
+      "prob": 0.9828214645385742,
+      "degenerate": false
+    },
+    {
+      "idx": 25404,
+      "member": "chex",
+      "prob": 0.6316032409667969,
+      "degenerate": false
+    },
+    {
+      "idx": 17044,
+      "member": "rsna",
+      "prob": 0.85014808177948,
+      "degenerate": false
+    },
+    {
+      "idx": 17044,
+      "member": "chex",
+      "prob": 0.38411346077919006,
+      "degenerate": true
+    },
+    {
+      "idx": 5581,
+      "member": "rsna",
+      "prob": 0.8119603991508484,
+      "degenerate": false
+    },
+    {
+      "idx": 5581,
+      "member": "chex",
+      "prob": 0.4432668387889862,
+      "degenerate": false
+    },
+    {
+      "idx": 20250,
+      "member": "rsna",
+      "prob": 0.13708332180976868,
+      "degenerate": false
+    },
+    {
+      "idx": 20250,
+      "member": "chex",
+      "prob": 0.6735842227935791,
+      "degenerate": false
+    },
+    {
+      "idx": 4949,
+      "member": "rsna",
+      "prob": 0.06394604593515396,
+      "degenerate": false
+    },
+    {
+      "idx": 4949,
+      "member": "chex",
+      "prob": 0.17697907984256744,
+      "degenerate": false
+    },
+    {
+      "idx": 4231,
+      "member": "rsna",
+      "prob": 0.0675414651632309,
+      "degenerate": false
+    },
+    {
+      "idx": 4231,
+      "member": "chex",
+      "prob": 0.013984374701976776,
+      "degenerate": true
+    },
+    {
+      "idx": 1278,
+      "member": "rsna",
+      "prob": 0.981136679649353,
+      "degenerate": false
+    },
+    {
+      "idx": 1278,
+      "member": "chex",
+      "prob": 0.07820925116539001,
+      "degenerate": true
+    },
+    {
+      "idx": 15349,
+      "member": "rsna",
+      "prob": 0.5469127893447876,
+      "degenerate": false
+    },
+    {
+      "idx": 15349,
+      "member": "chex",
+      "prob": 0.5859630107879639,
+      "degenerate": false
+    },
+    {
+      "idx": 9949,
+      "member": "rsna",
+      "prob": 0.40440136194229126,
+      "degenerate": false
+    },
+    {
+      "idx": 9949,
+      "member": "chex",
+      "prob": 0.0745665431022644,
+      "degenerate": true
+    },
+    {
+      "idx": 14206,
+      "member": "rsna",
+      "prob": 0.03320163115859032,
+      "degenerate": false
+    },
+    {
+      "idx": 14206,
+      "member": "chex",
+      "prob": 0.08427934348583221,
+      "degenerate": false
+    },
+    {
+      "idx": 15389,
+      "member": "rsna",
+      "prob": 0.03435056656599045,
+      "degenerate": false
+    },
+    {
+      "idx": 15389,
+      "member": "chex",
+      "prob": 0.006477395072579384,
+      "degenerate": true
+    },
+    {
+      "idx": 12632,
+      "member": "rsna",
+      "prob": 0.017562618479132652,
+      "degenerate": false
+    },
+    {
+      "idx": 12632,
+      "member": "chex",
+      "prob": 0.06005759909749031,
+      "degenerate": true
+    },
+    {
+      "idx": 24752,
+      "member": "rsna",
+      "prob": 0.32715871930122375,
+      "degenerate": false
+    },
+    {
+      "idx": 24752,
+      "member": "chex",
+      "prob": 0.39042094349861145,
+      "degenerate": false
+    },
+    {
+      "idx": 12576,
+      "member": "rsna",
+      "prob": 0.1085776537656784,
+      "degenerate": false
+    },
+    {
+      "idx": 12576,
+      "member": "chex",
+      "prob": 0.0007386435172520578,
+      "degenerate": true
+    },
+    {
+      "idx": 26131,
+      "member": "rsna",
+      "prob": 0.04420357197523117,
+      "degenerate": false
+    },
+    {
+      "idx": 26131,
+      "member": "chex",
+      "prob": 0.19700659811496735,
+      "degenerate": false
+    },
+    {
+      "idx": 3598,
+      "member": "rsna",
+      "prob": 0.6401347517967224,
+      "degenerate": false
+    },
+    {
+      "idx": 3598,
+      "member": "chex",
+      "prob": 0.8116495609283447,
+      "degenerate": false
+    },
+    {
+      "idx": 22769,
+      "member": "rsna",
+      "prob": 0.7036608457565308,
+      "degenerate": false
+    },
+    {
+      "idx": 22769,
+      "member": "chex",
+      "prob": 0.6664820909500122,
+      "degenerate": false
+    },
+    {
+      "idx": 1416,
+      "member": "rsna",
+      "prob": 0.8818050026893616,
+      "degenerate": false
+    },
+    {
+      "idx": 1416,
+      "member": "chex",
+      "prob": 0.5651748180389404,
+      "degenerate": false
+    },
+    {
+      "idx": 22397,
+      "member": "rsna",
+      "prob": 0.7892619371414185,
+      "degenerate": false
+    },
+    {
+      "idx": 22397,
+      "member": "chex",
+      "prob": 0.5566054582595825,
+      "degenerate": false
+    },
+    {
+      "idx": 19820,
+      "member": "rsna",
+      "prob": 0.630780816078186,
+      "degenerate": false
+    },
+    {
+      "idx": 19820,
+      "member": "chex",
+      "prob": 0.508293867111206,
+      "degenerate": false
+    },
+    {
+      "idx": 20106,
+      "member": "rsna",
+      "prob": 0.5245695114135742,
+      "degenerate": false
+    },
+    {
+      "idx": 20106,
+      "member": "chex",
+      "prob": 0.19311752915382385,
+      "degenerate": false
+    },
+    {
+      "idx": 3089,
+      "member": "rsna",
+      "prob": 0.11662998795509338,
+      "degenerate": false
+    },
+    {
+      "idx": 3089,
+      "member": "chex",
+      "prob": 0.6082642078399658,
+      "degenerate": false
+    },
+    {
+      "idx": 13156,
+      "member": "rsna",
+      "prob": 0.6301926374435425,
+      "degenerate": false
+    },
+    {
+      "idx": 13156,
+      "member": "chex",
+      "prob": 0.597787618637085,
+      "degenerate": false
+    },
+    {
+      "idx": 8327,
+      "member": "rsna",
+      "prob": 0.05415961891412735,
+      "degenerate": false
+    },
+    {
+      "idx": 8327,
+      "member": "chex",
+      "prob": 0.015353341586887836,
+      "degenerate": false
+    },
+    {
+      "idx": 4655,
+      "member": "rsna",
+      "prob": 0.1831560730934143,
+      "degenerate": false
+    },
+    {
+      "idx": 4655,
+      "member": "chex",
+      "prob": 0.05886298790574074,
+      "degenerate": true
+    },
+    {
+      "idx": 9523,
+      "member": "rsna",
+      "prob": 0.9466800093650818,
+      "degenerate": false
+    },
+    {
+      "idx": 9523,
+      "member": "chex",
+      "prob": 0.6861119866371155,
+      "degenerate": false
+    },
+    {
+      "idx": 25299,
+      "member": "rsna",
+      "prob": 0.7677348852157593,
+      "degenerate": false
+    },
+    {
+      "idx": 25299,
+      "member": "chex",
+      "prob": 0.3937680125236511,
+      "degenerate": true
+    },
+    {
+      "idx": 15594,
+      "member": "rsna",
+      "prob": 0.5148400068283081,
+      "degenerate": false
+    },
+    {
+      "idx": 15594,
+      "member": "chex",
+      "prob": 0.00636374531313777,
+      "degenerate": true
+    },
+    {
+      "idx": 5339,
+      "member": "rsna",
+      "prob": 0.04836433753371239,
+      "degenerate": false
+    },
+    {
+      "idx": 5339,
+      "member": "chex",
+      "prob": 0.00827694870531559,
+      "degenerate": true
+    },
+    {
+      "idx": 10631,
+      "member": "rsna",
+      "prob": 0.12344864010810852,
+      "degenerate": false
+    },
+    {
+      "idx": 10631,
+      "member": "chex",
+      "prob": 0.00288871000520885,
+      "degenerate": true
+    },
+    {
+      "idx": 18056,
+      "member": "rsna",
+      "prob": 0.7935105562210083,
+      "degenerate": false
+    },
+    {
+      "idx": 18056,
+      "member": "chex",
+      "prob": 0.5948953032493591,
+      "degenerate": false
+    },
+    {
+      "idx": 25818,
+      "member": "rsna",
+      "prob": 0.3619222939014435,
+      "degenerate": false
+    },
+    {
+      "idx": 25818,
+      "member": "chex",
+      "prob": 0.06189008057117462,
+      "degenerate": true
+    },
+    {
+      "idx": 9067,
+      "member": "rsna",
+      "prob": 0.3292783498764038,
+      "degenerate": false
+    },
+    {
+      "idx": 9067,
+      "member": "chex",
+      "prob": 0.717380166053772,
+      "degenerate": false
+    },
+    {
+      "idx": 16275,
+      "member": "rsna",
+      "prob": 0.8733150362968445,
+      "degenerate": false
+    },
+    {
+      "idx": 16275,
+      "member": "chex",
+      "prob": 0.20060071349143982,
+      "degenerate": false
+    },
+    {
+      "idx": 917,
+      "member": "rsna",
+      "prob": 0.5875272750854492,
+      "degenerate": false
+    },
+    {
+      "idx": 917,
+      "member": "chex",
+      "prob": 0.06546905636787415,
+      "degenerate": true
+    },
+    {
+      "idx": 25252,
+      "member": "rsna",
+      "prob": 0.9646560549736023,
+      "degenerate": false
+    },
+    {
+      "idx": 25252,
+      "member": "chex",
+      "prob": 0.5753575563430786,
+      "degenerate": false
+    },
+    {
+      "idx": 12400,
+      "member": "rsna",
+      "prob": 0.5757686495780945,
+      "degenerate": false
+    },
+    {
+      "idx": 12400,
+      "member": "chex",
+      "prob": 0.11817055940628052,
+      "degenerate": true
+    },
+    {
+      "idx": 20672,
+      "member": "rsna",
+      "prob": 0.2901653051376343,
+      "degenerate": false
+    },
+    {
+      "idx": 20672,
+      "member": "chex",
+      "prob": 0.01630481332540512,
+      "degenerate": false
+    },
+    {
+      "idx": 2455,
+      "member": "rsna",
+      "prob": 0.9247387647628784,
+      "degenerate": false
+    },
+    {
+      "idx": 2455,
+      "member": "chex",
+      "prob": 0.6312819719314575,
+      "degenerate": false
+    },
+    {
+      "idx": 10089,
+      "member": "rsna",
+      "prob": 0.394895076751709,
+      "degenerate": false
+    },
+    {
+      "idx": 10089,
+      "member": "chex",
+      "prob": 0.02715502865612507,
+      "degenerate": true
+    },
+    {
+      "idx": 23757,
+      "member": "rsna",
+      "prob": 0.018990518525242805,
+      "degenerate": true
+    },
+    {
+      "idx": 23757,
+      "member": "chex",
+      "prob": 0.012046907097101212,
+      "degenerate": false
+    },
+    {
+      "idx": 17680,
+      "member": "rsna",
+      "prob": 0.5140618681907654,
+      "degenerate": false
+    },
+    {
+      "idx": 17680,
+      "member": "chex",
+      "prob": 0.6073182821273804,
+      "degenerate": false
+    },
+    {
+      "idx": 3332,
+      "member": "rsna",
+      "prob": 0.5970250964164734,
+      "degenerate": false
+    },
+    {
+      "idx": 3332,
+      "member": "chex",
+      "prob": 0.12444533407688141,
+      "degenerate": false
+    },
+    {
+      "idx": 13754,
+      "member": "rsna",
+      "prob": 0.16626501083374023,
+      "degenerate": false
+    },
+    {
+      "idx": 13754,
+      "member": "chex",
+      "prob": 0.14184218645095825,
+      "degenerate": true
+    },
+    {
+      "idx": 12320,
+      "member": "rsna",
+      "prob": 0.07945606112480164,
+      "degenerate": false
+    },
+    {
+      "idx": 12320,
+      "member": "chex",
+      "prob": 0.028586959466338158,
+      "degenerate": true
+    },
+    {
+      "idx": 3295,
+      "member": "rsna",
+      "prob": 0.41020968556404114,
+      "degenerate": false
+    },
+    {
+      "idx": 3295,
+      "member": "chex",
+      "prob": 0.07916790246963501,
+      "degenerate": false
+    },
+    {
+      "idx": 10228,
+      "member": "rsna",
+      "prob": 0.14337585866451263,
+      "degenerate": false
+    },
+    {
+      "idx": 10228,
+      "member": "chex",
+      "prob": 0.13503065705299377,
+      "degenerate": true
+    },
+    {
+      "idx": 10689,
+      "member": "rsna",
+      "prob": 0.05860590934753418,
+      "degenerate": false
+    },
+    {
+      "idx": 10689,
+      "member": "chex",
+      "prob": 0.005277731455862522,
+      "degenerate": true
+    },
+    {
+      "idx": 19999,
+      "member": "rsna",
+      "prob": 0.36876603960990906,
+      "degenerate": false
+    },
+    {
+      "idx": 19999,
+      "member": "chex",
+      "prob": 0.3042077422142029,
+      "degenerate": true
+    },
+    {
+      "idx": 10975,
+      "member": "rsna",
+      "prob": 0.7280396819114685,
+      "degenerate": false
+    },
+    {
+      "idx": 10975,
+      "member": "chex",
+      "prob": 0.632154107093811,
+      "degenerate": true
+    },
+    {
+      "idx": 17871,
+      "member": "rsna",
+      "prob": 0.8622069358825684,
+      "degenerate": false
+    },
+    {
+      "idx": 17871,
+      "member": "chex",
+      "prob": 0.35548660159111023,
+      "degenerate": false
+    },
+    {
+      "idx": 24322,
+      "member": "rsna",
+      "prob": 0.6297894716262817,
+      "degenerate": false
+    },
+    {
+      "idx": 24322,
+      "member": "chex",
+      "prob": 0.657512903213501,
+      "degenerate": false
+    },
+    {
+      "idx": 3287,
+      "member": "rsna",
+      "prob": 0.1213068887591362,
+      "degenerate": false
+    },
+    {
+      "idx": 3287,
+      "member": "chex",
+      "prob": 0.1656111180782318,
+      "degenerate": false
+    },
+    {
+      "idx": 312,
+      "member": "rsna",
+      "prob": 0.5635228157043457,
+      "degenerate": false
+    },
+    {
+      "idx": 312,
+      "member": "chex",
+      "prob": 0.538331925868988,
+      "degenerate": false
+    },
+    {
+      "idx": 8043,
+      "member": "rsna",
+      "prob": 0.014590824954211712,
+      "degenerate": false
+    },
+    {
+      "idx": 8043,
+      "member": "chex",
+      "prob": 0.06518316268920898,
+      "degenerate": false
+    },
+    {
+      "idx": 13222,
+      "member": "rsna",
+      "prob": 0.13432511687278748,
+      "degenerate": false
+    },
+    {
+      "idx": 13222,
+      "member": "chex",
+      "prob": 0.13743099570274353,
+      "degenerate": false
+    },
+    {
+      "idx": 8740,
+      "member": "rsna",
+      "prob": 0.5298243761062622,
+      "degenerate": false
+    },
+    {
+      "idx": 8740,
+      "member": "chex",
+      "prob": 0.11764130741357803,
+      "degenerate": true
+    },
+    {
+      "idx": 18593,
+      "member": "rsna",
+      "prob": 0.964815080165863,
+      "degenerate": false
+    },
+    {
+      "idx": 18593,
+      "member": "chex",
+      "prob": 0.7411165237426758,
+      "degenerate": false
+    },
+    {
+      "idx": 15076,
+      "member": "rsna",
+      "prob": 0.30967652797698975,
+      "degenerate": false
+    },
+    {
+      "idx": 15076,
+      "member": "chex",
+      "prob": 0.04853571578860283,
+      "degenerate": false
+    },
+    {
+      "idx": 1539,
+      "member": "rsna",
+      "prob": 0.04357396066188812,
+      "degenerate": false
+    },
+    {
+      "idx": 1539,
+      "member": "chex",
+      "prob": 0.06141775846481323,
+      "degenerate": true
+    },
+    {
+      "idx": 22379,
+      "member": "rsna",
+      "prob": 0.51954585313797,
+      "degenerate": false
+    },
+    {
+      "idx": 22379,
+      "member": "chex",
+      "prob": 0.04019104689359665,
+      "degenerate": true
+    },
+    {
+      "idx": 21926,
+      "member": "rsna",
+      "prob": 0.5513956546783447,
+      "degenerate": false
+    },
+    {
+      "idx": 21926,
+      "member": "chex",
+      "prob": 0.582382082939148,
+      "degenerate": false
+    },
+    {
+      "idx": 18421,
+      "member": "rsna",
+      "prob": 0.9607453346252441,
+      "degenerate": false
+    },
+    {
+      "idx": 18421,
+      "member": "chex",
+      "prob": 0.6239379048347473,
+      "degenerate": false
+    },
+    {
+      "idx": 18179,
+      "member": "rsna",
+      "prob": 0.3749513626098633,
+      "degenerate": false
+    },
+    {
+      "idx": 18179,
+      "member": "chex",
+      "prob": 0.09999089688062668,
+      "degenerate": true
+    },
+    {
+      "idx": 17398,
+      "member": "rsna",
+      "prob": 0.40265458822250366,
+      "degenerate": false
+    },
+    {
+      "idx": 17398,
+      "member": "chex",
+      "prob": 0.11633994430303574,
+      "degenerate": false
+    },
+    {
+      "idx": 9207,
+      "member": "rsna",
+      "prob": 0.7728355526924133,
+      "degenerate": false
+    },
+    {
+      "idx": 9207,
+      "member": "chex",
+      "prob": 0.7676417231559753,
+      "degenerate": false
+    },
+    {
+      "idx": 19710,
+      "member": "rsna",
+      "prob": 0.5879274606704712,
+      "degenerate": false
+    },
+    {
+      "idx": 19710,
+      "member": "chex",
+      "prob": 0.1362798660993576,
+      "degenerate": true
+    },
+    {
+      "idx": 21610,
+      "member": "rsna",
+      "prob": 0.611672043800354,
+      "degenerate": false
+    },
+    {
+      "idx": 21610,
+      "member": "chex",
+      "prob": 0.37909430265426636,
+      "degenerate": false
+    },
+    {
+      "idx": 3167,
+      "member": "rsna",
+      "prob": 0.6137300729751587,
+      "degenerate": false
+    },
+    {
+      "idx": 3167,
+      "member": "chex",
+      "prob": 0.18942728638648987,
+      "degenerate": true
+    },
+    {
+      "idx": 21563,
+      "member": "rsna",
+      "prob": 0.8649253845214844,
+      "degenerate": false
+    },
+    {
+      "idx": 21563,
+      "member": "chex",
+      "prob": 0.5106455087661743,
+      "degenerate": true
+    },
+    {
+      "idx": 14634,
+      "member": "rsna",
+      "prob": 0.2608841061592102,
+      "degenerate": false
+    },
+    {
+      "idx": 14634,
+      "member": "chex",
+      "prob": 0.20736902952194214,
+      "degenerate": false
+    },
+    {
+      "idx": 20526,
+      "member": "rsna",
+      "prob": 0.8654325604438782,
+      "degenerate": false
+    },
+    {
+      "idx": 20526,
+      "member": "chex",
+      "prob": 0.6399562358856201,
+      "degenerate": false
+    },
+    {
+      "idx": 18908,
+      "member": "rsna",
+      "prob": 0.480042040348053,
+      "degenerate": false
+    },
+    {
+      "idx": 18908,
+      "member": "chex",
+      "prob": 0.5326768159866333,
+      "degenerate": false
+    },
+    {
+      "idx": 16926,
+      "member": "rsna",
+      "prob": 0.004563945345580578,
+      "degenerate": false
+    },
+    {
+      "idx": 16926,
+      "member": "chex",
+      "prob": 0.014913774095475674,
+      "degenerate": false
+    },
+    {
+      "idx": 19008,
+      "member": "rsna",
+      "prob": 0.4948830008506775,
+      "degenerate": false
+    },
+    {
+      "idx": 19008,
+      "member": "chex",
+      "prob": 0.2751409411430359,
+      "degenerate": true
+    },
+    {
+      "idx": 5465,
+      "member": "rsna",
+      "prob": 0.5734381675720215,
+      "degenerate": false
+    },
+    {
+      "idx": 5465,
+      "member": "chex",
+      "prob": 0.5312728881835938,
+      "degenerate": false
+    },
+    {
+      "idx": 25062,
+      "member": "rsna",
+      "prob": 0.9095497131347656,
+      "degenerate": false
+    },
+    {
+      "idx": 25062,
+      "member": "chex",
+      "prob": 0.6980215311050415,
+      "degenerate": false
+    },
+    {
+      "idx": 23045,
+      "member": "rsna",
+      "prob": 0.3513731062412262,
+      "degenerate": false
+    },
+    {
+      "idx": 23045,
+      "member": "chex",
+      "prob": 0.09764064848423004,
+      "degenerate": true
+    },
+    {
+      "idx": 3435,
+      "member": "rsna",
+      "prob": 0.9828559756278992,
+      "degenerate": false
+    },
+    {
+      "idx": 3435,
+      "member": "chex",
+      "prob": 0.6247690916061401,
+      "degenerate": false
+    },
+    {
+      "idx": 2283,
+      "member": "rsna",
+      "prob": 0.8431763648986816,
+      "degenerate": false
+    },
+    {
+      "idx": 2283,
+      "member": "chex",
+      "prob": 0.5997940301895142,
+      "degenerate": false
+    },
+    {
+      "idx": 9644,
+      "member": "rsna",
+      "prob": 0.5284985899925232,
+      "degenerate": false
+    },
+    {
+      "idx": 9644,
+      "member": "chex",
+      "prob": 0.4226471781730652,
+      "degenerate": false
+    },
+    {
+      "idx": 2125,
+      "member": "rsna",
+      "prob": 0.014207560569047928,
+      "degenerate": false
+    },
+    {
+      "idx": 2125,
+      "member": "chex",
+      "prob": 0.13618537783622742,
+      "degenerate": false
+    },
+    {
+      "idx": 3017,
+      "member": "rsna",
+      "prob": 0.17559529840946198,
+      "degenerate": false
+    },
+    {
+      "idx": 3017,
+      "member": "chex",
+      "prob": 0.41177618503570557,
+      "degenerate": false
+    },
+    {
+      "idx": 8033,
+      "member": "rsna",
+      "prob": 0.3717347979545593,
+      "degenerate": false
+    },
+    {
+      "idx": 8033,
+      "member": "chex",
+      "prob": 0.0963248759508133,
+      "degenerate": false
+    },
+    {
+      "idx": 9740,
+      "member": "rsna",
+      "prob": 0.9265029430389404,
+      "degenerate": false
+    },
+    {
+      "idx": 9740,
+      "member": "chex",
+      "prob": 0.6726230382919312,
+      "degenerate": false
+    },
+    {
+      "idx": 19527,
+      "member": "rsna",
+      "prob": 0.5463569164276123,
+      "degenerate": false
+    },
+    {
+      "idx": 19527,
+      "member": "chex",
+      "prob": 0.3107653856277466,
+      "degenerate": false
+    },
+    {
+      "idx": 25155,
+      "member": "rsna",
+      "prob": 0.17410428822040558,
+      "degenerate": false
+    },
+    {
+      "idx": 25155,
+      "member": "chex",
+      "prob": 0.05521329492330551,
+      "degenerate": false
+    },
+    {
+      "idx": 7382,
+      "member": "rsna",
+      "prob": 0.9996283650398254,
+      "degenerate": false
+    },
+    {
+      "idx": 7382,
+      "member": "chex",
+      "prob": 0.5292795300483704,
+      "degenerate": false
+    },
+    {
+      "idx": 15904,
+      "member": "rsna",
+      "prob": 0.020082930102944374,
+      "degenerate": false
+    },
+    {
+      "idx": 15904,
+      "member": "chex",
+      "prob": 0.0032031440641731024,
+      "degenerate": false
+    },
+    {
+      "idx": 5560,
+      "member": "rsna",
+      "prob": 0.5340138673782349,
+      "degenerate": false
+    },
+    {
+      "idx": 5560,
+      "member": "chex",
+      "prob": 0.1292874962091446,
+      "degenerate": false
+    },
+    {
+      "idx": 7166,
+      "member": "rsna",
+      "prob": 0.28887999057769775,
+      "degenerate": false
+    },
+    {
+      "idx": 7166,
+      "member": "chex",
+      "prob": 0.2418680191040039,
+      "degenerate": false
+    },
+    {
+      "idx": 5912,
+      "member": "rsna",
+      "prob": 0.2162793129682541,
+      "degenerate": false
+    },
+    {
+      "idx": 5912,
+      "member": "chex",
+      "prob": 0.14244139194488525,
+      "degenerate": false
+    },
+    {
+      "idx": 7352,
+      "member": "rsna",
+      "prob": 0.5233279466629028,
+      "degenerate": false
+    },
+    {
+      "idx": 7352,
+      "member": "chex",
+      "prob": 0.01842488721013069,
+      "degenerate": false
+    },
+    {
+      "idx": 13396,
+      "member": "rsna",
+      "prob": 0.6255468130111694,
+      "degenerate": false
+    },
+    {
+      "idx": 13396,
+      "member": "chex",
+      "prob": 0.5254896879196167,
+      "degenerate": false
+    },
+    {
+      "idx": 6495,
+      "member": "rsna",
+      "prob": 0.6544613838195801,
+      "degenerate": false
+    },
+    {
+      "idx": 6495,
+      "member": "chex",
+      "prob": 0.25962182879447937,
+      "degenerate": true
+    },
+    {
+      "idx": 21312,
+      "member": "rsna",
+      "prob": 0.5540516376495361,
+      "degenerate": false
+    },
+    {
+      "idx": 21312,
+      "member": "chex",
+      "prob": 0.17696377635002136,
+      "degenerate": false
+    },
+    {
+      "idx": 19498,
+      "member": "rsna",
+      "prob": 0.9867631196975708,
+      "degenerate": false
+    },
+    {
+      "idx": 19498,
+      "member": "chex",
+      "prob": 0.47990086674690247,
+      "degenerate": true
+    },
+    {
+      "idx": 18498,
+      "member": "rsna",
+      "prob": 0.10653959214687347,
+      "degenerate": false
+    },
+    {
+      "idx": 18498,
+      "member": "chex",
+      "prob": 0.6550235748291016,
+      "degenerate": false
+    },
+    {
+      "idx": 17827,
+      "member": "rsna",
+      "prob": 0.01852050982415676,
+      "degenerate": false
+    },
+    {
+      "idx": 17827,
+      "member": "chex",
+      "prob": 0.06932714581489563,
+      "degenerate": false
+    },
+    {
+      "idx": 3623,
+      "member": "rsna",
+      "prob": 0.20397517085075378,
+      "degenerate": false
+    },
+    {
+      "idx": 3623,
+      "member": "chex",
+      "prob": 0.04999788850545883,
+      "degenerate": false
+    },
+    {
+      "idx": 15250,
+      "member": "rsna",
+      "prob": 0.17250515520572662,
+      "degenerate": false
+    },
+    {
+      "idx": 15250,
+      "member": "chex",
+      "prob": 0.015141142532229424,
+      "degenerate": true
+    },
+    {
+      "idx": 7727,
+      "member": "rsna",
+      "prob": 0.37071284651756287,
+      "degenerate": false
+    },
+    {
+      "idx": 7727,
+      "member": "chex",
+      "prob": 0.3779706060886383,
+      "degenerate": false
+    },
+    {
+      "idx": 4292,
+      "member": "rsna",
+      "prob": 0.9476516246795654,
+      "degenerate": false
+    },
+    {
+      "idx": 4292,
+      "member": "chex",
+      "prob": 0.14743366837501526,
+      "degenerate": true
+    },
+    {
+      "idx": 958,
+      "member": "rsna",
+      "prob": 0.06834422796964645,
+      "degenerate": false
+    },
+    {
+      "idx": 958,
+      "member": "chex",
+      "prob": 0.13701896369457245,
+      "degenerate": false
+    },
+    {
+      "idx": 9357,
+      "member": "rsna",
+      "prob": 0.9919530749320984,
+      "degenerate": false
+    },
+    {
+      "idx": 9357,
+      "member": "chex",
+      "prob": 0.7175722122192383,
+      "degenerate": false
+    },
+    {
+      "idx": 13784,
+      "member": "rsna",
+      "prob": 0.9345296621322632,
+      "degenerate": false
+    },
+    {
+      "idx": 13784,
+      "member": "chex",
+      "prob": 0.5602417588233948,
+      "degenerate": false
+    },
+    {
+      "idx": 22590,
+      "member": "rsna",
+      "prob": 0.8749083280563354,
+      "degenerate": false
+    },
+    {
+      "idx": 22590,
+      "member": "chex",
+      "prob": 0.5508553981781006,
+      "degenerate": false
+    },
+    {
+      "idx": 7269,
+      "member": "rsna",
+      "prob": 0.9420358538627625,
+      "degenerate": false
+    },
+    {
+      "idx": 7269,
+      "member": "chex",
+      "prob": 0.6258435845375061,
+      "degenerate": false
+    },
+    {
+      "idx": 2656,
+      "member": "rsna",
+      "prob": 0.9559448957443237,
+      "degenerate": false
+    },
+    {
+      "idx": 2656,
+      "member": "chex",
+      "prob": 0.5970359444618225,
+      "degenerate": false
+    },
+    {
+      "idx": 18577,
+      "member": "rsna",
+      "prob": 0.5287712216377258,
+      "degenerate": false
+    },
+    {
+      "idx": 18577,
+      "member": "chex",
+      "prob": 0.6498281955718994,
+      "degenerate": false
+    },
+    {
+      "idx": 13169,
+      "member": "rsna",
+      "prob": 0.9698697924613953,
+      "degenerate": false
+    },
+    {
+      "idx": 13169,
+      "member": "chex",
+      "prob": 0.7291769981384277,
+      "degenerate": false
+    },
+    {
+      "idx": 4243,
+      "member": "rsna",
+      "prob": 0.778376042842865,
+      "degenerate": false
+    },
+    {
+      "idx": 4243,
+      "member": "chex",
+      "prob": 0.5414481163024902,
+      "degenerate": false
+    },
+    {
+      "idx": 15122,
+      "member": "rsna",
+      "prob": 0.7342761754989624,
+      "degenerate": false
+    },
+    {
+      "idx": 15122,
+      "member": "chex",
+      "prob": 0.5820164680480957,
+      "degenerate": false
+    },
+    {
+      "idx": 23294,
+      "member": "rsna",
+      "prob": 0.9492812752723694,
+      "degenerate": false
+    },
+    {
+      "idx": 23294,
+      "member": "chex",
+      "prob": 0.4262424111366272,
+      "degenerate": false
+    },
+    {
+      "idx": 19286,
+      "member": "rsna",
+      "prob": 0.5874791145324707,
+      "degenerate": false
+    },
+    {
+      "idx": 19286,
+      "member": "chex",
+      "prob": 0.5222119092941284,
+      "degenerate": true
+    },
+    {
+      "idx": 5643,
+      "member": "rsna",
+      "prob": 0.9495770335197449,
+      "degenerate": false
+    },
+    {
+      "idx": 5643,
+      "member": "chex",
+      "prob": 0.6849002838134766,
+      "degenerate": false
+    },
+    {
+      "idx": 16414,
+      "member": "rsna",
+      "prob": 0.9241412878036499,
+      "degenerate": false
+    },
+    {
+      "idx": 16414,
+      "member": "chex",
+      "prob": 0.7678455710411072,
+      "degenerate": false
+    },
+    {
+      "idx": 26255,
+      "member": "rsna",
+      "prob": 0.9859243631362915,
+      "degenerate": false
+    },
+    {
+      "idx": 26255,
+      "member": "chex",
+      "prob": 0.5959494113922119,
+      "degenerate": false
+    },
+    {
+      "idx": 2056,
+      "member": "rsna",
+      "prob": 0.6301041841506958,
+      "degenerate": false
+    },
+    {
+      "idx": 2056,
+      "member": "chex",
+      "prob": 0.6875091791152954,
+      "degenerate": false
+    },
+    {
+      "idx": 18104,
+      "member": "rsna",
+      "prob": 0.4495849907398224,
+      "degenerate": false
+    },
+    {
+      "idx": 18104,
+      "member": "chex",
+      "prob": 0.5592002868652344,
+      "degenerate": false
+    },
+    {
+      "idx": 18810,
+      "member": "rsna",
+      "prob": 0.8469375371932983,
+      "degenerate": false
+    },
+    {
+      "idx": 18810,
+      "member": "chex",
+      "prob": 0.5251795053482056,
+      "degenerate": false
+    },
+    {
+      "idx": 10606,
+      "member": "rsna",
+      "prob": 0.9881953597068787,
+      "degenerate": false
+    },
+    {
+      "idx": 10606,
+      "member": "chex",
+      "prob": 0.5750937461853027,
+      "degenerate": false
+    },
+    {
+      "idx": 2465,
+      "member": "rsna",
+      "prob": 0.9558829665184021,
+      "degenerate": false
+    },
+    {
+      "idx": 2465,
+      "member": "chex",
+      "prob": 0.5837018489837646,
+      "degenerate": false
+    },
+    {
+      "idx": 9594,
+      "member": "rsna",
+      "prob": 0.9828073978424072,
+      "degenerate": false
+    },
+    {
+      "idx": 9594,
+      "member": "chex",
+      "prob": 0.7065036296844482,
+      "degenerate": false
+    },
+    {
+      "idx": 19383,
+      "member": "rsna",
+      "prob": 0.9497711658477783,
+      "degenerate": false
+    },
+    {
+      "idx": 19383,
+      "member": "chex",
+      "prob": 0.837381899356842,
+      "degenerate": false
+    },
+    {
+      "idx": 1966,
+      "member": "rsna",
+      "prob": 0.6840558052062988,
+      "degenerate": false
+    },
+    {
+      "idx": 1966,
+      "member": "chex",
+      "prob": 0.6629732251167297,
+      "degenerate": false
+    },
+    {
+      "idx": 26348,
+      "member": "rsna",
+      "prob": 0.7066670656204224,
+      "degenerate": false
+    },
+    {
+      "idx": 26348,
+      "member": "chex",
+      "prob": 0.8774160146713257,
+      "degenerate": false
+    },
+    {
+      "idx": 2709,
+      "member": "rsna",
+      "prob": 0.5116850137710571,
+      "degenerate": false
+    },
+    {
+      "idx": 2709,
+      "member": "chex",
+      "prob": 0.14245285093784332,
+      "degenerate": true
+    },
+    {
+      "idx": 4170,
+      "member": "rsna",
+      "prob": 0.8081624507904053,
+      "degenerate": false
+    },
+    {
+      "idx": 4170,
+      "member": "chex",
+      "prob": 0.6334924697875977,
+      "degenerate": false
+    },
+    {
+      "idx": 9155,
+      "member": "rsna",
+      "prob": 0.8684204816818237,
+      "degenerate": false
+    },
+    {
+      "idx": 9155,
+      "member": "chex",
+      "prob": 0.5791962146759033,
+      "degenerate": false
+    },
+    {
+      "idx": 15786,
+      "member": "rsna",
+      "prob": 0.9984708428382874,
+      "degenerate": false
+    },
+    {
+      "idx": 15786,
+      "member": "chex",
+      "prob": 0.7485259771347046,
+      "degenerate": false
+    },
+    {
+      "idx": 1130,
+      "member": "rsna",
+      "prob": 0.7402629852294922,
+      "degenerate": false
+    },
+    {
+      "idx": 1130,
+      "member": "chex",
+      "prob": 0.15545593202114105,
+      "degenerate": true
+    },
+    {
+      "idx": 16028,
+      "member": "rsna",
+      "prob": 0.8473824262619019,
+      "degenerate": false
+    },
+    {
+      "idx": 16028,
+      "member": "chex",
+      "prob": 0.8557124137878418,
+      "degenerate": false
+    },
+    {
+      "idx": 16828,
+      "member": "rsna",
+      "prob": 0.516087532043457,
+      "degenerate": false
+    },
+    {
+      "idx": 16828,
+      "member": "chex",
+      "prob": 0.6354619264602661,
+      "degenerate": false
+    },
+    {
+      "idx": 4530,
+      "member": "rsna",
+      "prob": 0.11131790280342102,
+      "degenerate": false
+    },
+    {
+      "idx": 4530,
+      "member": "chex",
+      "prob": 0.17933440208435059,
+      "degenerate": true
+    },
+    {
+      "idx": 2403,
+      "member": "rsna",
+      "prob": 0.641552209854126,
+      "degenerate": false
+    },
+    {
+      "idx": 2403,
+      "member": "chex",
+      "prob": 0.6130668520927429,
+      "degenerate": false
+    },
+    {
+      "idx": 21294,
+      "member": "rsna",
+      "prob": 0.6520897150039673,
+      "degenerate": false
+    },
+    {
+      "idx": 21294,
+      "member": "chex",
+      "prob": 0.2896980941295624,
+      "degenerate": true
+    },
+    {
+      "idx": 21836,
+      "member": "rsna",
+      "prob": 0.9987167716026306,
+      "degenerate": false
+    },
+    {
+      "idx": 21836,
+      "member": "chex",
+      "prob": 0.6295762062072754,
+      "degenerate": false
+    },
+    {
+      "idx": 4032,
+      "member": "rsna",
+      "prob": 0.8963449001312256,
+      "degenerate": false
+    },
+    {
+      "idx": 4032,
+      "member": "chex",
+      "prob": 0.57224440574646,
+      "degenerate": false
+    },
+    {
+      "idx": 14540,
+      "member": "rsna",
+      "prob": 0.7721801996231079,
+      "degenerate": false
+    },
+    {
+      "idx": 14540,
+      "member": "chex",
+      "prob": 0.6671485900878906,
+      "degenerate": false
+    },
+    {
+      "idx": 25867,
+      "member": "rsna",
+      "prob": 0.9768310785293579,
+      "degenerate": false
+    },
+    {
+      "idx": 25867,
+      "member": "chex",
+      "prob": 0.5898942947387695,
+      "degenerate": false
+    },
+    {
+      "idx": 1908,
+      "member": "rsna",
+      "prob": 0.9336875677108765,
+      "degenerate": false
+    },
+    {
+      "idx": 1908,
+      "member": "chex",
+      "prob": 0.5715030431747437,
+      "degenerate": false
+    },
+    {
+      "idx": 13776,
+      "member": "rsna",
+      "prob": 0.9943703413009644,
+      "degenerate": false
+    },
+    {
+      "idx": 13776,
+      "member": "chex",
+      "prob": 0.8424294590950012,
+      "degenerate": false
+    },
+    {
+      "idx": 4255,
+      "member": "rsna",
+      "prob": 0.7561585903167725,
+      "degenerate": false
+    },
+    {
+      "idx": 4255,
+      "member": "chex",
+      "prob": 0.5063769817352295,
+      "degenerate": false
+    },
+    {
+      "idx": 13241,
+      "member": "rsna",
+      "prob": 0.9938277006149292,
+      "degenerate": false
+    },
+    {
+      "idx": 13241,
+      "member": "chex",
+      "prob": 0.8264488577842712,
+      "degenerate": false
+    },
+    {
+      "idx": 19263,
+      "member": "rsna",
+      "prob": 0.6040167808532715,
+      "degenerate": false
+    },
+    {
+      "idx": 19263,
+      "member": "chex",
+      "prob": 0.6501385569572449,
+      "degenerate": false
+    },
+    {
+      "idx": 18622,
+      "member": "rsna",
+      "prob": 0.8400954604148865,
+      "degenerate": false
+    },
+    {
+      "idx": 18622,
+      "member": "chex",
+      "prob": 0.6398844718933105,
+      "degenerate": false
+    },
+    {
+      "idx": 1176,
+      "member": "rsna",
+      "prob": 0.9556127190589905,
+      "degenerate": false
+    },
+    {
+      "idx": 1176,
+      "member": "chex",
+      "prob": 0.6218176484107971,
+      "degenerate": false
+    },
+    {
+      "idx": 3955,
+      "member": "rsna",
+      "prob": 0.8464869260787964,
+      "degenerate": false
+    },
+    {
+      "idx": 3955,
+      "member": "chex",
+      "prob": 0.6804770231246948,
+      "degenerate": false
+    },
+    {
+      "idx": 21653,
+      "member": "rsna",
+      "prob": 0.8055641651153564,
+      "degenerate": false
+    },
+    {
+      "idx": 21653,
+      "member": "chex",
+      "prob": 0.130241259932518,
+      "degenerate": true
+    },
+    {
+      "idx": 11203,
+      "member": "rsna",
+      "prob": 0.7318913340568542,
+      "degenerate": false
+    },
+    {
+      "idx": 11203,
+      "member": "chex",
+      "prob": 0.5361024737358093,
+      "degenerate": true
+    },
+    {
+      "idx": 18057,
+      "member": "rsna",
+      "prob": 0.6570535898208618,
+      "degenerate": false
+    },
+    {
+      "idx": 18057,
+      "member": "chex",
+      "prob": 0.6267220377922058,
+      "degenerate": false
+    },
+    {
+      "idx": 4312,
+      "member": "rsna",
+      "prob": 0.9476051330566406,
+      "degenerate": false
+    },
+    {
+      "idx": 4312,
+      "member": "chex",
+      "prob": 0.07213827967643738,
+      "degenerate": true
+    },
+    {
+      "idx": 1713,
+      "member": "rsna",
+      "prob": 0.9332341551780701,
+      "degenerate": false
+    },
+    {
+      "idx": 1713,
+      "member": "chex",
+      "prob": 0.4983566403388977,
+      "degenerate": false
+    },
+    {
+      "idx": 3072,
+      "member": "rsna",
+      "prob": 0.9505897760391235,
+      "degenerate": false
+    },
+    {
+      "idx": 3072,
+      "member": "chex",
+      "prob": 0.2880499064922333,
+      "degenerate": true
+    },
+    {
+      "idx": 22461,
+      "member": "rsna",
+      "prob": 0.3084878623485565,
+      "degenerate": false
+    },
+    {
+      "idx": 22461,
+      "member": "chex",
+      "prob": 0.2196858525276184,
+      "degenerate": true
+    },
+    {
+      "idx": 513,
+      "member": "rsna",
+      "prob": 0.9815889596939087,
+      "degenerate": false
+    },
+    {
+      "idx": 513,
+      "member": "chex",
+      "prob": 0.5136877298355103,
+      "degenerate": false
+    },
+    {
+      "idx": 7691,
+      "member": "rsna",
+      "prob": 0.5554290413856506,
+      "degenerate": false
+    },
+    {
+      "idx": 7691,
+      "member": "chex",
+      "prob": 0.11935587972402573,
+      "degenerate": false
+    },
+    {
+      "idx": 17457,
+      "member": "rsna",
+      "prob": 0.6752057075500488,
+      "degenerate": false
+    },
+    {
+      "idx": 17457,
+      "member": "chex",
+      "prob": 0.6732720136642456,
+      "degenerate": false
+    },
+    {
+      "idx": 20868,
+      "member": "rsna",
+      "prob": 0.8597223162651062,
+      "degenerate": false
+    },
+    {
+      "idx": 20868,
+      "member": "chex",
+      "prob": 0.5885357856750488,
+      "degenerate": false
+    },
+    {
+      "idx": 19157,
+      "member": "rsna",
+      "prob": 0.8452346920967102,
+      "degenerate": false
+    },
+    {
+      "idx": 19157,
+      "member": "chex",
+      "prob": 0.6639384031295776,
+      "degenerate": false
+    },
+    {
+      "idx": 3632,
+      "member": "rsna",
+      "prob": 0.827505350112915,
+      "degenerate": false
+    },
+    {
+      "idx": 3632,
+      "member": "chex",
+      "prob": 0.6521745920181274,
+      "degenerate": false
+    },
+    {
+      "idx": 12975,
+      "member": "rsna",
+      "prob": 0.9318230748176575,
+      "degenerate": false
+    },
+    {
+      "idx": 12975,
+      "member": "chex",
+      "prob": 0.7335494756698608,
+      "degenerate": false
+    },
+    {
+      "idx": 730,
+      "member": "rsna",
+      "prob": 0.8781887292861938,
+      "degenerate": false
+    },
+    {
+      "idx": 730,
+      "member": "chex",
+      "prob": 0.6639692783355713,
+      "degenerate": false
+    },
+    {
+      "idx": 10273,
+      "member": "rsna",
+      "prob": 0.8753641247749329,
+      "degenerate": false
+    },
+    {
+      "idx": 10273,
+      "member": "chex",
+      "prob": 0.5105323791503906,
+      "degenerate": false
+    },
+    {
+      "idx": 358,
+      "member": "rsna",
+      "prob": 0.8144358992576599,
+      "degenerate": false
+    },
+    {
+      "idx": 358,
+      "member": "chex",
+      "prob": 0.6322585940361023,
+      "degenerate": false
+    },
+    {
+      "idx": 1869,
+      "member": "rsna",
+      "prob": 0.9615406394004822,
+      "degenerate": false
+    },
+    {
+      "idx": 1869,
+      "member": "chex",
+      "prob": 0.7675464749336243,
+      "degenerate": false
+    },
+    {
+      "idx": 17370,
+      "member": "rsna",
+      "prob": 0.5939115285873413,
+      "degenerate": false
+    },
+    {
+      "idx": 17370,
+      "member": "chex",
+      "prob": 0.6039853692054749,
+      "degenerate": false
+    },
+    {
+      "idx": 576,
+      "member": "rsna",
+      "prob": 0.8762032985687256,
+      "degenerate": false
+    },
+    {
+      "idx": 576,
+      "member": "chex",
+      "prob": 0.5299351215362549,
+      "degenerate": false
+    },
+    {
+      "idx": 3249,
+      "member": "rsna",
+      "prob": 0.9453207850456238,
+      "degenerate": false
+    },
+    {
+      "idx": 3249,
+      "member": "chex",
+      "prob": 0.5370339155197144,
+      "degenerate": false
+    },
+    {
+      "idx": 1984,
+      "member": "rsna",
+      "prob": 0.6779114603996277,
+      "degenerate": false
+    },
+    {
+      "idx": 1984,
+      "member": "chex",
+      "prob": 0.5114854574203491,
+      "degenerate": false
+    },
+    {
+      "idx": 11129,
+      "member": "rsna",
+      "prob": 0.9906163811683655,
+      "degenerate": false
+    },
+    {
+      "idx": 11129,
+      "member": "chex",
+      "prob": 0.6912307739257812,
+      "degenerate": false
+    },
+    {
+      "idx": 1958,
+      "member": "rsna",
+      "prob": 0.7952480912208557,
+      "degenerate": false
+    },
+    {
+      "idx": 1958,
+      "member": "chex",
+      "prob": 0.39276137948036194,
+      "degenerate": false
+    },
+    {
+      "idx": 3988,
+      "member": "rsna",
+      "prob": 0.7426498532295227,
+      "degenerate": false
+    },
+    {
+      "idx": 3988,
+      "member": "chex",
+      "prob": 0.5140878558158875,
+      "degenerate": false
+    },
+    {
+      "idx": 7170,
+      "member": "rsna",
+      "prob": 0.9661015272140503,
+      "degenerate": false
+    },
+    {
+      "idx": 7170,
+      "member": "chex",
+      "prob": 0.602337121963501,
+      "degenerate": false
+    },
+    {
+      "idx": 4494,
+      "member": "rsna",
+      "prob": 0.9517489671707153,
+      "degenerate": false
+    },
+    {
+      "idx": 4494,
+      "member": "chex",
+      "prob": 0.5001125335693359,
+      "degenerate": true
+    },
+    {
+      "idx": 569,
+      "member": "rsna",
+      "prob": 0.8421578407287598,
+      "degenerate": false
+    },
+    {
+      "idx": 569,
+      "member": "chex",
+      "prob": 0.5837791562080383,
+      "degenerate": false
+    },
+    {
+      "idx": 13386,
+      "member": "rsna",
+      "prob": 0.9574897885322571,
+      "degenerate": false
+    },
+    {
+      "idx": 13386,
+      "member": "chex",
+      "prob": 0.6012833714485168,
+      "degenerate": false
+    },
+    {
+      "idx": 3404,
+      "member": "rsna",
+      "prob": 0.7104803323745728,
+      "degenerate": false
+    },
+    {
+      "idx": 3404,
+      "member": "chex",
+      "prob": 0.6393357515335083,
+      "degenerate": false
+    },
+    {
+      "idx": 3861,
+      "member": "rsna",
+      "prob": 0.34839266538619995,
+      "degenerate": false
+    },
+    {
+      "idx": 3861,
+      "member": "chex",
+      "prob": 0.19934825599193573,
+      "degenerate": true
+    },
+    {
+      "idx": 21673,
+      "member": "rsna",
+      "prob": 0.7075600624084473,
+      "degenerate": false
+    },
+    {
+      "idx": 21673,
+      "member": "chex",
+      "prob": 0.3059455454349518,
+      "degenerate": true
+    },
+    {
+      "idx": 11341,
+      "member": "rsna",
+      "prob": 0.9659461975097656,
+      "degenerate": false
+    },
+    {
+      "idx": 11341,
+      "member": "chex",
+      "prob": 0.5243631601333618,
+      "degenerate": false
+    },
+    {
+      "idx": 15337,
+      "member": "rsna",
+      "prob": 0.769076943397522,
+      "degenerate": false
+    },
+    {
+      "idx": 15337,
+      "member": "chex",
+      "prob": 0.747968316078186,
+      "degenerate": false
+    },
+    {
+      "idx": 3533,
+      "member": "rsna",
+      "prob": 0.38304662704467773,
+      "degenerate": false
+    },
+    {
+      "idx": 3533,
+      "member": "chex",
+      "prob": 0.528459906578064,
+      "degenerate": false
+    },
+    {
+      "idx": 3267,
+      "member": "rsna",
+      "prob": 0.960627019405365,
+      "degenerate": false
+    },
+    {
+      "idx": 3267,
+      "member": "chex",
+      "prob": 0.4825584590435028,
+      "degenerate": false
+    },
+    {
+      "idx": 15489,
+      "member": "rsna",
+      "prob": 0.5059654116630554,
+      "degenerate": false
+    },
+    {
+      "idx": 15489,
+      "member": "chex",
+      "prob": 0.5650814771652222,
+      "degenerate": false
+    },
+    {
+      "idx": 20383,
+      "member": "rsna",
+      "prob": 0.9445107579231262,
+      "degenerate": false
+    },
+    {
+      "idx": 20383,
+      "member": "chex",
+      "prob": 0.7074747085571289,
+      "degenerate": false
+    },
+    {
+      "idx": 10675,
+      "member": "rsna",
+      "prob": 0.7626551985740662,
+      "degenerate": false
+    },
+    {
+      "idx": 10675,
+      "member": "chex",
+      "prob": 0.6509735584259033,
+      "degenerate": false
+    },
+    {
+      "idx": 20806,
+      "member": "rsna",
+      "prob": 0.9948956966400146,
+      "degenerate": false
+    },
+    {
+      "idx": 20806,
+      "member": "chex",
+      "prob": 0.5511264801025391,
+      "degenerate": false
+    },
+    {
+      "idx": 19711,
+      "member": "rsna",
+      "prob": 0.9875374436378479,
+      "degenerate": false
+    },
+    {
+      "idx": 19711,
+      "member": "chex",
+      "prob": 0.7451720237731934,
+      "degenerate": false
+    },
+    {
+      "idx": 2090,
+      "member": "rsna",
+      "prob": 0.8856040239334106,
+      "degenerate": false
+    },
+    {
+      "idx": 2090,
+      "member": "chex",
+      "prob": 0.7681158781051636,
+      "degenerate": false
+    },
+    {
+      "idx": 18376,
+      "member": "rsna",
+      "prob": 0.10826250910758972,
+      "degenerate": false
+    },
+    {
+      "idx": 18376,
+      "member": "chex",
+      "prob": 0.15325601398944855,
+      "degenerate": true
+    },
+    {
+      "idx": 2630,
+      "member": "rsna",
+      "prob": 0.9861925840377808,
+      "degenerate": false
+    },
+    {
+      "idx": 2630,
+      "member": "chex",
+      "prob": 0.7027023434638977,
+      "degenerate": false
+    },
+    {
+      "idx": 8063,
+      "member": "rsna",
+      "prob": 0.9051855802536011,
+      "degenerate": false
+    },
+    {
+      "idx": 8063,
+      "member": "chex",
+      "prob": 0.36723607778549194,
+      "degenerate": true
+    },
+    {
+      "idx": 14135,
+      "member": "rsna",
+      "prob": 0.7382168769836426,
+      "degenerate": false
+    },
+    {
+      "idx": 14135,
+      "member": "chex",
+      "prob": 0.7468185424804688,
+      "degenerate": false
+    },
+    {
+      "idx": 17653,
+      "member": "rsna",
+      "prob": 0.4722192883491516,
+      "degenerate": false
+    },
+    {
+      "idx": 17653,
+      "member": "chex",
+      "prob": 0.2585752010345459,
+      "degenerate": false
+    },
+    {
+      "idx": 4215,
+      "member": "rsna",
+      "prob": 0.7056707143783569,
+      "degenerate": false
+    },
+    {
+      "idx": 4215,
+      "member": "chex",
+      "prob": 0.4353027939796448,
+      "degenerate": false
+    },
+    {
+      "idx": 17511,
+      "member": "rsna",
+      "prob": 0.9879805445671082,
+      "degenerate": false
+    },
+    {
+      "idx": 17511,
+      "member": "chex",
+      "prob": 0.5994185209274292,
+      "degenerate": false
+    },
+    {
+      "idx": 25485,
+      "member": "rsna",
+      "prob": 0.9021056890487671,
+      "degenerate": false
+    },
+    {
+      "idx": 25485,
+      "member": "chex",
+      "prob": 0.4178670048713684,
+      "degenerate": false
+    },
+    {
+      "idx": 23794,
+      "member": "rsna",
+      "prob": 0.9820547103881836,
+      "degenerate": false
+    },
+    {
+      "idx": 23794,
+      "member": "chex",
+      "prob": 0.6956042051315308,
+      "degenerate": false
+    },
+    {
+      "idx": 7356,
+      "member": "rsna",
+      "prob": 0.9119950532913208,
+      "degenerate": false
+    },
+    {
+      "idx": 7356,
+      "member": "chex",
+      "prob": 0.8135258555412292,
+      "degenerate": false
+    },
+    {
+      "idx": 4525,
+      "member": "rsna",
+      "prob": 0.9839832782745361,
+      "degenerate": false
+    },
+    {
+      "idx": 4525,
+      "member": "chex",
+      "prob": 0.6339200735092163,
+      "degenerate": false
+    },
+    {
+      "idx": 17227,
+      "member": "rsna",
+      "prob": 0.9869076609611511,
+      "degenerate": false
+    },
+    {
+      "idx": 17227,
+      "member": "chex",
+      "prob": 0.5378121137619019,
+      "degenerate": false
+    },
+    {
+      "idx": 3982,
+      "member": "rsna",
+      "prob": 0.716242790222168,
+      "degenerate": false
+    },
+    {
+      "idx": 3982,
+      "member": "chex",
+      "prob": 0.6708881855010986,
+      "degenerate": false
+    },
+    {
+      "idx": 18684,
+      "member": "rsna",
+      "prob": 0.7180702686309814,
+      "degenerate": false
+    },
+    {
+      "idx": 18684,
+      "member": "chex",
+      "prob": 0.6878844499588013,
+      "degenerate": false
+    },
+    {
+      "idx": 3006,
+      "member": "rsna",
+      "prob": 0.9962169528007507,
+      "degenerate": false
+    },
+    {
+      "idx": 3006,
+      "member": "chex",
+      "prob": 0.6318172216415405,
+      "degenerate": false
+    },
+    {
+      "idx": 826,
+      "member": "rsna",
+      "prob": 0.8535872101783752,
+      "degenerate": false
+    },
+    {
+      "idx": 826,
+      "member": "chex",
+      "prob": 0.6332677602767944,
+      "degenerate": false
+    },
+    {
+      "idx": 25886,
+      "member": "rsna",
+      "prob": 0.6712750196456909,
+      "degenerate": false
+    },
+    {
+      "idx": 25886,
+      "member": "chex",
+      "prob": 0.7183496356010437,
+      "degenerate": false
+    },
+    {
+      "idx": 3991,
+      "member": "rsna",
+      "prob": 0.9627522230148315,
+      "degenerate": false
+    },
+    {
+      "idx": 3991,
+      "member": "chex",
+      "prob": 0.740594744682312,
+      "degenerate": false
+    },
+    {
+      "idx": 18029,
+      "member": "rsna",
+      "prob": 0.9641219973564148,
+      "degenerate": false
+    },
+    {
+      "idx": 18029,
+      "member": "chex",
+      "prob": 0.6396849751472473,
+      "degenerate": false
+    },
+    {
+      "idx": 3179,
+      "member": "rsna",
+      "prob": 0.9346792101860046,
+      "degenerate": false
+    },
+    {
+      "idx": 3179,
+      "member": "chex",
+      "prob": 0.7404772043228149,
+      "degenerate": false
+    },
+    {
+      "idx": 15079,
+      "member": "rsna",
+      "prob": 0.6063476800918579,
+      "degenerate": false
+    },
+    {
+      "idx": 15079,
+      "member": "chex",
+      "prob": 0.21488507091999054,
+      "degenerate": true
+    },
+    {
+      "idx": 6912,
+      "member": "rsna",
+      "prob": 0.9238338470458984,
+      "degenerate": false
+    },
+    {
+      "idx": 6912,
+      "member": "chex",
+      "prob": 0.5476013422012329,
+      "degenerate": false
+    },
+    {
+      "idx": 25066,
+      "member": "rsna",
+      "prob": 0.8124998807907104,
+      "degenerate": false
+    },
+    {
+      "idx": 25066,
+      "member": "chex",
+      "prob": 0.5047566294670105,
+      "degenerate": false
+    },
+    {
+      "idx": 9341,
+      "member": "rsna",
+      "prob": 0.9845685958862305,
+      "degenerate": false
+    },
+    {
+      "idx": 9341,
+      "member": "chex",
+      "prob": 0.7036848068237305,
+      "degenerate": false
+    }
+  ]
+}

@@ -90,7 +90,12 @@ cd "${SLURM_SUBMIT_DIR:-$(dirname "${BASH_SOURCE[0]}")}"
 mkdir -p logs
 
 module load python/3.12.8
-module load cuda/13.0
+# torch is built for cu121 (torch.version.cuda == "12.1") and the driver is
+# CUDA 12.6. cuda/13.0 (the module system default) prepends its lib64 to
+# LD_LIBRARY_PATH ahead of torch's own RUNPATH and only fails to break things
+# because CUDA 13 sonames are .so.13 while torch links .so.12. Load the
+# matching toolkit instead of relying on that.
+module load cuda/cuda-12.1
 
 if [ ! -d venv ]; then
     echo "venv/ not found — run 'bash setup_env.sh' on the login node first." >&2
@@ -104,6 +109,11 @@ export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 export YOLO_OFFLINE=1
 
+# Checkpoints live under a PER-DOMAIN directory — see the same note in
+# run_eval_cf.slurm. Ask config rather than hardcoding "checkpoints/".
+CKPT_DIR=$(python -c 'import config; print(config.CKPT_DIR)')
+echo "[slurm] domain checkpoint dir: ${CKPT_DIR}"
+
 # Fail before loading ~2GB of model weights if training never ran.
 #
 # ppo_policy.pt is written ONLY when a direction finishes all N_EPISODES. A
@@ -114,13 +124,13 @@ export YOLO_OFFLINE=1
 # and name the exact command that finishes it.
 for i in 0 1; do
     direction=$([ "$i" = 0 ] && echo n_to_p || echo p_to_n)
-    if [ ! -f "checkpoints/${direction}/ppo_policy.pt" ]; then
-        if [ -f "checkpoints/${direction}/ppo_latest.pt" ]; then
-            echo "${direction} is PAUSED, not finished: checkpoints/${direction}/ppo_latest.pt" >&2
+    if [ ! -f "${CKPT_DIR}/${direction}/ppo_policy.pt" ]; then
+        if [ -f "${CKPT_DIR}/${direction}/ppo_latest.pt" ]; then
+            echo "${direction} is PAUSED, not finished: ${CKPT_DIR}/${direction}/ppo_latest.pt" >&2
             echo "exists but ppo_policy.pt does not. Resume it with:" >&2
             echo "    sbatch --array=${i} run_ppo.slurm" >&2
         else
-            echo "checkpoints/${direction}/ppo_policy.pt not found and no ppo_latest.pt" >&2
+            echo "${CKPT_DIR}/${direction}/ppo_policy.pt not found and no ppo_latest.pt" >&2
             echo "either — training never ran for this direction. Start it with:" >&2
             echo "    sbatch --array=${i} run_ppo.slurm" >&2
         fi

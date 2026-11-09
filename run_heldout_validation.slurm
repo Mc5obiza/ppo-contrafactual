@@ -3,6 +3,8 @@
 #SBATCH --partition=publicgpu
 #SBATCH --account=insa
 #SBATCH --gres=gpu:1
+#SBATCH --constraint="gpuh200|gpuh100|gpua100|gpul40s|gpua40|gpurtx6000"
+#SBATCH --exclude=hpc-n983
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=08:00:00
@@ -41,7 +43,12 @@ cd "${SLURM_SUBMIT_DIR:-$(dirname "${BASH_SOURCE[0]}")}"
 mkdir -p logs
 
 module load python/3.12.8
-module load cuda/13.0
+# torch is built for cu121 (torch.version.cuda == "12.1") and the driver is
+# CUDA 12.6. cuda/13.0 (the module system default) prepends its lib64 to
+# LD_LIBRARY_PATH ahead of torch's own RUNPATH and only fails to break things
+# because CUDA 13 sonames are .so.13 while torch links .so.12. Load the
+# matching toolkit instead of relying on that.
+module load cuda/cuda-12.1
 
 if [ ! -d venv ]; then
     echo "venv/ not found — run 'bash setup_env.sh' on the login node first." >&2
@@ -53,9 +60,18 @@ export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 export YOLO_OFFLINE=1
 
+# Per-domain checkpoint dir — see the note in run_eval_cf.slurm.
+CKPT_DIR=$(python -c 'import config; print(config.CKPT_DIR)')
+echo "[slurm] domain checkpoint dir: ${CKPT_DIR}"
+
+# Provenance — see record_run_manifest.sh. Especially load-bearing here: this
+# job's whole purpose is to say whether the counterfactuals carry disease
+# signal, so which guidance config produced them is part of the result.
+bash record_run_manifest.sh "${CKPT_DIR}"
+
 for direction in n_to_p p_to_n; do
-    if [ ! -f "checkpoints/${direction}/ppo_policy.pt" ]; then
-        echo "checkpoints/${direction}/ppo_policy.pt not found — run 'sbatch run_ppo.slurm' first." >&2
+    if [ ! -f "${CKPT_DIR}/${direction}/ppo_policy.pt" ]; then
+        echo "${CKPT_DIR}/${direction}/ppo_policy.pt not found — run 'sbatch run_ppo.slurm' first." >&2
         exit 1
     fi
 done
@@ -85,6 +101,12 @@ done
 
 echo "=== Held-out validation started on $(hostname) at $(date) ==="
 nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv
+
+# Same hardware check as run_ppo.slurm. Without it a node whose compute
+# capability this torch build has no kernels for fails deep inside the first
+# forward pass with "no kernel image is available for execution on the device"
+# — see preflight_gpu.py.
+python -u preflight_gpu.py
 
 # Pass extra args straight through, e.g.:
 #   sbatch run_heldout_validation.slurm --regenerate

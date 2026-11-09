@@ -1,0 +1,93 @@
+% =====================================================================
+%  Preamble — packages, page geometry, heading style
+%  Package set kept deliberately close to report/report.tex (the working
+%  setup already in the repo) so this compiles on the same TeX Live.
+% =====================================================================
+
+\usepackage[a4paper,inner=3.2cm,outer=2.5cm,top=2.8cm,bottom=2.8cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{times}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+% Allow \path to break at these characters, with NO stretch glue — otherwise
+% justification visibly spaces out filenames like "factory / finetuning . py".
+\Urlmuskip=0mu
+\def\UrlBreaks{\do\/\do\_\do\-\do\.\do\=\do\{\do\}}
+% NOTE: titlesec and emptypage are not present in this TeX installation, so
+% the chapter heading style below is implemented directly against the report
+% class rather than through titlesec.
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=blue!45!black,
+  urlcolor=blue!45!black,
+  pdftitle={PPO-Guided Latent Diffusion for Visual Counterfactual
+            Explanations in Chest Radiography},
+  pdfauthor={Melki Ayoub}
+}
+
+\graphicspath{{figures/}{logos/}}
+
+% ── Headings: "Chapter N" above a large bold title, matching the reference ──
+\makeatletter
+\renewcommand{\@makechapterhead}[1]{%
+  \vspace*{20pt}%
+  {\parindent\z@\raggedright\normalfont
+   \ifnum\c@secnumdepth>\m@ne
+     \huge\bfseries\@chapapp\space\thechapter
+     \par\nobreak\vskip 18\p@
+   \fi
+   \Huge\bfseries #1\par\nobreak
+   \vskip 34\p@}}
+\renewcommand{\@makeschapterhead}[1]{%
+  \vspace*{20pt}%
+  {\parindent\z@\raggedright\normalfont
+   \Huge\bfseries #1\par\nobreak
+   \vskip 34\p@}}
+\makeatother
+
+% Roman-numeral top-level sections (I, II, III …) as in the reference report
+\renewcommand{\thesection}{\Roman{section}}
+\renewcommand{\thesubsection}{\arabic{subsection}}
+\renewcommand{\thesubsubsection}{\arabic{subsection}.\arabic{subsubsection}}
+
+% ── Running heads ──────────────────────────────────────────────────────
+% Single-sided: every page is "odd", so L/R apply to all pages.
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\nouppercase{\leftmark}}
+\fancyhead[R]{\small\nouppercase{\rightmark}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancypagestyle{plain}{%
+  \fancyhf{}\fancyfoot[C]{\thepage}\renewcommand{\headrulewidth}{0pt}}
+
+% ── Convenience macros ─────────────────────────────────────────────────
+\newcommand{\ntop}{n$\rightarrow$p}
+\newcommand{\pton}{p$\rightarrow$n}
+% \file{} typesets a path/filename in monospace. Long names such as
+% run_eval_ppo.slurm are otherwise unbreakable and overflow the margin, so
+% \path (from url) is used to permit line breaks at / . _ and - .
+\newcommand{\file}[1]{\texttt{\path{#1}}}
+\newcommand{\Rterm}[1]{$R_{\text{#1}}$}
+
+% Logo helper: draw the logo if the file was supplied, otherwise fall back
+% to a text placeholder so the document always compiles.
+\newcommand{\logoorname}[3]{%
+  \IfFileExists{#1}{\includegraphics[height=#2]{#1}}{\parbox{0.35\textwidth}{\centering\small\textsc{#3}}}%
+}
+
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.35em}

@@ -1,0 +1,814 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guidance Arm Comparison</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page:        #f4f5f3;
+    --surface:     #fcfcfb;
+    --surface-2:   #f0f1ee;
+    --ink:         #101512;
+    --ink-2:       #454e49;
+    --ink-muted:   #838a84;
+    --hairline:    #dfe2dd;
+    --ring:        rgba(16,21,18,0.09);
+
+    --arm-1: #2a78d6; /* single-classifier */
+    --arm-2: #eb6834; /* 2-model ensemble — committed default */
+    --arm-3: #1baf7a; /* 3-model ensemble */
+    --arm-4: #eda100; /* sparsity reward */
+    --arm-5: #e87ba4; /* grad-cam fix */
+
+    --status-good:     #0ca30c;
+    --status-warning:  #b9790a;
+    --status-critical: #d03b3b;
+    --status-good-bg:     rgba(12,163,12,0.10);
+    --status-warning-bg:  rgba(250,178,25,0.16);
+    --status-critical-bg: rgba(208,59,59,0.10);
+
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page:        #0d0f0e;
+      --surface:     #161918;
+      --surface-2:   #1c201e;
+      --ink:         #f3f5f2;
+      --ink-2:       #c2c9c2;
+      --ink-muted:   #8b938c;
+      --hairline:    #2b302c;
+      --ring:        rgba(255,255,255,0.10);
+
+      --arm-1: #3987e5;
+      --arm-2: #d95926;
+      --arm-3: #199e70;
+      --arm-4: #c98500;
+      --arm-5: #d55181;
+
+      --status-good:     #0ca30c;
+      --status-warning:  #fab219;
+      --status-critical: #e66767;
+      --status-good-bg:     rgba(12,163,12,0.16);
+      --status-warning-bg:  rgba(250,178,25,0.14);
+      --status-critical-bg: rgba(230,103,103,0.14);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page:        #0d0f0e;
+    --surface:     #161918;
+    --surface-2:   #1c201e;
+    --ink:         #f3f5f2;
+    --ink-2:       #c2c9c2;
+    --ink-muted:   #8b938c;
+    --hairline:    #2b302c;
+    --ring:        rgba(255,255,255,0.10);
+
+    --arm-1: #3987e5;
+    --arm-2: #d95926;
+    --arm-3: #199e70;
+    --arm-4: #c98500;
+    --arm-5: #d55181;
+
+    --status-good:     #0ca30c;
+    --status-warning:  #fab219;
+    --status-critical: #e66767;
+    --status-good-bg:     rgba(12,163,12,0.16);
+    --status-warning-bg:  rgba(250,178,25,0.14);
+    --status-critical-bg: rgba(230,103,103,0.14);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 78rem;
+    margin: 0 auto;
+    padding: clamp(1.5rem, 4vw, 3.5rem);
+    display: flex;
+    flex-direction: column;
+    gap: 2.75rem;
+  }
+
+  /* ---------- header ---------- */
+  header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    padding-bottom: 1.75rem;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(1.9rem, 3.4vw, 2.75rem);
+    line-height: 1.08;
+    margin: 0;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  .dek {
+    font-size: 1.02rem;
+    line-height: 1.55;
+    color: var(--ink-2);
+    max-width: 46rem;
+  }
+  .dek code { font-family: var(--mono); font-size: 0.92em; }
+
+  /* ---------- section titles ---------- */
+  h2 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 1.35rem;
+    margin: 0 0 0.15rem 0;
+    letter-spacing: -0.005em;
+  }
+  .section-note {
+    font-size: 0.88rem;
+    color: var(--ink-muted);
+    max-width: 42rem;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+  }
+  section { display: flex; flex-direction: column; }
+
+  /* ---------- arm cards ---------- */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.9rem;
+  }
+  @media (max-width: 900px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--swatch);
+  }
+  .card-name {
+    font-weight: 650;
+    font-size: 0.93rem;
+    line-height: 1.3;
+    padding-left: 0.4rem;
+  }
+  .card-tag {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--ink-muted);
+    padding-left: 0.4rem;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 650;
+    padding: 0.22rem 0.55rem;
+    border-radius: 100px;
+    width: fit-content;
+    margin-left: 0.4rem;
+  }
+  .pill.good     { background: var(--status-good-bg);     color: var(--status-good); }
+  .pill.warning  { background: var(--status-warning-bg);  color: var(--status-warning); }
+  .pill.critical { background: var(--status-critical-bg); color: var(--status-critical); }
+  .pill.neutral  { background: var(--surface-2); color: var(--ink-2); }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .card-stat {
+    padding-left: 0.4rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+  }
+  .card-stat .num {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+  .card-stat .lbl { font-size: 0.72rem; color: var(--ink-muted); }
+
+  /* ---------- table ---------- */
+  .table-scroll { overflow-x: auto; border: 1px solid var(--hairline); border-radius: 10px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 62rem; font-size: 0.86rem; }
+  thead th {
+    text-align: left;
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    font-weight: 600;
+    padding: 0.85rem 0.9rem;
+    border-bottom: 1px solid var(--hairline);
+    white-space: nowrap;
+  }
+  thead th.num, td.num { text-align: right; }
+  tbody td {
+    padding: 0.8rem 0.9rem;
+    border-bottom: 1px solid var(--hairline);
+    vertical-align: top;
+    font-variant-numeric: tabular-nums;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface-2); }
+  .arm-name-cell { display: flex; align-items: center; gap: 0.55rem; font-weight: 600; }
+  .arm-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .num { font-family: var(--mono); }
+  .best { font-weight: 700; }
+  td.notes { font-size: 0.78rem; color: var(--ink-muted); max-width: 15rem; line-height: 1.4; }
+  .foot-star { color: var(--ink-muted); font-size: 0.75em; vertical-align: super; }
+
+  /* ---------- charts ---------- */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+  @media (max-width: 880px) { .chart-grid { grid-template-columns: 1fr; } }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 1.25rem 1.25rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .chart-card.wide { grid-column: 1 / -1; }
+  .chart-title { font-weight: 650; font-size: 0.95rem; }
+  .chart-sub { font-size: 0.78rem; color: var(--ink-muted); line-height: 1.4; margin-top: -0.3rem; }
+  .legend { display: flex; gap: 1.1rem; flex-wrap: wrap; font-size: 0.76rem; color: var(--ink-2); }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+  .legend-swatch { width: 10px; height: 10px; border-radius: 3px; }
+  .legend-swatch.tint { opacity: 0.45; }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .bar { cursor: pointer; }
+  .bar-tint { opacity: 0.42; }
+  .axis-label { font-family: var(--mono); font-size: 10.5px; fill: var(--ink-muted); }
+  .cat-label { font-family: var(--sans); font-size: 11.5px; fill: var(--ink-2); font-weight: 600; }
+  .grid-line { stroke: var(--hairline); stroke-width: 1; }
+  .ref-line { stroke: var(--ink-muted); stroke-width: 1.2; stroke-dasharray: 3 3; }
+  .ref-label { font-family: var(--mono); font-size: 9.5px; fill: var(--ink-muted); }
+  .value-label { font-family: var(--mono); font-size: 10.5px; font-weight: 600; fill: var(--ink); font-variant-numeric: tabular-nums; }
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--ink);
+    color: var(--page);
+    font-size: 0.74rem;
+    line-height: 1.45;
+    padding: 0.5rem 0.65rem;
+    border-radius: 7px;
+    max-width: 15rem;
+    opacity: 0;
+    transform: translate(-50%, -100%);
+    transition: opacity 0.1s ease;
+    z-index: 10;
+    font-family: var(--sans);
+  }
+  .tooltip.show { opacity: 1; }
+  .tooltip b { font-family: var(--mono); }
+  .chart-wrap { position: relative; }
+
+  /* ---------- confidence panel ---------- */
+  .confidence {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.9rem;
+  }
+  @media (max-width: 900px) { .confidence { grid-template-columns: 1fr 1fr; } }
+  .conf-card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .conf-pair { font-weight: 650; font-size: 0.85rem; line-height: 1.35; }
+  .conf-stat-row { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--ink-2); font-family: var(--mono); font-variant-numeric: tabular-nums;}
+  .conf-verdict { font-size: 0.78rem; line-height: 1.4; color: var(--ink-2); }
+
+  /* ---------- methodology footer ---------- */
+  footer {
+    border-top: 1px solid var(--hairline);
+    padding-top: 1.5rem;
+    font-size: 0.82rem;
+    color: var(--ink-muted);
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  footer code { font-family: var(--mono); color: var(--ink-2); }
+  footer .gpu-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  footer .gpu-chip {
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    background: var(--surface-2);
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    padding: 0.25rem 0.5rem;
+    color: var(--ink-2);
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">PPO-guided counterfactual chest radiography — evaluation-integrity branch</div>
+    <h1>Five trained guidance arms, one evaluation protocol</h1>
+    <p class="dek">
+      Every arm below is a real PPO policy — 800 episodes per direction, trained from scratch —
+      scored through the identical held-out pipeline (<code>run_eval_cf.slurm</code> →
+      <code>run_eval_reduce.slurm</code>, 200 images per group). Nothing here is a no-policy
+      countermeasure sweep or an offline proxy: where a comparison claims "confirmed," a paired
+      significance test or a bootstrap confidence interval backs it, not a point-estimate eyeball.
+    </p>
+  </header>
+
+  <section>
+    <h2>The five arms</h2>
+    <p class="section-note">One card per checkpoint directory. The pill is this arm's verdict against
+      the committed default, established by the paired tests in the confidence panel below —
+      not by reading the point estimates alone.</p>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <section>
+    <h2>Full metric table</h2>
+    <p class="section-note">CV is reported for completeness but is not a gate — it is scored against
+      the same classifier that guided generation, so it is circular by construction. LHR and transfer
+      ratio, scored against ground truth and independent held-out classifiers respectively, are the
+      metrics that carry evidential weight.</p>
+    <div class="table-scroll">
+      <table id="main-table"></table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Lesion Hit Rate lift</h2>
+    <p class="section-note">Fraction of edit mass landing inside the radiologist's box, divided by the
+      chance baseline (box area fraction) — 1.0 is chance. Defined for p→n only: the n→p source images
+      are classifier-negative and carry no lesion annotation.</p>
+    <div class="chart-card">
+      <div class="chart-wrap">
+        <svg id="chart-lhr" viewBox="0 0 860 300" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="tooltip" id="tt-lhr"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-title">Held-out transfer ratio, mean across validators</div>
+      <div class="chart-sub">Δ(independent classifier) / Δ(guidance classifier). Dashed line at 0.15
+        marks <code>arm_transfer.py</code>'s adversarial threshold. 3-model ensemble is scored on the
+        reduced validator set {nih, pc} only — mimic_ch was dropped once mimic_nb joined guidance —
+        so it is not directly comparable to the other four arms' 3-validator mean.</div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-swatch tint" style="background:var(--ink-2)"></span>n→p</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--ink-2)"></span>p→n</span>
+      </div>
+      <div class="chart-wrap">
+        <svg id="chart-transfer" viewBox="0 0 420 320" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="tooltip" id="tt-transfer"></div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Edit concentration</div>
+      <div class="chart-sub">Share of total |Δ| carried by the top 5% of pixels. Lower dashed line is
+        the 0.05 uniform-mass baseline; upper dashed line is the ≈0.5 threshold that would indicate a
+        focal, lesion-shaped edit. No arm has come close to it.</div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-swatch tint" style="background:var(--ink-2)"></span>n→p</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--ink-2)"></span>p→n</span>
+      </div>
+      <div class="chart-wrap">
+        <svg id="chart-concentration" viewBox="0 0 420 320" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="tooltip" id="tt-concentration"></div>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <h2>What's actually confirmed</h2>
+    <p class="section-note">Every arrow below is a paired significance test or bootstrap CI against the
+      committed default (2-model ensemble), not a point-estimate comparison. Where the interval crosses
+      zero or the sample is too small to trust, that is stated plainly rather than rounded up to a verdict.</p>
+    <div class="confidence" id="confidence"></div>
+  </section>
+
+  <footer id="footer"></footer>
+
+</div>
+
+<script>
+const ARMS = [
+  {
+    id: "single",
+    name: "Single-classifier",
+    tag: "checkpoints/archive_pre_ensemble_default_20260812",
+    color: "var(--arm-1)",
+    badge: null,
+    verdict: { label: "Historical baseline", kind: "neutral" },
+    cv: 0.940, cv_np: 0.980, cv_pn: 0.900,
+    lhr: 2.293, n_pairs: 183,
+    transfer_np: 0.230, transfer_pn: 0.146, transfer_validators: "nih, pc, mimic_ch",
+    ec_np: 0.252, ec_pn: 0.294,
+    gpu: "pre-existing",
+  },
+  {
+    id: "ens2",
+    name: "2-model ensemble",
+    tag: "checkpoints/ + checkpoints_ens_default/",
+    color: "var(--arm-2)",
+    badge: "DEFAULT",
+    verdict: { label: "Committed default", kind: "neutral" },
+    cv: 0.838, cv_np: 0.960, cv_pn: 0.715,
+    lhr: 2.673, n_pairs: 148,
+    transfer_np: 0.282, transfer_pn: 0.293, transfer_validators: "nih, pc, mimic_ch",
+    ec_np: 0.253, ec_pn: 0.318,
+    gpu: "pre-existing",
+  },
+  {
+    id: "ens3",
+    name: "3-model ensemble",
+    tag: "checkpoints_ens3/",
+    color: "var(--arm-3)",
+    badge: null,
+    verdict: { label: "Mixed / inconclusive", kind: "warning" },
+    cv: 0.624, cv_np: 0.685, cv_pn: 0.563,
+    lhr: 2.492, n_pairs: 27,
+    transfer_np: 0.350, transfer_pn: 0.276, transfer_validators: "nih, pc only *",
+    ec_np: 0.259, ec_pn: 0.303,
+    gpu: "≈11 GPU-h",
+  },
+  {
+    id: "sparsity",
+    name: "Sparsity reward",
+    tag: "checkpoints_sparsity/",
+    color: "var(--arm-4)",
+    badge: null,
+    verdict: { label: "Confirmed worse", kind: "critical" },
+    cv: 0.830, cv_np: 0.935, cv_pn: 0.725,
+    lhr: 2.398, n_pairs: 148,
+    transfer_np: 0.311, transfer_pn: 0.212, transfer_validators: "nih, pc, mimic_ch",
+    ec_np: 0.264, ec_pn: 0.299,
+    gpu: "≈14 GPU-h",
+  },
+  {
+    id: "gradcam",
+    name: "Grad-CAM fix",
+    tag: "checkpoints_gradcam_fix/",
+    color: "var(--arm-5)",
+    badge: null,
+    verdict: { label: "Confirmed much worse", kind: "critical" },
+    cv: 0.017, cv_np: 0.015, cv_pn: 0.020,
+    lhr: 1.636, n_pairs: 148,
+    transfer_np: 0.161, transfer_pn: 0.103, transfer_validators: "nih, pc, mimic_ch",
+    ec_np: 0.211, ec_pn: 0.269,
+    gpu: "≈57 GPU-h",
+  },
+];
+
+const CONFIDENCE = [
+  {
+    pair: "Single-classifier → 2-model ensemble",
+    d: -0.482, p: "7.1×10⁻⁵", n: 76,
+    verdict: "Confirmed better. 2-model ensemble wins the paired LHR comparison on the 76 images both arms share annotations for.",
+    kind: "good",
+  },
+  {
+    pair: "2-model ensemble → 3-model ensemble",
+    d: 0.140, p: "0.638", n: 12,
+    verdict: "Not detectable. Only 12 annotated images are shared between these two arms — the CI [−0.298, +0.482] is too wide to read anything into. pc transfer did improve with a non-overlapping CI, separately.",
+    kind: "warning",
+  },
+  {
+    pair: "2-model ensemble → sparsity reward",
+    d: 0.512, p: "4.7×10⁻⁹", n: 148,
+    verdict: "Confirmed worse. Medium effect. Edit concentration barely moved either — the reward did not achieve its own design goal.",
+    kind: "critical",
+  },
+  {
+    pair: "2-model ensemble → Grad-CAM fix",
+    d: 1.205, p: "1.5×10⁻³⁰", n: 148,
+    verdict: "Confirmed much worse. The largest paired effect measured anywhere in this project. CV collapsed to 0.017 — the policy stopped succeeding at the base task.",
+    kind: "critical",
+  },
+];
+
+const cvv = getComputedStyle(document.documentElement);
+function col(v) { return v.startsWith("var(") ? v : v; }
+
+// ---------- cards ----------
+const cardsEl = document.getElementById("cards");
+ARMS.forEach(a => {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.style.setProperty("--swatch", a.color);
+  card.innerHTML = `
+    <div class="card-name">${a.name}${a.badge ? ` <span class="pill neutral"><span class="dot"></span>${a.badge}</span>` : ""}</div>
+    <div class="card-tag">${a.tag}</div>
+    <span class="pill ${a.verdict.kind}" style="margin-left:0.4rem;width:fit-content"><span class="dot"></span>${a.verdict.label}</span>
+    <div class="card-stat"><span class="num">${a.lhr.toFixed(3)}</span><span class="lbl">LHR lift, n=${a.n_pairs}</span></div>
+  `;
+  cardsEl.appendChild(card);
+});
+
+// ---------- table ----------
+const table = document.getElementById("main-table");
+table.innerHTML = `
+  <thead><tr>
+    <th>Arm</th>
+    <th class="num">CV mean</th>
+    <th class="num">LHR lift (p→n)</th>
+    <th class="num">n_pairs</th>
+    <th class="num">Transfer n→p</th>
+    <th class="num">Transfer p→n</th>
+    <th class="num">EditConc. n→p</th>
+    <th class="num">EditConc. p→n</th>
+    <th>Notes</th>
+  </tr></thead>
+  <tbody>
+    ${ARMS.map(a => `
+      <tr>
+        <td><div class="arm-name-cell"><span class="arm-swatch" style="background:${a.color}"></span>${a.name}</div></td>
+        <td class="num">${a.cv.toFixed(3)}</td>
+        <td class="num ${a.lhr === Math.max(...ARMS.map(x=>x.lhr)) ? "best" : ""}">${a.lhr.toFixed(3)}</td>
+        <td class="num">${a.n_pairs}${a.n_pairs < 100 ? '<span class="foot-star">†</span>' : ""}</td>
+        <td class="num">${a.transfer_np.toFixed(3)}${a.transfer_validators.includes("*") || a.transfer_validators === "nih, pc only *" ? '<span class="foot-star">*</span>' : ""}</td>
+        <td class="num">${a.transfer_pn.toFixed(3)}</td>
+        <td class="num">${a.ec_np.toFixed(3)}</td>
+        <td class="num">${a.ec_pn.toFixed(3)}</td>
+        <td class="notes">${a.transfer_validators}${a.n_pairs < 100 ? " · small annotated overlap, wide CI" : ""}</td>
+      </tr>
+    `).join("")}
+  </tbody>
+`;
+
+// ---------- confidence panel ----------
+const confEl = document.getElementById("confidence");
+CONFIDENCE.forEach(c => {
+  const kindColor = c.kind === "good" ? "var(--status-good)" : c.kind === "critical" ? "var(--status-critical)" : "var(--status-warning)";
+  const div = document.createElement("div");
+  div.className = "conf-card";
+  div.style.borderTop = `3px solid ${kindColor}`;
+  div.innerHTML = `
+    <div class="conf-pair">${c.pair}</div>
+    <div class="conf-stat-row"><span>Cohen's d</span><span>${c.d > 0 ? "+" : ""}${c.d.toFixed(3)}</span></div>
+    <div class="conf-stat-row"><span>p-value</span><span>${c.p}</span></div>
+    <div class="conf-stat-row"><span>paired n</span><span>${c.n}</span></div>
+    <div class="conf-verdict">${c.verdict}</div>
+  `;
+  confEl.appendChild(div);
+});
+
+// ---------- footer ----------
+document.getElementById("footer").innerHTML = `
+  <div>All five checkpoints trained under the identical protocol: 800 PPO episodes per direction,
+  <code>BUDGET_T=25</code>, evaluated on 200 images per group via <code>run_eval_cf.slurm</code> →
+  <code>run_eval_reduce.slurm</code>. Committed default is the 2-model ensemble
+  (<code>USE_GUIDANCE_ENSEMBLE=True</code>, <code>GUIDANCE_ENSEMBLE_WEIGHTS=[rsna, chex]</code>,
+  <code>USE_GRADCAM_MASK=False</code>, <code>USE_SPARSITY_REWARD=False</code>) — every experimental arm
+  changed exactly one flag relative to it and was reverted after evaluation.</div>
+  <div class="gpu-row">
+    ${ARMS.map(a => `<span class="gpu-chip">${a.name}: ${a.gpu}</span>`).join("")}
+  </div>
+  <div>† small paired-annotation overlap between this arm's shards and the default's — see the
+  confidence panel above before reading its LHR figure as decisive.
+  * reduced, leak-free validator set (mimic_ch excluded) — not directly comparable to the 3-validator mean.</div>
+`;
+
+// ================= CHARTS =================
+
+function makeTooltip(id) {
+  const el = document.getElementById(id);
+  return {
+    show(x, y, html, parentRect) {
+      el.innerHTML = html;
+      el.style.left = x + "px";
+      el.style.top = (y - 10) + "px";
+      el.classList.add("show");
+    },
+    hide() { el.classList.remove("show"); }
+  };
+}
+
+function svgns(tag) { return document.createElementNS("http://www.w3.org/2000/svg", tag); }
+
+// ---- Chart 1: LHR lift, single-series horizontal bars ----
+(function () {
+  const svg = document.getElementById("chart-lhr");
+  const tt = makeTooltip("tt-lhr");
+  const W = 860, H = 300;
+  const marginL = 150, marginR = 46, marginT = 16, marginB = 34;
+  const plotW = W - marginL - marginR, plotH = H - marginT - marginB;
+  const maxVal = 3.0;
+  const x = v => marginL + (v / maxVal) * plotW;
+  const barH = 30, gap = (plotH - barH * ARMS.length) / (ARMS.length + 1);
+
+  // grid + axis
+  [0, 0.5, 1, 1.5, 2, 2.5, 3].forEach(v => {
+    const gx = x(v);
+    const l = svgns("line");
+    l.setAttribute("class", "grid-line");
+    l.setAttribute("x1", gx); l.setAttribute("x2", gx);
+    l.setAttribute("y1", marginT); l.setAttribute("y2", H - marginB);
+    svg.appendChild(l);
+    const t = svgns("text");
+    t.setAttribute("class", "axis-label");
+    t.setAttribute("x", gx); t.setAttribute("y", H - marginB + 16);
+    t.setAttribute("text-anchor", "middle");
+    t.textContent = v.toFixed(1);
+    svg.appendChild(t);
+  });
+
+  // reference lines: chance (1.0), no-policy baseline (2.057)
+  [{v:1.0, label:"chance"}, {v:2.057, label:"no-policy baseline"}].forEach(ref => {
+    const gx = x(ref.v);
+    const l = svgns("line");
+    l.setAttribute("class", "ref-line");
+    l.setAttribute("x1", gx); l.setAttribute("x2", gx);
+    l.setAttribute("y1", marginT); l.setAttribute("y2", H - marginB);
+    svg.appendChild(l);
+    const t = svgns("text");
+    t.setAttribute("class", "ref-label");
+    t.setAttribute("x", gx + 4); t.setAttribute("y", marginT + 10);
+    t.textContent = ref.label;
+    svg.appendChild(t);
+  });
+
+  ARMS.forEach((a, i) => {
+    const y = marginT + gap + i * (barH + gap);
+    const rect = svgns("rect");
+    rect.setAttribute("class", "bar");
+    rect.setAttribute("x", marginL);
+    rect.setAttribute("y", y);
+    rect.setAttribute("width", x(a.lhr) - marginL);
+    rect.setAttribute("height", barH);
+    rect.setAttribute("rx", 4);
+    rect.setAttribute("fill", a.color);
+    svg.appendChild(rect);
+
+    const label = svgns("text");
+    label.setAttribute("class", "cat-label");
+    label.setAttribute("x", marginL - 12);
+    label.setAttribute("y", y + barH / 2 + 4);
+    label.setAttribute("text-anchor", "end");
+    label.textContent = a.name;
+    svg.appendChild(label);
+
+    const val = svgns("text");
+    val.setAttribute("class", "value-label");
+    val.setAttribute("x", x(a.lhr) + 8);
+    val.setAttribute("y", y + barH / 2 + 4);
+    val.textContent = a.lhr.toFixed(3);
+    svg.appendChild(val);
+
+    rect.addEventListener("mousemove", (e) => {
+      const r = svg.getBoundingClientRect();
+      tt.show(e.clientX - r.left, e.clientY - r.top, `<b>${a.name}</b><br>LHR lift: <b>${a.lhr.toFixed(3)}</b> (n_pairs=${a.n_pairs})<br>${a.n_pairs < 100 ? "small annotated overlap with default — read with caution" : "same 148-image protocol as the default"}`);
+    });
+    rect.addEventListener("mouseleave", tt.hide);
+  });
+})();
+
+// ---- Chart 2 & 3: grouped bar charts (n→p tint, p→n solid), vertical, arms on x-axis ----
+function groupedBarChart(svgId, ttId, field_np, field_pn, opts) {
+  const svg = document.getElementById(svgId);
+  const tt = makeTooltip(ttId);
+  const W = 420, H = 320;
+  const marginL = 42, marginR = 10, marginT = 14, marginB = 56;
+  const plotW = W - marginL - marginR, plotH = H - marginT - marginB;
+  const maxVal = opts.maxVal;
+  const y = v => marginT + plotH - (v / maxVal) * plotH;
+  const groupW = plotW / ARMS.length;
+  const barW = groupW * 0.30;
+
+  [0, maxVal * 0.25, maxVal * 0.5, maxVal * 0.75, maxVal].forEach(v => {
+    const gy = y(v);
+    const l = svgns("line");
+    l.setAttribute("class", "grid-line");
+    l.setAttribute("x1", marginL); l.setAttribute("x2", W - marginR);
+    l.setAttribute("y1", gy); l.setAttribute("y2", gy);
+    svg.appendChild(l);
+    const t = svgns("text");
+    t.setAttribute("class", "axis-label");
+    t.setAttribute("x", marginL - 6); t.setAttribute("y", gy + 3);
+    t.setAttribute("text-anchor", "end");
+    t.textContent = v.toFixed(2);
+    svg.appendChild(t);
+  });
+
+  (opts.refs || []).forEach(ref => {
+    const gy = y(ref.v);
+    const l = svgns("line");
+    l.setAttribute("class", "ref-line");
+    l.setAttribute("x1", marginL); l.setAttribute("x2", W - marginR);
+    l.setAttribute("y1", gy); l.setAttribute("y2", gy);
+    svg.appendChild(l);
+    const t = svgns("text");
+    t.setAttribute("class", "ref-label");
+    t.setAttribute("x", W - marginR); t.setAttribute("y", gy - 3);
+    t.setAttribute("text-anchor", "end");
+    t.textContent = ref.label;
+    svg.appendChild(t);
+  });
+
+  ARMS.forEach((a, i) => {
+    const gx = marginL + i * groupW + groupW / 2;
+    const vNp = a[field_np], vPn = a[field_pn];
+
+    const rNp = svgns("rect");
+    rNp.setAttribute("class", "bar bar-tint");
+    rNp.setAttribute("x", gx - barW - 2);
+    rNp.setAttribute("y", y(vNp));
+    rNp.setAttribute("width", barW);
+    rNp.setAttribute("height", plotH + marginT - y(vNp));
+    rNp.setAttribute("rx", 3);
+    rNp.setAttribute("fill", a.color);
+    svg.appendChild(rNp);
+
+    const rPn = svgns("rect");
+    rPn.setAttribute("class", "bar");
+    rPn.setAttribute("x", gx + 2);
+    rPn.setAttribute("y", y(vPn));
+    rPn.setAttribute("width", barW);
+    rPn.setAttribute("height", plotH + marginT - y(vPn));
+    rPn.setAttribute("rx", 3);
+    rPn.setAttribute("fill", a.color);
+    svg.appendChild(rPn);
+
+    [[rNp, "n→p", vNp], [rPn, "p→n", vPn]].forEach(([rect, dir, val]) => {
+      rect.addEventListener("mousemove", (e) => {
+        const r = svg.getBoundingClientRect();
+        tt.show(e.clientX - r.left, e.clientY - r.top, `<b>${a.name}</b><br>${dir}: <b>${val.toFixed(3)}</b>`);
+      });
+      rect.addEventListener("mouseleave", tt.hide);
+    });
+
+    const label = svgns("text");
+    label.setAttribute("class", "cat-label");
+    label.setAttribute("x", gx);
+    label.setAttribute("y", H - marginB + 16);
+    label.setAttribute("text-anchor", "middle");
+    label.style.fontSize = "9.5px";
+    const words = a.name.split(" ");
+    words.forEach((w, wi) => {
+      const tspan = svgns("tspan");
+      tspan.setAttribute("x", gx);
+      tspan.setAttribute("dy", wi === 0 ? 0 : 11);
+      tspan.textContent = w;
+      label.appendChild(tspan);
+    });
+    svg.appendChild(label);
+  });
+}
+
+groupedBarChart("chart-transfer", "tt-transfer", "transfer_np", "transfer_pn", {
+  maxVal: 0.7,
+  refs: [{ v: 0.15, label: "adversarial threshold" }],
+});
+groupedBarChart("chart-concentration", "tt-concentration", "ec_np", "ec_pn", {
+  maxVal: 0.55,
+  refs: [{ v: 0.05, label: "uniform baseline" }, { v: 0.5, label: "focal threshold" }],
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,75 @@
+{
+  "validators": [
+    "densenet121-res224-nih",
+    "densenet121-res224-pc",
+    "densenet121-res224-mimic_ch"
+  ],
+  "arms": {
+    "shards": {
+      "n_per_group": 200,
+      "guidance": [
+        "densenet121-res224-rsna"
+      ],
+      "delta_guidance_n_to_p": 0.475261390209198,
+      "delta_guidance_p_to_n": 0.8273122310638428,
+      "group_source": "classifier",
+      "validators": {
+        "densenet121-res224-nih": {
+          "delta_n_to_p": 0.09682072699069977,
+          "delta_p_to_n": -0.08226385712623596,
+          "ratio_n_to_p": 0.20372100276877475,
+          "ratio_p_to_n": -0.09943507908791904,
+          "verdict": "partial/ADVERSARIAL",
+          "original_agreement_spearman": 0.7451011568822306,
+          "ci_n_to_p": [
+            0.11035453993827105,
+            0.29785600677132607
+          ],
+          "ci_p_to_n": [
+            -0.13670190759003162,
+            -0.06212849542498589
+          ],
+          "n_boot": 10000
+        },
+        "densenet121-res224-pc": {
+          "delta_n_to_p": 0.2770979404449463,
+          "delta_p_to_n": 0.09840206801891327,
+          "ratio_n_to_p": 0.5830432392645546,
+          "ratio_p_to_n": 0.11894187505529541,
+          "verdict": "TRANSFERS/ADVERSARIAL",
+          "original_agreement_spearman": 0.7820077625485158,
+          "ci_n_to_p": [
+            0.5217728599905967,
+            0.643063397705555
+          ],
+          "ci_p_to_n": [
+            0.10125959180295467,
+            0.13707920648157595
+          ],
+          "n_boot": 10000
+        },
+        "densenet121-res224-mimic_ch": {
+          "delta_n_to_p": 0.15142206847667694,
+          "delta_p_to_n": 0.13167612254619598,
+          "ratio_n_to_p": 0.31860797362484,
+          "ratio_p_to_n": 0.15916133909548677,
+          "verdict": "partial/partial",
+          "original_agreement_spearman": 0.6486653666585416,
+          "ci_n_to_p": [
+            0.24692014120519162,
+            0.38697165846824644
+          ],
+          "ci_p_to_n": [
+            0.12754166163504124,
+            0.1909498356282711
+          ],
+          "n_boot": 10000
+        }
+      },
+      "mean_ratio_n_to_p": 0.3684574052193898,
+      "mean_ratio_p_to_n": 0.05955604502095438,
+      "mean_over_n_validators": 3,
+      "mean_is_independence_check": true
+    }
+  }
+}

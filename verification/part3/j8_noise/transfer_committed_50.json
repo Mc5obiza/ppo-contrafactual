@@ -1,0 +1,49 @@
+{
+  "validators": [
+    "densenet121-res224-nih",
+    "densenet121-res224-pc",
+    "densenet121-res224-mimic_ch"
+  ],
+  "arms": {
+    "committed_first50": {
+      "n_per_group": 50,
+      "guidance": [
+        "densenet121-res224-rsna",
+        "densenet121-res224-chex"
+      ],
+      "delta_guidance_n_to_p": 0.8910737633705139,
+      "delta_guidance_p_to_n": 0.7889679670333862,
+      "group_source": "classifier",
+      "validators": {
+        "densenet121-res224-nih": {
+          "delta_n_to_p": 0.0485050193965435,
+          "delta_p_to_n": 0.14528962969779968,
+          "ratio_n_to_p": 0.054434348075822335,
+          "ratio_p_to_n": 0.1841514938104598,
+          "verdict": "ADVERSARIAL/partial",
+          "original_agreement_spearman": 0.8387278727872786
+        },
+        "densenet121-res224-pc": {
+          "delta_n_to_p": 0.3949550986289978,
+          "delta_p_to_n": 0.2555524706840515,
+          "ratio_n_to_p": 0.4432350214589059,
+          "ratio_p_to_n": 0.32390728313718403,
+          "verdict": "partial/partial",
+          "original_agreement_spearman": 0.7067386738673865
+        },
+        "densenet121-res224-mimic_ch": {
+          "delta_n_to_p": 0.27220121026039124,
+          "delta_p_to_n": 0.28141433000564575,
+          "ratio_n_to_p": 0.30547550769622234,
+          "ratio_p_to_n": 0.3566866359147599,
+          "verdict": "partial/partial",
+          "original_agreement_spearman": 0.6098649864986498
+        }
+      },
+      "mean_ratio_n_to_p": 0.26771495907698356,
+      "mean_ratio_p_to_n": 0.2882484709541346,
+      "mean_over_n_validators": 3,
+      "mean_is_independence_check": true
+    }
+  }
+}

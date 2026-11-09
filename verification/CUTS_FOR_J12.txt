@@ -1,0 +1,64 @@
+CUTS_FOR_J12.txt -- page-budget cuts to make room for the J12 (tuned fixed-schedule grid) result.
+NOT APPLIED. Written 2026-11-04 against the main text as of the audit pass (Conclusion ends on the
+last line of page 8, zero slack). Line counts are rendered two-column lines (~55 chars/line),
+measured from the compiled PDF; savings are approximate because paragraphs reflow.
+
+Target: about 5 lines (J12 needs ~1-2 sentences in Sec 5.2 plus replacing the TODO(J12) clause in Sec 6).
+Apply in this order and stop once the Conclusion fits on page 8 again.
+
+------------------------------------------------------------------------------------------------
+NO CLAIM REMOVED (the same content stays in the main text elsewhere)
+------------------------------------------------------------------------------------------------
+
+1. Sec 1 Introduction (sec/1_intro.tex, paragraph 3) -- saves ~3 lines.
+   Delete: "In normal-to-pneumonia the learned policy ends 199 of 200 evaluation episodes after one
+   step, with strength and guidance bias at their bounds and three passes on every step; in
+   pneumonia-to-normal it averages 5.46 steps."
+   Why safe: every number is repeated in Sec 6 "Adaptivity is limited" (199/200, bounds, three
+   passes, mean 5.46). The intro keeps "largely refutes it" and the fixed-schedule sentence that
+   carries the evidence.
+
+2. Sec 5.2 (sec/5_experiments.tex, first paragraph) -- saves ~1-2 lines.
+   Delete: "The policy succeeds at the base task far more often in n$\to$p (CV 0.945) than in
+   p$\to$n (0.670)." and change the next sentence's "It concentrates" -> "The policy concentrates".
+   Why safe: both CVs are in Table 2, directly beside the text.
+
+3. Sec 5.2 (same paragraph) -- saves ~1 line.
+   Delete: "The edits are class-informative and diffuse at the same time."
+   Why safe: restates "And yet the edits are diffuse within the lung." two sentences earlier.
+
+4. Sec 5.6 Qualitative examples (sec/5_experiments.tex, last paragraph) -- saves ~1-2 lines.
+   Delete: " while rib cage, mediastinal silhouette and external hardware remain visible outside
+   the edited region" (keep the f(x) values and the concentration sentence).
+   Why safe: the Fig. 2 caption already says "anatomy and external hardware outside the lung mask
+   remain visible".
+
+5. Table 4 header (sec/5_experiments.tex, tab:five-arms) -- saves ~1 line; check width.
+   Merge the two header rows into one: "Arm & LHR & Transfer n$\to$p/p$\to$n & Paired LHR vs.\ default".
+   Why safe: wording only. Risk: may widen the column table; recompile and check for overfull hbox.
+
+   Items 1-4 together: ~6-8 lines, which covers the target with no claim lost.
+
+------------------------------------------------------------------------------------------------
+MOVES A CLAIM TO THE SUPPLEMENT (use only if 1-5 are not enough)
+------------------------------------------------------------------------------------------------
+
+6. Sec 5.4 (paragraph "Ensemble vs. single-classifier guidance, and seed variation") -- saves ~4 lines.
+   Move to Supp. E5 (or E1): "Without a policy (groups selected by label), ensemble guidance raises
+   paired LHR lift over \texttt{rsna}-only guidance by $+0.069$, $+0.069$ and $+0.058$ across three
+   evaluation seeds (all 95\% CIs excluding zero), a smaller effect that is not a replication of
+   the trained comparison."
+   Claim moved: the policy-free ensemble-vs-rsna LHR effect.
+
+7. Sec 5.4 paragraph "The single-classifier policy beats a random one, but barely." -- saves ~6 lines
+   (heading + 5 lines). Move whole paragraph to the supplement.
+   Claim moved: single-classifier policy vs random-action arm (+0.090, d = 0.189).
+
+------------------------------------------------------------------------------------------------
+LARGE OPTION (no claim removed, but drops the only results figure)
+------------------------------------------------------------------------------------------------
+
+8. Move Fig. 1 (LHR lift bar chart) to the supplement and add one reference row to Table 4:
+   "No policy (reference) & 2.064 & 0.307/0.169 & worse ($d{=}0.764$)".
+   Saves ~13-15 lines net. Fig. 1 plots exactly Table 4's LHR column plus the 2.064 line, which the
+   new row carries. Only worth it if J12 needs its own table row or figure.

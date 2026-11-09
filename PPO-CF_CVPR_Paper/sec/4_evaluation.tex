@@ -1,0 +1,51 @@
+\section{Evaluation Protocol}
+\label{sec:evaluation}
+
+\subsection{Conventional metrics}
+\label{sec:conventional-metrics}
+
+Following~\cite{singla2022explaining}, the evaluation set is split by classifier confidence into $X_n = \{x : f(x) < 0.2\}$ and $X_p = \{x : f(x) > 0.8\}$, up to $n_{\text{eval}} = 200$ each, and each directional policy generates from the corresponding group with its deterministic (mean) action. Full definitions of every metric below are given in Supp.~R6.
+
+\paragraph{Counterfactual Validity.} With $s = 2c - 1$ ($+1$ for n$\to$p, $-1$ for p$\to$n),
+\begin{equation}
+\mathrm{CV} = \frac{1}{N}\sum_{i=1}^{N} \mathbf{1}\!\left[\, s\,\Delta_i \geq \tau \,\wedge\, B_i \,\right],
+\label{eq:cv}
+\end{equation}
+where $\Delta_i = f(x^i_c) - f(x^i)$, $B_i$ requires $s\,(f(x^i_c) - 0.5) > 0$ and $s\,(f(x^i) - 0.5) \leq 0$, $f$ is the guidance classifier (the ensemble mean in ensemble arms) and $\tau = 0.8$. On $X_n$ and $X_p$ the crossing condition $B_i$ is redundant: $f(x) < 0.2$ and $s\,\Delta_i \geq 0.8$ already give $f(x_c) \geq 0.8$ for n$\to$p, and symmetrically for p$\to$n. The tightening over the original, direction-agnostic definition therefore comes from the sign requirement alone: an image moving the wrong way by a large margin is no longer credited.
+
+\paragraph{FID.} Between each direction's counterfactuals and the real images of its target group ($X_p$ for n$\to$p, $X_n$ for p$\to$n; selected by $f$, not by label), on 1024-d features of a TorchXRayVision DenseNet-121~\cite{cohen2022torchxrayvision} with \texttt{rsna} weights rather than Inception-v3. These weights also guide generation in every trained arm (the 3-model ensemble is \texttt{rsna}, \texttt{chex}, \texttt{mimic\_nb}), so FID is not independent of guidance. With $n \leq 200$ samples in a 1024-d feature space FID is high-variance; we report its bootstrap interval and KID in Supp.~E6 and do not rank arms by it.
+
+\paragraph{Identity Preservation (IP).} As a dependency-free substitute for FOP we report MS-SSIM and HF-corr $= (1 + r)/2$, where $r$ is the Pearson correlation between the high-pass-filtered source and counterfactual (0.5 means uncorrelated), a proxy for whether thin structures such as tubes, leads and pacemakers survive editing.
+
+\paragraph{Edit concentration.} The share of $\sum |x_c - x|$ held by the top 5\% of pixels, averaged over pairs; spatially uniform change scores exactly 0.05. We also report the fraction of pixels with $|x_c - x| > 0.01$; part of it is VAE reconstruction error, separated out in Supp.~E6. There is no calibrated threshold; as an illustrative heuristic only, a compact lesion-shaped edit would place roughly half or more of its mass in the top 5\%.
+
+\subsection{Ground-truth-anchored Lesion Hit Rate}
+\label{sec:lhr}
+
+CV, FID and IP share a blind spot: none of them can tell whether the edit landed on the pathology. RSNA ships 9{,}555 radiologist-drawn opacity boxes~\cite{shih2019augmenting}, which we retain. LHR adapts the energy-based pointing game~\cite{wang2020scorecam} to edits. With $\delta = |x_c - x|$, box mask $A$ and lung mask $L$ (lung probability $>0.5$, the same segmenter that drives the lock), the per-image lift is
+\begin{equation}
+\ell = \frac{\sum_{A \cap L} \delta \,/\, \sum_{L} \delta}{|A \cap L| \,/\, |L|},
+\label{eq:lhr}
+\end{equation}
+and LHR is its mean over annotated images. The edit mass and the null are both restricted to the lung, so any lesion-blind edit that stays in the lung scores 1. LHR is defined only for p$\to$n, since n$\to$p sources carry no annotation (Supp.~R6).
+
+The restriction is not cosmetic. With the whole image as the null ($\sum_A \delta / \sum \delta$ over $|A|/HW$, the pointing-game convention), a uniform wash scores 1.00, but a uniform wash over the lung scores 3.21, because boxes lie in the lung and the lock keeps most edit mass there. Under that null, our default policy scores 2.60, below a lesion-blind in-lung edit. We report it only as context. Three further nulls calibrate Eq.~\eqref{eq:lhr} (Supp.~E7). The VAE round trip $|D(E(x)) - x|$ alone scores 0.98, and measuring the edit against $D(E(x))$ instead of $x$ leaves LHR unchanged, so autoencoder error does not create or hide lift. Scoring each edit against \emph{other} patients' boxes gives the share of lift explained by where lesions typically lie, rather than by this image's lesion.
+
+\subsection{Held-out transfer}
+\label{sec:transfer}
+
+Because CV is computed with the guidance classifier, it cannot separate a class-relevant edit from an adversarial perturbation. We therefore re-score every counterfactual with three TorchXRayVision DenseNet-121 classifiers that never participated in guidance and report, per validator $v$ and direction, the ratio of the validator's mean signed score shift to the guidance model's own shift over the same $N$ images,
+\begin{equation}
+\rho_v = \frac{\sum_i s\,\big(f_v(x^i_c) - f_v(x^i)\big)}{\sum_i s\,\big(f(x^i_c) - f(x^i)\big)},
+\label{eq:transfer}
+\end{equation}
+a ratio of means rather than a mean of per-image ratios, undefined when the guidance shift is zero. 95\% intervals are percentile bootstraps over the $N$ images (10{,}000 resamples, numerator and denominator resampled jointly).
+The validators differ in how independent they are of RSNA. \texttt{pc} (PadChest~\cite{bustos2020padchest}) and \texttt{mimic\_ch} (MIMIC-CXR~\cite{johnson2019mimic}) share no images with it. \texttt{nih} was trained on NIH ChestX-ray14~\cite{wang2017chestxray8}, of which RSNA's images are a subset~\cite{shih2019augmenting}, so it has probably seen our test fold's source images, though with NLP-mined labels rather than RSNA's radiologist labels, and its Pneumonia label is rare ($\approx$1\% prevalence). We therefore lead with the three-validator mean and report \texttt{nih} separately as the cell with the lowest transfer, not as the most independent one. Of the guidance models, \texttt{rsna} was trained on RSNA data and \texttt{chex} on CheXpert~\cite{irvin2019chexpert}. The denominator must be the shift of the classifier(s) that actually guided generation, so it is read from the configuration stamp each evaluation shard carries, which records the guidance classifiers for the default and later arms (the single-classifier arm's shards predate this key and are treated as single-classifier guidance).
+We do not threshold $\rho_v$. Two anchors calibrate it instead, both computed with the same machinery (Supp.~E8). The \emph{ceiling} is the ratio for real image pairs, the validator's mean positive-minus-negative score gap on the 5{,}337-image test fold over the guidance ensemble's gap. It is 0.47, 0.58 and 0.42 for \texttt{nih}, \texttt{pc} and \texttt{mimic\_ch}, so even real disease does not transfer fully. The \emph{floor} is the ratio of attacks on the guidance ensemble alone, applied to the same source images: FGSM and 10-step PGD with an $L_\infty$ budget, and $L_2$ PGD with each image's budget set to its counterfactual's $\|x_c - x\|_2$. We also report decision flips at each validator's own Youden-optimal threshold on the test fold. Pneumonia is rare in \texttt{nih}'s training labels and RSNA's positive class is ``Lung Opacity'', so we repeat everything with the validators' Consolidation, Infiltration and Lung Opacity outputs; conclusions do not change (Supp.~E8).
+
+\subsection{Controls the comparison requires}
+\label{sec:controls}
+
+A control-arm comparison needs three preconditions that we had assumed and that did not hold (full account in Supp.~E1): (i) one deterministic, persisted, patient-level split shared by LoRA fine-tuning, the PPO pool and evaluation, replacing a shared dataset object under which evaluation images had been seen during fine-tuning; (ii) seeded training, since two identical unseeded submissions produced two different policies; and (iii) control arms exercised end to end, which surfaced a routing bug and a shared output directory that would each have produced a well-formed but wrong table.
+Every reported run uses the 80/20 patient-level split with seed 0, LoRA seed 0, PPO seeds 1 (n$\to$p) and 2 (p$\to$n), and evaluation base seed 0; the seed replicates of Supp.~E10 change the PPO seed, and one of them also the LoRA seed. Generator fine-tuning, PPO rollouts and the validity probe use only the 80\% training fold; every evaluated image is in the 20\% test fold.
+Every default-arm number in the paper comes from one evaluation in which each direction uses its own adapter, on the same 400 test images and per-image seeds as the no-policy, fixed-schedule and seed-replicate runs of \S\ref{sec:main-results} and \S\ref{sec:five-arms}. The single-classifier arm shares split, seeds, reward weights, action ranges and anchoring with the default arm and differs only in the guidance flag, and through it in the classifier-selected groups (78 of 200 p$\to$n sources shared) and in hardware.

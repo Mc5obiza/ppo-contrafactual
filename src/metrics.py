@@ -73,7 +73,8 @@ def scan_groups(
     device: str = config.DEVICE,
     batch_size: int = 32,
     tag: str = "metrics",
-) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
+    allowed_indices=None,
+) -> tuple[list[torch.Tensor], list[int], list[torch.Tensor], list[int]]:
     """
     Split the dataset into Xn (f(x) < 0.2) and Xp (f(x) > 0.8) using the
     GUIDANCE classifier, truncated to n_eval each.
@@ -88,33 +89,72 @@ def scan_groups(
         (ingestion.py), whose index is sorted by key — so dataset index order is
         a stable function of patient ID, not of os.listdir order.
 
-    Returns (xn_list, xp_list), each a list of (1, 1, H, W) CPU tensors.
+    Returning the dataset indices does NOT weaken that contract: they are read
+    off the same shuffle=False walk that already fixes the order, so they are a
+    function of it rather than a new source of variation.
+
+    WHY THE INDICES MATTER. Returning tensors alone was the stated blocker for
+    every annotation-based metric — with no index there is no way back to the
+    patient, so no way to reach the radiologist-drawn lesion box for the image.
+    That is what left "did the edit land on the pathology" unmeasurable, and it
+    is the one question that separates a counterfactual from an adversarial
+    perturbation. See lesion_hit_rate.
+
+    `allowed_indices` restricts the scan to a fold (splits.py). Without it the
+    groups are drawn from the whole dataset, including the images the generator
+    was fine-tuned on and the policy did rollouts against.
+
+    Returns (xn_list, xn_indices, xp_list, xp_indices) — tensors are
+    (1, 1, H, W) CPU tensors; indices are ints into `dataset`, aligned
+    element-wise with the tensors.
     """
-    print(f"[{tag}] scanning dataset for Xn / Xp (n_eval={n_eval}) ...")
+    allowed = None if allowed_indices is None else set(int(i) for i in allowed_indices)
+    print(
+        f"[{tag}] scanning dataset for Xn / Xp (n_eval={n_eval})"
+        + ("" if allowed is None else f" over {len(allowed)} held-out images")
+        + " ..."
+    )
     loader = DataLoader(
         dataset, batch_size=batch_size, shuffle=False,
         num_workers=config.DATALOADER_NUM_WORKERS,
     )
 
+    # See config.EVAL_GROUP_SOURCE for why this is a knob and not a fix.
+    by_label = getattr(config, "EVAL_GROUP_SOURCE", "classifier") == "label"
+    if by_label:
+        print(f"[{tag}] groups from the RADIOLOGIST LABEL, not f(x) — CV is NOT "
+              f"comparable to classifier-selected runs (config.EVAL_GROUP_SOURCE)")
+
     xn_list, xp_list = [], []
+    xn_idx,  xp_idx  = [], []
+    base = 0
     with torch.no_grad():
-        for x_batch, _ in loader:
+        for x_batch, y_batch in loader:
             x_batch = x_batch.to(device)
-            scores = classifier(_to_rgb(x_batch)).squeeze(-1)
-            xn_list.extend([
-                x_batch[i].unsqueeze(0).cpu()
-                for i in range(len(x_batch)) if scores[i].item() < 0.2
-            ])
-            xp_list.extend([
-                x_batch[i].unsqueeze(0).cpu()
-                for i in range(len(x_batch)) if scores[i].item() > 0.8
-            ])
+            # Skip the forward pass entirely when the label decides membership.
+            scores = None if by_label else classifier(_to_rgb(x_batch)).squeeze(-1)
+            for i in range(len(x_batch)):
+                gidx = base + i
+                if allowed is not None and gidx not in allowed:
+                    continue
+                if by_label:
+                    is_neg = float(y_batch[i].reshape(-1)[0].item()) < 0.5
+                    is_pos = not is_neg
+                else:
+                    s = scores[i].item()
+                    is_neg, is_pos = s < 0.2, s > 0.8
+                if is_neg and len(xn_list) < n_eval:
+                    xn_list.append(x_batch[i].unsqueeze(0).cpu())
+                    xn_idx.append(gidx)
+                elif is_pos and len(xp_list) < n_eval:
+                    xp_list.append(x_batch[i].unsqueeze(0).cpu())
+                    xp_idx.append(gidx)
+            base += x_batch.shape[0]
             if len(xn_list) >= n_eval and len(xp_list) >= n_eval:
                 break
 
-    xn_list, xp_list = xn_list[:n_eval], xp_list[:n_eval]
     print(f"[{tag}] Xn={len(xn_list)}  Xp={len(xp_list)}")
-    return xn_list, xp_list
+    return xn_list, xn_idx, xp_list, xp_idx
 
 
 def score_batch(
@@ -155,6 +195,16 @@ def current_cfg_stamp() -> dict:
     checkpoint here and reward is never computed.
     """
     return {
+        # The BOOLEAN, not just the weight list. GUIDANCE_ENSEMBLE_WEIGHTS alone
+        # is inert when this is False, so two runs that differ only by flipping
+        # it produced entirely different guidance gradients while stamping
+        # identically — the arms would have pooled with the drift guard silent,
+        # which is the exact failure this stamp exists to prevent. Adding the key
+        # means shards written before this change cannot be re-reduced (the
+        # comparison in eval_main._load_shards is strict, deliberately); their
+        # metrics are already computed, and their raw tensors stay readable by
+        # paired_arm_test.py, which reads shards directly and not the stamp.
+        "USE_GUIDANCE_ENSEMBLE": config.USE_GUIDANCE_ENSEMBLE,
         "GUIDANCE_ENSEMBLE_WEIGHTS": list(config.GUIDANCE_ENSEMBLE_WEIGHTS),
         "ANCHOR_TO_EPISODE_ORIGIN": config.ANCHOR_TO_EPISODE_ORIGIN,
         "USE_GRADCAM_MASK": config.USE_GRADCAM_MASK,
@@ -171,6 +221,14 @@ def current_cfg_stamp() -> dict:
         "ALPHA_CLS": config.ALPHA_CLS,
         "ALPHA_PRES": config.ALPHA_PRES,
         "ETA_OBJ": config.ETA_OBJ,
+        # These three do not change how a counterfactual is GENERATED, but they
+        # change WHICH IMAGES get one — and pooling shards that disagree on the
+        # image set is exactly as wrong as pooling two ablation arms. The split
+        # fields catch a fold that moved underneath a half-finished array.
+        "EVAL_GROUP_SOURCE": getattr(config, "EVAL_GROUP_SOURCE", "classifier"),
+        "USE_SPLIT": getattr(config, "USE_SPLIT", False),
+        "SPLIT_SEED": getattr(config, "SPLIT_SEED", None),
+        "TEST_FRAC": getattr(config, "TEST_FRAC", None),
     }
 
 
@@ -764,6 +822,129 @@ def edit_concentration(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# 3d. Lesion Hit Rate (LHR)  —  the ground-truth localisation metric
+# ─────────────────────────────────────────────────────────────────────────────
+
+def lesion_hit_rate(
+    X_real: list[torch.Tensor],
+    X_cf:   list[torch.Tensor],
+    indices: list[int],
+    dataset,
+) -> dict:
+    """
+    Share of the edit's absolute-difference mass that falls INSIDE the
+    radiologist-drawn lesion annotation, against the annotation's area share as
+    the chance baseline.
+
+    WHY THIS IS THE METRIC THAT MATTERS
+    -----------------------------------
+    Every other score here is computed against a model. CV asks a classifier,
+    FID asks a feature extractor, CTR and SCP ask a segmenter and a COCO
+    backbone. All of them can be satisfied by an edit that changes the right
+    numbers for the wrong reason — which is exactly what held-out validation
+    caught: counterfactuals the guidance model accepted 99.5% of the time were
+    accepted 0-8% of the time by an independent one.
+
+    This metric asks a human instead. RSNA ships 9,555 opacity boxes drawn by
+    radiologists; `lesion_hit_rate` measures whether the pixels the system
+    changed are the pixels a radiologist circled. No classifier can be fooled
+    into agreeing.
+
+    INTERPRETATION
+    --------------
+      hit_rate  share of |x_cf - x| inside the annotation
+      null      the annotation's share of image area — what a spatially
+                UNIFORM edit scores, i.e. the chance floor
+      lift      hit_rate / null. 1.0 = indistinguishable from an edit that
+                ignores the annotation entirely. >1 = preferentially on the
+                lesion. This is the number to report.
+
+    The paired t-test is on (hit_rate - null) per image, so it answers "does the
+    edit land on the lesion more than chance", which is the actual claim.
+
+    ONLY DEFINED FOR THE p->n DIRECTION, AND THAT IS NOT A LIMITATION TO PAPER
+    OVER. p->n starts from a POSITIVE image, which has an annotation, and the
+    edit is supposed to remove what is inside it — so ground truth exists.
+    n->p starts from a NEGATIVE image, which has no annotation because there is
+    no finding to draw, so there is no ground-truth answer to "where should the
+    synthesized opacity go". Computing something here anyway would be inventing
+    a target. Callers must pass the positive-source group; run_full_evaluation
+    reports the n->p direction as not-applicable rather than as a number.
+
+    Skips images whose annotation is empty or covers the whole frame (a
+    degenerate box gives a null of 0 or 1 and an undefined lift).
+    """
+    if not hasattr(dataset, "lesion_mask"):
+        return {
+            "_omitted": (
+                f"dataset {type(dataset).__name__} exposes no lesion_mask(idx); "
+                f"this domain has no lesion annotation to score against"
+            )
+        }
+    if indices is None:
+        return {"_omitted": "dataset indices unavailable (shards predate index threading)"}
+
+    hits, nulls, lifts = [], [], []
+    n_no_annotation = 0
+
+    for x, xc, idx in zip(X_real, X_cf, indices):
+        mask = dataset.lesion_mask(int(idx)).to(torch.float32)     # (1, H, W)
+        null = float(mask.mean().item())
+        if null <= 0.0 or null >= 1.0:
+            n_no_annotation += 1
+            continue
+
+        # Collapse channels before masking so a multi-channel image contributes
+        # one difference map, matching the single-channel annotation.
+        d = (xc.float() - x.float()).abs()
+        while d.dim() > 3:
+            d = d.squeeze(0)
+        if d.shape[0] > 1:
+            d = d.mean(dim=0, keepdim=True)
+
+        total = float(d.sum().item())
+        if total <= 0:
+            continue                      # identity edit: hit rate undefined
+
+        inside = float((d * mask).sum().item())
+        hit = inside / total
+        hits.append(hit)
+        nulls.append(null)
+        lifts.append(hit / null)
+
+    if not hits:
+        return {
+            "_omitted": (
+                f"no scorable pairs: {n_no_annotation} of {len(X_real)} images had "
+                f"no usable lesion annotation"
+            )
+        }
+
+    # Imported here rather than at module scope to match run_full_evaluation,
+    # which does the same — scipy is a heavy import for a module that is loaded
+    # by every entry point.
+    from scipy import stats as scipy_stats
+
+    delta = np.array(hits) - np.array(nulls)
+    # ttest_rel needs >1 sample and a non-zero spread; a constant delta (every
+    # box identical) would divide by zero.
+    if len(delta) > 1 and float(delta.std()) > 0:
+        t_stat, p_val = scipy_stats.ttest_rel(np.array(hits), np.array(nulls))
+    else:
+        t_stat, p_val = float("nan"), float("nan")
+
+    return dict(
+        hit_rate=float(np.mean(hits)),      std_hit_rate=float(np.std(hits)),
+        null_baseline=float(np.mean(nulls)), std_null=float(np.std(nulls)),
+        lift=float(np.mean(lifts)),          std_lift=float(np.std(lifts)),
+        mean_delta=float(delta.mean()),      std_delta=float(delta.std()),
+        t=float(t_stat), p=float(p_val),
+        n_pairs=len(hits),
+        n_without_annotation=n_no_annotation,
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 4. Cardio-Thoracic Ratio (CTR)  —  cardiomegaly clinical metric
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -943,6 +1124,11 @@ def run_full_evaluation(
     xc_np: Optional[list[torch.Tensor]] = None,
     xc_pn: Optional[list[torch.Tensor]] = None,
     clinical_metrics: tuple[str, ...] = ("CTR", "SCP"),
+    # Dataset indices aligned with xn_list / xp_list. Required for LHR, which is
+    # the only metric here scored against ground truth rather than a model.
+    xn_idx: Optional[list[int]] = None,
+    xp_idx: Optional[list[int]] = None,
+    allowed_indices=None,
 ) -> dict:
     """
     Run the complete evaluation protocol from Singla et al. (2022).
@@ -1050,7 +1236,9 @@ def run_full_evaluation(
             )
     else:
         # ── scan dataset for Xn / Xp ──────────────────────────────────────────
-        xn_list, xp_list = scan_groups(dataset, classifier, n_eval, device)
+        xn_list, xn_idx, xp_list, xp_idx = scan_groups(
+            dataset, classifier, n_eval, device, allowed_indices=allowed_indices,
+        )
 
         # ── generate counterfactuals ──────────────────────────────────────────
         print("[metrics] generating Xc (n→p) and Xc (p→n) ...")
@@ -1224,6 +1412,17 @@ def run_full_evaluation(
             relative_spread=float(scp_spread / scp_scale),
         )
 
+    # ── LHR — ground-truth localisation ───────────────────────────────────────
+    # p→n ONLY. The source images there are POSITIVE, so a radiologist drew a
+    # box on them and "did the edit go where the finding is" has an answer. The
+    # n→p source images are negative and carry no annotation, so there is no
+    # ground truth for where a synthesized opacity belongs — reported as
+    # not-applicable rather than as a number, because inventing a target here
+    # would defeat the point of having one metric no model can be fooled into
+    # agreeing with. See lesion_hit_rate.
+    print("[metrics] computing LHR (lesion hit rate, p→n) ...")
+    lhr_pn = lesion_hit_rate(xp_list, xc_pn, xp_idx, dataset)
+
     # ── assemble results dict ─────────────────────────────────────────────────
     results = dict(
         CV=dict(n_to_p=cv_np, p_to_n=cv_pn, mean=cv),
@@ -1237,6 +1436,15 @@ def run_full_evaluation(
         FOP=dict(n_to_p=fop_np, p_to_n=fop_pn, mean=fop),
         IP=dict(n_to_p=ip_np, p_to_n=ip_pn),
         EditConcentration=dict(n_to_p=ec_np, p_to_n=ec_pn),
+        LHR=dict(
+            p_to_n=lhr_pn,
+            n_to_p={
+                "_omitted": "not defined for this direction — the n→p source "
+                            "images are classifier-negative and carry no lesion "
+                            "annotation, so there is no ground truth for where a "
+                            "synthesized opacity should appear"
+            },
+        ),
         CTR=ctr_results,
         SCP=scp_results,
     )
@@ -1282,9 +1490,25 @@ def _print_results(r: dict) -> None:
                   f"MAE={e['mae']:.4f} | changed={100 * e['frac_changed']:.1f}%")
         print(f"    >~0.5 = focal edit. Near the baseline = diffuse, i.e. adversarial-shaped.")
 
+    lhr = (r.get("LHR") or {}).get("p_to_n")
+    if lhr:
+        print(f"\n► Lesion Hit Rate (LHR)  [Xp → Xn, vs radiologist boxes — GROUND TRUTH]")
+        if "_omitted" in lhr:
+            print(f"    N/A — {lhr['_omitted']}")
+        else:
+            print(f"    edit mass inside lesion : {lhr['hit_rate']:.3f} ± {lhr['std_hit_rate']:.3f}")
+            print(f"    chance baseline (area)  : {lhr['null_baseline']:.3f} ± {lhr['std_null']:.3f}")
+            print(f"    LIFT                    : {lhr['lift']:.2f}×  "
+                  f"[t={lhr['t']:.2f}, p={lhr['p']:.3g}, n={lhr['n_pairs']}]")
+            # The decision rule, stated where the number is, so a reader does not
+            # have to reconstruct it from the docstring.
+            print(f"    1.0 = the edit ignores the annotation (adversarial-shaped). "
+                  f">1 = it targets the lesion.")
+        print(f"    Xn → Xp : N/A by construction — negative sources have no annotation.")
+
     # FOP is intentionally not printed — no offline Support-Devices detector
-    # exists, so it is always N/A. It is retained (as null) in results.json
-    # only for schema/back-compat; IP below is its model-free replacement.
+    # exists, so it is always N/A. _strip_unreportable drops it from
+    # eval_metrics.json entirely; IP below is its model-free replacement.
 
     ip = r.get("IP")
     if ip:
@@ -1319,9 +1543,9 @@ def _print_results(r: dict) -> None:
               f"effectively a constant")
         print(f"    ({s['mean_xn']:.4f} ± {s['std_xn']:.4f}) and its paired "
               f"t-tests are testing numerical noise.")
-        print(f"    Values are retained in eval_metrics.json for schema "
-              f"compatibility but MUST NOT be")
-        print(f"    reported as a clinical result. Fix the proxy (a real "
+        print(f"    Group means are retained in eval_metrics.json; the deltas "
+              f"and t-tests are withheld")
+        print(f"    from it (see _strip_unreportable). Fix the proxy (a real "
               f"CP-recess detector) or drop SCP.")
     elif s:
         print(f"\n► SCP — Pleural Effusion clinical metric")
@@ -1334,6 +1558,66 @@ def _print_results(r: dict) -> None:
         print(f"    Δ SCP(Xp − Xc_p→n) = {s['mean_delta_p']:.4f} ± {s['std_delta_p']:.4f}  "
               f"[t={s['t_p']:.2f}, p={s['p_p']:.4f}]")
     print("─" * 70)
+
+
+# Test statistics that must not survive serialisation once the metric they
+# describe has been flagged degenerate. A p-value computed on a constant is
+# indistinguishable, downstream, from a real clinical finding.
+_TEST_STAT_KEYS = (
+    "t_n", "p_n", "t_p", "p_p",
+    "mean_delta_n", "std_delta_n", "mean_delta_p", "std_delta_p",
+)
+
+
+def _strip_unreportable(results: dict) -> dict:
+    """
+    Drop metric blocks that carry no measurement, and the test statistics of
+    blocks flagged degenerate.
+
+    WHY THIS EXISTS. _print_results already refuses to show a degenerate
+    metric's t-tests, but the JSON kept them "for schema compatibility" — and
+    the JSON is what every downstream reader (the report tables, any future
+    aggregation) actually parses. `checkpoints/eval_metrics.json` accordingly
+    shipped SCP p-values of 0.0042 from a metric whose relative spread across
+    all four groups was 0.21%, i.e. a constant. Two rules:
+
+      * a metric that was never computed (FOP — no released TorchXRayVision
+        weight set exposes a "Support Devices" head) is omitted entirely
+        rather than serialised as null, which reads as "measured, came out
+        empty";
+      * a metric flagged `degenerate` keeps its group means, because those are
+        real, but loses its deltas and t-tests, because those are noise.
+
+    Both leave a `_omitted` breadcrumb naming the reason, so a reader who
+    expected the key learns why it is gone instead of assuming a crash.
+    """
+    out = {}
+    for name, block in results.items():
+        if not isinstance(block, dict):
+            out[name] = block
+            continue
+
+        # Metric never computed — every leaf is None.
+        if block and all(v is None for v in block.values()):
+            out[name] = {
+                "_omitted": "not computable in this environment; see the "
+                            "detector/proxy docstring in src/metrics.py"
+            }
+            continue
+
+        if block.get("degenerate"):
+            kept = {k: v for k, v in block.items() if k not in _TEST_STAT_KEYS}
+            kept["_omitted"] = (
+                f"deltas and t-tests withheld: metric flagged degenerate "
+                f"(relative spread {block.get('relative_spread', float('nan')):.2%} "
+                f"across all four groups). Group means are retained; the tests "
+                f"were computed on a constant and must not be reported."
+            )
+            out[name] = kept
+            continue
+
+        out[name] = block
+    return out
 
 
 def _save_results(results: dict, ckpt_dir: str) -> None:
@@ -1349,5 +1633,5 @@ def _save_results(results: dict, ckpt_dir: str) -> None:
         return obj
 
     with open(path, "w") as f:
-        json.dump(_to_serialisable(results), f, indent=2)
+        json.dump(_to_serialisable(_strip_unreportable(results)), f, indent=2)
     print(f"\n[metrics] results saved to '{path}'")

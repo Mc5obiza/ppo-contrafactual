@@ -1,0 +1,26 @@
+{
+ "J4": {
+  "cpu_cv_np": 0.9449999928474426,
+  "cpu_cv_pn": 0.6700000166893005,
+  "json_cv_np": 0.9449999928474426,
+  "json_cv_pn": 0.6700000166893005
+ },
+ "J6": {
+  "cpu_cv_np": 0.9449999928474426,
+  "cpu_cv_pn": 0.6850000023841858,
+  "json_cv_np": null,
+  "json_cv_pn": null
+ },
+ "J4_vs_J6_n_to_p": {
+  "diff": 0.0,
+  "only_first_valid": 0,
+  "only_second_valid": 0,
+  "mcnemar_exact_p": 1.0
+ },
+ "J4_vs_J6_p_to_n": {
+  "diff": -0.014999985694885254,
+  "only_first_valid": 6,
+  "only_second_valid": 9,
+  "mcnemar_exact_p": 0.6072387695312499
+ }
+}

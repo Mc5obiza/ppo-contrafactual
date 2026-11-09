@@ -1,0 +1,5 @@
+J8 (18497969) mask ablation, 50 images/direction. Check 6 FAILED (d2_f1.0 is not a bitwise reproduction of the committed shards). NOT CLEARED.
+setting   CV np/pn      LHR lift (n)   conc np/pn    frac np/pn    transfer mean np/pn  per-validator p->n (nih/pc/mimic)
+d0_f0.0   0.94/0.60   2.502 (47)    0.277/0.352   0.603/0.564   0.247/0.225         0.087/0.292/0.298
+d2_f1.0   0.96/0.74   2.489 (47)    0.248/0.317   0.664/0.629   0.262/0.251         0.124/0.320/0.308
+d4_f2.0   0.96/0.78   2.359 (47)    0.242/0.300   0.681/0.677   0.266/0.296         0.196/0.354/0.338

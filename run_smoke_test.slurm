@@ -3,6 +3,8 @@
 #SBATCH --partition=publicgpu
 #SBATCH --account=insa
 #SBATCH --gres=gpu:1
+#SBATCH --constraint="gpuh200|gpuh100|gpua100|gpul40s|gpua40|gpurtx6000"
+#SBATCH --exclude=hpc-n983
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=03:00:00
@@ -60,7 +62,12 @@ cd "${SLURM_SUBMIT_DIR:-$(dirname "${BASH_SOURCE[0]}")}"
 mkdir -p logs
 
 module load python/3.12.8
-module load cuda/13.0
+# torch is built for cu121 (torch.version.cuda == "12.1") and the driver is
+# CUDA 12.6. cuda/13.0 (the module system default) prepends its lib64 to
+# LD_LIBRARY_PATH ahead of torch's own RUNPATH and only fails to break things
+# because CUDA 13 sonames are .so.13 while torch links .so.12. Load the
+# matching toolkit instead of relying on that.
+module load cuda/cuda-12.1
 
 if [ ! -d venv ]; then
     echo "venv/ not found — run 'bash setup_env.sh' on the login node first." >&2
@@ -80,16 +87,31 @@ export YOLO_OFFLINE=1
 # SMOKE_N_EVAL is not set here — this job no longer runs evaluation. It is an
 # input to run_smoke_test_eval.slurm instead.
 export SMOKE_ARM="${SMOKE_ARM:-all}"
-export SMOKE_SUBSET_N="${SMOKE_SUBSET_N:-96}"
+# RAISED 96 -> 400 when the train/test split landed. The subset is now split
+# 80/20 like the real run, so a 96-image subset leaves a ~19-image eval fold —
+# and after the f(x)<0.2 / f(x)>0.8 group thresholds, too few images to fill
+# SMOKE_N_EVAL. The smoke test would then fail for a reason that is not a bug.
+# 400 keeps ~40 per class in the eval fold. The cost is negligible: PPO episode
+# count is fixed by N_EPISODES, and one LoRA epoch over 320 images is seconds.
+export SMOKE_SUBSET_N="${SMOKE_SUBSET_N:-400}"
 
 echo "=== Smoke test (training) started on $(hostname) at $(date) ==="
 echo "    SMOKE_ARM=${SMOKE_ARM}  SUBSET_N=${SMOKE_SUBSET_N}"
 nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv
 
+# Same hardware check as run_ppo.slurm — see preflight_gpu.py. A smoke test
+# that dies on an unsupported GPU reports a hardware problem as a code
+# problem, which is the opposite of what it exists to do.
+python -u preflight_gpu.py
+
 # Unbuffered so the log is useful while the job is still running (and if it
 # hangs, you can see exactly which stage it stopped in).
-python -u smoke_test.py
-status=$?
+# `set -euo pipefail` is active, so a plain `python ...` followed by
+# `status=$?` is dead code — a non-zero exit kills the script before the
+# assignment runs, and the log ends with no "finished" line, which reads as a
+# hang rather than as the failure it is. Capture the status explicitly.
+status=0
+python -u smoke_test.py || status=$?
 
 echo "=== Smoke test finished at $(date) with exit status ${status} ==="
 exit ${status}

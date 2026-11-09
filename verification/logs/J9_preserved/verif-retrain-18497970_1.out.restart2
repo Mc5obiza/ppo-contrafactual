@@ -1,0 +1,78 @@
+109:TRAIN_SEED = 1
+167:USE_GUIDANCE_ENSEMBLE  = True
+=== retrain_ens_seed1 p_to_n on hpc-n934 at Sat Oct 31 09:14:43 CET 2026
+name, memory.total [MiB]
+NVIDIA H100 NVL, 95830 MiB
+NVIDIA H100 NVL, 95830 MiB
+NVIDIA H100 NVL, 95830 MiB
+NVIDIA H100 NVL, 95830 MiB
+[preflight] NVIDIA H100 NVL -> sm_90
+[preflight] torch 2.5.1+cu121 kernels: ['sm_50', 'sm_60', 'sm_70', 'sm_75', 'sm_80', 'sm_86', 'sm_90']
+[preflight] OK
+[seed] training: seed=1 | cudnn.deterministic=True, benchmark=False
+======================================================================
+STEP 1 — Dataset ingestion
+======================================================================
+[domain] rsna_pneumonia: f(.) targets 'Pneumonia' | guidance=densenet121-res224-rsna | ensemble=['densenet121-res224-rsna', 'densenet121-res224-chex'] | validators=['densenet121-res224-nih', 'densenet121-res224-pc', 'densenet121-res224-mimic_ch'] | clinical metrics: CTR, SCP
+[domain] Baseline domain. NOTE both clinical metrics are weak here: CTR is a cardiomegaly measure and SCP's sigmoid(-||yolo_feat||/50) proxy was measured degenerate (0.21% relative spread) in the last eval. Neither is pneumonia-specific.
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+[split] rsna_pneumonia: 21347 train / 5337 test (20.0% held out, seed=0)  [loaded]
+
+======================================================================
+STEP 2 — Loading pretrained models
+======================================================================
+[models] loaded ENSEMBLE classifier as f(·), head='Pneumonia': [rsna, chex] (2 members, mean probability)
+[models]   NOTE: f(·) is an ensemble — CV, far-pool sizes and the Xn/Xp group split are NOT comparable to single-classifier runs.
+[models] loaded PSPNet | lung channels: [4, 5]
+[models] loaded YOLOv8 backbone from yolov8n.pt
+
+======================================================================
+STEP 3 — Building generator with LoRA
+======================================================================
+[generator] loading VAE ...
+[generator] loading UNet ...
+trainable params: 1,594,368 || all params: 861,115,332 || trainable%: 0.1852
+[generator] VRAM estimate — VAE=160 MB, UNet=1645 MB, total=1806 MB
+
+======================================================================
+STEP 4 — LoRA denoising fine-tuning
+======================================================================
+[finetuning] trainable params: 1,808,640
+[finetuning] found checkpoint at /home2020/home/insa/arbaoui/verification/out/retrain_ens_seed1/finetuning_latest.pt — resuming
+[finetuning] resumed from epoch 29 — continuing at epoch 30
+[finetuning] checkpoint already at epoch 30 >= n_epochs=30 — nothing to do
+
+======================================================================
+STEP 5 — PPO training  [p_to_n, target_c=0.0]
+======================================================================
+[seed] p_to_n: seed=3 (base 1 + offset 2) | cudnn.deterministic=True, benchmark=False
+[env] 9135/21347 images are > 0.5 away from target_c=0.0  [training fold only]
+[env] far pool split: 9111 train / 24 held out for the CV probe (CV resolution 4.2 pts/image)
+[p_to_n] obs_dim = 73731
+[p_to_n] policy params = 37,885,462
+[ppo] no resumable state at /home2020/home/insa/arbaoui/verification/out/retrain_ens_seed1/p_to_n/ppo_latest.pt — starting fresh
+[ppo] NOTE: USE_SPARSITY_ANNEALING=True but USE_SPARSITY_REWARD=False — the annealing schedule is inert.
+Update    1 | episodes=   8 | avg_ep_len= 4.12 | avg_return=  -1.202 | L_ppo=0.3476 | L_value=5.5534 | std_mean=0.6067 | lam_sparse=0.0000
+           reward split [flip=32% pres=19%] val=-0.494(23%) hit=+0.424(20%) pres=-0.340(16%) stop=+0.242(12%) prog=+0.239(11%) close2=-0.206(10%) bud=-0.100(5%) fid=-0.057(3%) sparsity=+0.000(0%)
+           edit_L1=0.0284 (budget inf) | steps score_ok=21% budget_ok=100% valid=21% | |logit|max=5.58 (sat>3.0)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/retrain_ens_seed1/p_to_n/ppo_latest.pt (update 5, 40 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/retrain_ens_seed1/p_to_n/ppo_latest.pt (update 10, 80 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/retrain_ens_seed1/p_to_n/ppo_latest.pt (update 15, 120 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/retrain_ens_seed1/p_to_n/ppo_latest.pt (update 20, 160 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/retrain_ens_seed1/p_to_n/ppo_latest.pt (update 25, 200 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/retrain_ens_seed1/p_to_n/ppo_latest.pt (update 30, 240 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/retrain_ens_seed1/p_to_n/ppo_latest.pt (update 35, 280 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/retrain_ens_seed1/p_to_n/ppo_latest.pt (update 40, 320 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/retrain_ens_seed1/p_to_n/ppo_latest.pt (update 45, 360 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/retrain_ens_seed1/p_to_n/ppo_latest.pt (update 50, 400 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/retrain_ens_seed1/p_to_n/ppo_latest.pt (update 55, 440 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/retrain_ens_seed1/p_to_n/ppo_latest.pt (update 60, 480 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/retrain_ens_seed1/p_to_n/ppo_latest.pt (update 65, 520 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/retrain_ens_seed1/p_to_n/ppo_latest.pt (update 70, 560 episodes)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/retrain_ens_seed1/p_to_n/ppo_latest.pt (update 75, 600 episodes)
+Update   80 | episodes= 640 | avg_ep_len= 8.00 | avg_return= -10.869 | L_ppo=0.1430 | L_value=15.7076 | std_mean=0.6095 | lam_sparse=0.0000
+           reward split [flip=14% pres=10%] val=-0.896(41%) close2=-0.579(26%) hit=+0.188(8%) pres=-0.161(7%) stop=+0.125(6%) prog=+0.113(5%) bud=-0.100(5%) fid=-0.049(2%) sparsity=+0.000(0%)
+           edit_L1=0.0245 (budget inf) | steps score_ok=9% budget_ok=100% valid=9% | |logit|max=9.63 (sat>3.0)
+[ppo] state saved: /home2020/home/insa/arbaoui/verification/out/retrain_ens_seed1/p_to_n/ppo_latest.pt (update 80, 640 episodes)

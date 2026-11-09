@@ -1,0 +1,54 @@
+=== J20 on hpc-n929 at Thu Nov  5 22:40:05 CET 2026
+[models] loaded ENSEMBLE classifier as f(·), head='Pneumonia': [rsna, chex] (2 members, mean probability)
+[models]   NOTE: f(·) is an ensemble — CV, far-pool sizes and the Xn/Xp group split are NOT comparable to single-classifier runs.
+[models] loaded XRV classifier (densenet121-res224-nih, head='Pneumonia') as f(·)
+[models] loaded XRV classifier (densenet121-res224-nih, head='Consolidation') as f(·)
+[models] loaded XRV classifier (densenet121-res224-nih, head='Infiltration') as f(·)
+[models] loaded XRV classifier (densenet121-res224-pc, head='Pneumonia') as f(·)
+[models] loaded XRV classifier (densenet121-res224-pc, head='Consolidation') as f(·)
+[models] loaded XRV classifier (densenet121-res224-pc, head='Infiltration') as f(·)
+[models] loaded XRV classifier (densenet121-res224-mimic_ch, head='Pneumonia') as f(·)
+[models] loaded XRV classifier (densenet121-res224-mimic_ch, head='Consolidation') as f(·)
+[models] loaded XRV classifier (densenet121-res224-mimic_ch, head='Lung Opacity') as f(·)
+[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+  Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
+[split] rsna_pneumonia: 21347 train / 5337 test (20.0% held out, seed=0)  [loaded]
+[J20] test fold guidance                     AUROC 0.872  ceiling nan
+[J20] test fold nih:Pneumonia                AUROC 0.766  ceiling 0.465
+[J20] test fold nih:Consolidation            AUROC 0.802  ceiling 0.341
+[J20] test fold nih:Infiltration             AUROC 0.740  ceiling 0.257
+[J20] test fold pc:Pneumonia                 AUROC 0.783  ceiling 0.583
+[J20] test fold pc:Consolidation             AUROC 0.798  ceiling 0.607
+[J20] test fold pc:Infiltration              AUROC 0.804  ceiling 0.767
+[J20] test fold mimic_ch:Pneumonia           AUROC 0.728  ceiling 0.423
+[J20] test fold mimic_ch:Consolidation       AUROC 0.720  ceiling 0.453
+[J20] test fold mimic_ch:Lung Opacity        AUROC 0.770  ceiling 0.628
+[J20] J4 n_to_p: n=200 gΔ=0.898 nih:Pneumonia=0.044 nih:Consolidation=0.162 nih:Infiltration=0.101 pc:Pneumonia=0.465 pc:Consolidation=0.488 pc:Infiltration=0.506 mimic_ch:Pneumonia=0.333 mimic_ch:Consolidation=0.367 mimic_ch:Lung Opacity=0.381
+[J20] J4 p_to_n: n=200 gΔ=0.761 nih:Pneumonia=0.165 nih:Consolidation=0.092 nih:Infiltration=0.089 pc:Pneumonia=0.306 pc:Consolidation=0.253 pc:Infiltration=0.384 mimic_ch:Pneumonia=0.357 mimic_ch:Consolidation=0.348 mimic_ch:Lung Opacity=0.409
+[J20] J5_none n_to_p: n=200 gΔ=0.896 nih:Pneumonia=0.101 nih:Consolidation=0.196 nih:Infiltration=0.109 pc:Pneumonia=0.474 pc:Consolidation=0.493 pc:Infiltration=0.528 mimic_ch:Pneumonia=0.345 mimic_ch:Consolidation=0.381 mimic_ch:Lung Opacity=0.410
+[J20] J5_none p_to_n: n=200 gΔ=0.574 nih:Pneumonia=0.113 nih:Consolidation=0.079 nih:Infiltration=0.098 pc:Pneumonia=0.245 pc:Consolidation=0.157 pc:Infiltration=0.364 mimic_ch:Pneumonia=0.149 mimic_ch:Consolidation=0.143 mimic_ch:Lung Opacity=0.230
+[J20] J12_fixed_tuned n_to_p: n=200 gΔ=0.897 nih:Pneumonia=0.039 nih:Consolidation=0.164 nih:Infiltration=0.108 pc:Pneumonia=0.466 pc:Consolidation=0.486 pc:Infiltration=0.507 mimic_ch:Pneumonia=0.326 mimic_ch:Consolidation=0.361 mimic_ch:Lung Opacity=0.374
+[J20] J12_fixed_tuned p_to_n: n=200 gΔ=0.794 nih:Pneumonia=0.180 nih:Consolidation=0.098 nih:Infiltration=0.095 pc:Pneumonia=0.205 pc:Consolidation=0.187 pc:Infiltration=0.314 mimic_ch:Pneumonia=0.248 mimic_ch:Consolidation=0.242 mimic_ch:Lung Opacity=0.317
+[J20] J15_latent_shift n_to_p: n=200 gΔ=0.567 nih:Pneumonia=0.171 nih:Consolidation=0.197 nih:Infiltration=0.078 pc:Pneumonia=0.488 pc:Consolidation=0.648 pc:Infiltration=0.524 mimic_ch:Pneumonia=0.267 mimic_ch:Consolidation=0.357 mimic_ch:Lung Opacity=0.375
+[J20] J15_latent_shift p_to_n: n=200 gΔ=0.677 nih:Pneumonia=-0.121 nih:Consolidation=0.589 nih:Infiltration=0.374 pc:Pneumonia=0.145 pc:Consolidation=0.100 pc:Infiltration=0.492 mimic_ch:Pneumonia=0.194 mimic_ch:Consolidation=0.155 mimic_ch:Lung Opacity=0.350
+[J20] J10_cyclegan n_to_p: n=200 gΔ=0.123 nih:Pneumonia=0.763 nih:Consolidation=0.607 nih:Infiltration=0.217 pc:Pneumonia=1.153 pc:Consolidation=0.827 pc:Infiltration=1.327 mimic_ch:Pneumonia=0.670 mimic_ch:Consolidation=0.635 mimic_ch:Lung Opacity=0.822
+[J20] J10_cyclegan p_to_n: n=200 gΔ=0.055 nih:Pneumonia=0.208 nih:Consolidation=0.166 nih:Infiltration=0.234 pc:Pneumonia=0.102 pc:Consolidation=0.011 pc:Infiltration=-0.022 mimic_ch:Pneumonia=0.003 mimic_ch:Consolidation=0.086 mimic_ch:Lung Opacity=0.294
+[J20] ADV n_to_p fgsm_eps1/255: n=200 gΔ=0.332 nih:Pneumonia=0.100 nih:Consolidation=0.097 nih:Infiltration=0.016 pc:Pneumonia=0.152 pc:Consolidation=0.101 pc:Infiltration=0.176 mimic_ch:Pneumonia=0.082 mimic_ch:Consolidation=0.076 mimic_ch:Lung Opacity=0.097
+[J20] ADV n_to_p fgsm_eps2/255: n=200 gΔ=0.494 nih:Pneumonia=0.174 nih:Consolidation=0.145 nih:Infiltration=0.028 pc:Pneumonia=0.239 pc:Consolidation=0.175 pc:Infiltration=0.297 mimic_ch:Pneumonia=0.140 mimic_ch:Consolidation=0.138 mimic_ch:Lung Opacity=0.173
+[J20] ADV n_to_p fgsm_eps4/255: n=200 gΔ=0.646 nih:Pneumonia=0.309 nih:Consolidation=0.231 nih:Infiltration=0.060 pc:Pneumonia=0.416 pc:Consolidation=0.351 pc:Infiltration=0.519 mimic_ch:Pneumonia=0.301 mimic_ch:Consolidation=0.323 mimic_ch:Lung Opacity=0.363
+[J20] ADV n_to_p fgsm_eps8/255: n=200 gΔ=0.752 nih:Pneumonia=0.403 nih:Consolidation=0.261 nih:Infiltration=0.123 pc:Pneumonia=0.476 pc:Consolidation=0.476 pc:Infiltration=0.702 mimic_ch:Pneumonia=0.449 mimic_ch:Consolidation=0.511 mimic_ch:Lung Opacity=0.626
+[J20] ADV n_to_p pgd_linf_eps2/255: n=200 gΔ=0.769 nih:Pneumonia=0.131 nih:Consolidation=0.104 nih:Infiltration=0.018 pc:Pneumonia=0.162 pc:Consolidation=0.124 pc:Infiltration=0.202 mimic_ch:Pneumonia=0.110 mimic_ch:Consolidation=0.102 mimic_ch:Lung Opacity=0.128
+[J20] ADV n_to_p pgd_linf_eps4/255: n=200 gΔ=0.908 nih:Pneumonia=0.218 nih:Consolidation=0.170 nih:Infiltration=0.046 pc:Pneumonia=0.307 pc:Consolidation=0.281 pc:Infiltration=0.376 mimic_ch:Pneumonia=0.227 mimic_ch:Consolidation=0.225 mimic_ch:Lung Opacity=0.269
+[J20] ADV n_to_p pgd_linf_eps8/255: n=200 gΔ=0.914 nih:Pneumonia=0.268 nih:Consolidation=0.214 nih:Infiltration=0.110 pc:Pneumonia=0.418 pc:Consolidation=0.421 pc:Infiltration=0.556 mimic_ch:Pneumonia=0.375 mimic_ch:Consolidation=0.386 mimic_ch:Lung Opacity=0.463
+[J20] ADV n_to_p pgd_l2_matched: n=200 gΔ=0.914 nih:Pneumonia=0.182 nih:Consolidation=0.076 nih:Infiltration=0.083 pc:Pneumonia=0.448 pc:Consolidation=0.448 pc:Infiltration=0.564 mimic_ch:Pneumonia=0.494 mimic_ch:Consolidation=0.554 mimic_ch:Lung Opacity=0.627
+[J20] ADV p_to_n fgsm_eps1/255: n=200 gΔ=0.198 nih:Pneumonia=0.007 nih:Consolidation=0.003 nih:Infiltration=0.020 pc:Pneumonia=0.033 pc:Consolidation=0.009 pc:Infiltration=0.065 mimic_ch:Pneumonia=0.032 mimic_ch:Consolidation=0.013 mimic_ch:Lung Opacity=0.029
+[J20] ADV p_to_n fgsm_eps2/255: n=200 gΔ=0.266 nih:Pneumonia=0.003 nih:Consolidation=-0.009 nih:Infiltration=0.023 pc:Pneumonia=0.053 pc:Consolidation=0.013 pc:Infiltration=0.080 mimic_ch:Pneumonia=0.053 mimic_ch:Consolidation=0.007 mimic_ch:Lung Opacity=0.025
+[J20] ADV p_to_n fgsm_eps4/255: n=200 gΔ=0.269 nih:Pneumonia=-0.007 nih:Consolidation=-0.064 nih:Infiltration=0.018 pc:Pneumonia=0.110 pc:Consolidation=0.037 pc:Infiltration=0.088 mimic_ch:Pneumonia=0.150 mimic_ch:Consolidation=0.026 mimic_ch:Lung Opacity=0.032
+[J20] ADV p_to_n fgsm_eps8/255: n=200 gΔ=0.231 nih:Pneumonia=0.013 nih:Consolidation=-0.291 nih:Infiltration=-0.123 pc:Pneumonia=0.238 pc:Consolidation=0.139 pc:Infiltration=-0.117 mimic_ch:Pneumonia=0.397 mimic_ch:Consolidation=0.017 mimic_ch:Lung Opacity=-0.080
+[J20] ADV p_to_n pgd_linf_eps2/255: n=200 gΔ=0.643 nih:Pneumonia=0.008 nih:Consolidation=0.005 nih:Infiltration=0.017 pc:Pneumonia=0.019 pc:Consolidation=0.006 pc:Infiltration=0.047 mimic_ch:Pneumonia=0.032 mimic_ch:Consolidation=0.022 mimic_ch:Lung Opacity=0.031
+[J20] ADV p_to_n pgd_linf_eps4/255: n=200 gΔ=0.821 nih:Pneumonia=0.016 nih:Consolidation=0.002 nih:Infiltration=0.024 pc:Pneumonia=0.016 pc:Consolidation=0.008 pc:Infiltration=0.056 mimic_ch:Pneumonia=0.069 mimic_ch:Consolidation=0.053 mimic_ch:Lung Opacity=0.073
+[J20] ADV p_to_n pgd_linf_eps8/255: n=200 gΔ=0.837 nih:Pneumonia=0.045 nih:Consolidation=-0.015 nih:Infiltration=0.030 pc:Pneumonia=0.038 pc:Consolidation=0.029 pc:Infiltration=0.077 mimic_ch:Pneumonia=0.178 mimic_ch:Consolidation=0.153 mimic_ch:Lung Opacity=0.140
+[J20] ADV p_to_n pgd_l2_matched: n=200 gΔ=0.836 nih:Pneumonia=0.067 nih:Consolidation=0.215 nih:Infiltration=0.180 pc:Pneumonia=0.459 pc:Consolidation=0.508 pc:Infiltration=0.555 mimic_ch:Pneumonia=0.018 mimic_ch:Consolidation=-0.226 mimic_ch:Lung Opacity=-0.169
+[J20] wrote /home2020/home/insa/arbaoui/verification/out/J20_transfer_calibration/transfer_calibration.json
+=== finished at Thu Nov  5 23:54:49 CET 2026

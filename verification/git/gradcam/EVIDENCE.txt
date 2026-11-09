@@ -1,0 +1,48 @@
+arm: gradcam
+jobs: 17702339 17704444 17705866 17705875
+checkpoint dir: checkpoints_gradcam_fix
+code tag: evidence/gradcam-code -> 35f0ea7c7d3c86269627fbe0c5b477ab5121644a
+  CODE STATE NOT RECOVERABLE: the exact code of this run cannot be reconstructed from any git object; this tag points only at the base commit 35f0ea7 of the dirty working tree, not at the code that ran. Run(s): 17702339/17704444. Run config.py sha256 b257353e... is reproduced by no git object; factory/ppo.py was also modified
+
+sha256 of artefacts (computed 2026-10-28T21:44:39+01:00):
+0ea9d2da9fd350358941eb022e7f665b35c9758b9fa6399a6ac38b43ea84bae7  checkpoints_gradcam_fix/n_to_p/ppo_policy.pt
+dc015f6a03b3e39142c33ff280acb4b6753fd9c77505ce408cd79bf5ada6d604  checkpoints_gradcam_fix/n_to_p/unet_finetuned.pt
+7e58497dc1c786da095993a5b6ecbec27f534b1f84014bb366776dc5bc997259  checkpoints_gradcam_fix/n_to_p/cond_proj.pt
+9c1025b9415ea86f86d8d01ee70fd8cd20da280591c0e2adbc131015c3fcf534  checkpoints_gradcam_fix/p_to_n/ppo_policy.pt
+dc015f6a03b3e39142c33ff280acb4b6753fd9c77505ce408cd79bf5ada6d604  checkpoints_gradcam_fix/p_to_n/unet_finetuned.pt
+7e58497dc1c786da095993a5b6ecbec27f534b1f84014bb366776dc5bc997259  checkpoints_gradcam_fix/p_to_n/cond_proj.pt
+8e2258d2a6d258e74a3f7fbc728ce9d768da4ac93c8a26a2f66681a352fe581f  checkpoints_gradcam_fix/eval_metrics.json
+c2c7d031373a469e596bf272035109611975e09f55ccb7ffa89b1b8daf529d9c  checkpoints_gradcam_fix/eval_shards/cf_shard_000.pt
+f7a1c4ebcf2342cc8cf6395170d9e726f4a3ad4c3fe5ed4b886acb3aed85af18  checkpoints_gradcam_fix/eval_shards/cf_shard_001.pt
+ca530880a6d208cb0f730240eb00f1dde9abdc73d6f6eb058e25c1841ae50575  checkpoints_gradcam_fix/eval_shards/cf_shard_002.pt
+f768aa6e4510ef2fbdce649cc18a966db1b24534714b7f33351a62d003febd92  checkpoints_gradcam_fix/eval_shards/cf_shard_003.pt
+2af59e0962bfe9f00adb9282e79f899c15c5d4e2a637a2f74003213317398d4e  checkpoints_gradcam_fix/eval_shards/cf_shard_004.pt
+703ada457cc82210d4914837d5998e8e5ecd94cf1666b1242e80815f9b1209af  checkpoints_gradcam_fix/eval_shards/cf_shard_005.pt
+ee77c4409f30906a2f12b1221ee939e90f8714087364163377b59af5fbe7b9b6  checkpoints_gradcam_fix/eval_shards/cf_shard_006.pt
+80ac76151dab636356a45b172f7109d819431f61aba0ab4aa277193cbf4c0b1a  checkpoints_gradcam_fix/eval_shards/cf_shard_007.pt
+
+generator tensor diff n_to_p vs p_to_n (~/verification/generator_tensor_diff.json):
+{
+ "unet_finetuned.pt": {
+  "keys_only_in_np": [],
+  "keys_only_in_pn": [],
+  "n_keys": 942,
+  "n_differing": 0,
+  "n_differing_lora": 0,
+  "max_abs_diff": 0.0,
+  "max_abs_diff_lora": 0.0,
+  "max_abs_diff_nonlora": 0.0,
+  "examples": []
+ },
+ "cond_proj.pt": {
+  "keys_only_in_np": [],
+  "keys_only_in_pn": [],
+  "n_keys": 4,
+  "n_differing": 0,
+  "n_differing_lora": 0,
+  "max_abs_diff": 0.0,
+  "max_abs_diff_lora": 0.0,
+  "max_abs_diff_nonlora": 0.0,
+  "examples": []
+ }
+}
