@@ -75,3 +75,7 @@ J21 seedrep_single_seed2 gen 18542417  reduce 18542418  (scripts/26+27, POLICY_D
 J19c lhr nulls J15b 18542421  (scripts/31; J4 + J15b iterative Latent Shift + J15)
 # 2026-11-06T21:12:27+01:00 (second review item 6, user: 'go on with the best decision that respects the deadline')
 J22 breast LHR 18542590  (scripts/33 -> breast_lhr.py, CPU; CBIS-DDSM shards from test-cancer, both directions, in-breast / VAE-floor / mismatched-ROI nulls; out/J22_breast_lhr)
+# 2026-11-09T15:45:56+01:00 (second review item 4: seed replicates, CPU clearance of J21)
+J19d lhr nulls seedrep 18556456  (scripts/31, CPU public; ARMS = J4, J5_none, J16 single s0, J21 ens s2, J21 single s1, J21 single s2, J9 seed1; out/J19d_lhr_nulls_seedrep)
+# 2026-11-09T15:52:10+01:00 J23 qual scores (login node, CPU, nice): scripts/qual_scores.py on J4_perdir -> out/J23_qual/J4_scores.npz; per-image guidance+validator scores for rule-based figure examples; self-checks vs J4 transfer.json
+# 2026-11-09T15:53:32+01:00 scancel 18556456 (est. start 21:33); J19d run instead on the login node (nice, 16 threads, same script/ARMS/OUT), log logs/J19d_lhr_nulls_local.log

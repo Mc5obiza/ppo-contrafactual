@@ -2,7 +2,8 @@
 % Supplementary sections moved out of the main paper: E1 (controls),
 % E2 (anatomical proxy metrics), E3 (baselines under the same protocol), E4 (lock-width sensitivity),
 % E5 (same-image runs: default, no policy, two fixed schedules, second seed), E6 (edit locality, FID/KID uncertainty),
-% E7 (LHR under alternative nulls), E8 (transfer-ratio calibration), E9 (exploratory mammography LHR).
+% E7 (LHR under alternative nulls), E8 (transfer-ratio calibration), E9 (exploratory mammography LHR),
+% E10 (PPO seed replicates).
 % =============================================================================
 
 \section*{E. Additional Details}
@@ -101,7 +102,7 @@ Transfer mean, p$\to$n & 0.251 & $-0.038$ $[-0.062, -0.014]$ & $-0.025$ $[-0.052
 \subsection*{E5. Same-image runs: default, no policy, fixed schedules, second seed}
 \label{sec:suppl-fourarm}
 
-Table~\ref{tab:suppl-fourarm} compares five runs on the same 400 test images with the same per-image seeds: the default policy, the generator's default schedule without a policy, a fixed schedule that holds every control at the policy's mean action over its evaluation steps (same step budget and validity-based stopping, no training), a tuned fixed schedule chosen without RL, and a second PPO seed of the default configuration. Each direction uses its own adapter, except the second seed, whose two directions share one; both of its directions were resumed from checkpoints after preemption (n$\to$p at update 15, p$\to$n at update 80) without saved random-number state. The fixed schedule's raw actions are, for n$\to$p, ($-9.114$, $-0.671$, $-2.007$, $2.446$, $3.041$, $-6.357$, $4.074$, $6.550$, $-1.090$) (strength 0.200, three passes, guidance bias 1.299), and for p$\to$n, ($1.705$, $1.700$, $0.432$, $0.486$, $-1.607$, $-0.260$, $-1.142$, $2.968$, $-0.608$), the means over 201 and 1{,}093 policy steps. The tuned fixed schedule is selected on training-fold images only, by the quantity PPO maximizes, the mean discounted episode reward. Candidates are 54 constant schedules on a coarse grid (strength $\{0.25, 0.45, 0.65\}$, classifier scale $\{0.50, 0.85, 1.15\}$, guidance bias $\{0.85, 1.05, 1.27\}$, two or three passes; every other control at the midpoint of its range) and a local grid around the policy's mean action (three levels each of strength, classifier and preservation scale, strength boost and, for n$\to$p, ramp start: 243 schedules for n$\to$p, 81 for p$\to$n). Each is scored on 12 training-fold images per direction, and the best of each grid on 36 more; the stop bonus that the coarse grid's neutral stop threshold forgoes is added back before ranking. Both selected schedules come from the coarse grid: strength 0.25, classifier scale 1.15, guidance bias 0.85 and two passes for n$\to$p, and strength 0.25, classifier scale 1.15, guidance bias 1.27 and three passes for p$\to$n.
+Table~\ref{tab:suppl-fourarm} compares five runs on the same 400 test images with the same per-image seeds: the default policy, the generator's default schedule without a policy, a fixed schedule that holds every control at the policy's mean action over its evaluation steps (same step budget and validity-based stopping, no training), a tuned fixed schedule chosen without RL, and a second training seed of the default configuration (LoRA and PPO base seed 1). Each direction uses its own adapter, except the second seed, whose two directions share one; both of its directions were resumed from checkpoints after preemption (n$\to$p at update 15, p$\to$n at update 80) without saved random-number state. The fixed schedule's raw actions are, for n$\to$p, ($-9.114$, $-0.671$, $-2.007$, $2.446$, $3.041$, $-6.357$, $4.074$, $6.550$, $-1.090$) (strength 0.200, three passes, guidance bias 1.299), and for p$\to$n, ($1.705$, $1.700$, $0.432$, $0.486$, $-1.607$, $-0.260$, $-1.142$, $2.968$, $-0.608$), the means over 201 and 1{,}093 policy steps. The tuned fixed schedule is selected on training-fold images only, by the quantity PPO maximizes, the mean discounted episode reward. Candidates are 54 constant schedules on a coarse grid (strength $\{0.25, 0.45, 0.65\}$, classifier scale $\{0.50, 0.85, 1.15\}$, guidance bias $\{0.85, 1.05, 1.27\}$, two or three passes; every other control at the midpoint of its range) and a local grid around the policy's mean action (three levels each of strength, classifier and preservation scale, strength boost and, for n$\to$p, ramp start: 243 schedules for n$\to$p, 81 for p$\to$n). Each is scored on 12 training-fold images per direction, and the best of each grid on 36 more; the stop bonus that the coarse grid's neutral stop threshold forgoes is added back before ranking. Both selected schedules come from the coarse grid: strength 0.25, classifier scale 1.15, guidance bias 0.85 and two passes for n$\to$p, and strength 0.25, classifier scale 1.15, guidance bias 1.27 and three passes for p$\to$n.
 
 \begin{table*}[t]
 \centering
@@ -298,3 +299,39 @@ Edit minus VAE round trip & $+0.298$ [$+0.177$, $+0.425$] & $+0.617$ [$+0.483$, 
 \end{table}
 
 Both directions put more edit mass on the lesion than a lesion-blind edit inside the breast, more strongly than on RSNA (1.55 and 1.89 against 1.16), and here the edits beat an in-organ wash even under the whole-image null. Unlike on RSNA, the VAE round trip is itself lesion-directed (1.25 and 1.28), plausibly because masses and calcifications are the high-contrast detail the autoencoder reconstructs worst. Measuring the edit against $D(E(x))$ nevertheless leaves LHR almost unchanged, and the edits exceed the round trip by 0.30 and 0.62. Most of the lift is image-specific: other images' ROIs score 1.13. The benign$\to$malignant direction, which has no RSNA analogue, targets the lesion as well. We do not read this as evidence that the policy or the lock produces the targeting, since no no-policy run exists. Nor is it evidence of class-relevant content, since the validators are uninformative and the guidance classifier is contaminated. It shows that the in-organ LHR and its nulls transfer to a second modality, where they also give an answer in both directions.
+
+% -----------------------------------------------------------------------------
+\subsection*{E10. PPO seed replicates}
+\label{sec:suppl-seeds}
+
+To give the ensemble-versus-single-classifier comparison a run-to-run check, we retrained the PPO policies of both configurations with new seeds while keeping every other component fixed: each direction loads the LoRA adapter trained for it in that configuration's original run (checked by hash), so only the PPO seed changes. With the base seed $b$, the n$\to$p and p$\to$n policies use seeds $b+1$ and $b+2$; the original runs have $b=0$, the replicates $b=1$ and $b=2$ for the single classifier and $b=2$ for the ensemble. Each policy is trained for 800 episodes per direction. The three p$\to$n replicate runs were preempted once and resumed from their last checkpoint (at updates 70, 75 and 20 of 100) without saved random-number state; the n$\to$p runs were not interrupted. With the earlier second training seed of the default (Supp.~E5; $b=1$ for LoRA and PPO, one retrained adapter shared by both directions, both directions resumed), this gives three ensemble and three single-classifier runs. All are evaluated on the default's 400 test images with the same per-image seeds, so every comparison below is paired. CV is computed with each run's own guidance classifier (the ensemble, or \texttt{rsna} alone), on the default's classifier-selected groups.
+
+\begin{table}[h]
+\centering
+\caption{PPO seed replicates on the default's 400 test images. CV with Wilson 95\% CI; transfer is the mean $\rho_v$ over the three validators; in-lung LHR with $t$-interval on the 148 annotated images. $^{\dagger}$LoRA also retrained (seed 1), one adapter for both directions; resumed training (Supp.~E5).}
+\label{tab:suppl-seeds}
+\scriptsize
+\setlength{\tabcolsep}{2.2pt}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+Guidance & $b$ & CV n$\to$p / p$\to$n & Transfer n$\to$p / p$\to$n & LHR in lung & Whole \\
+\midrule
+Ensemble & 0 & 0.945 / 0.670 & 0.281 / 0.276 & 1.165 [1.123, 1.207] & 2.595 \\
+ & 1$^{\dagger}$ & 0.915 / 0.495 & 0.332 / 0.208 & 1.190 [1.151, 1.229] & 2.479 \\
+ & 2 & 0.950 / 0.765 & 0.269 / 0.229 & 1.140 [1.106, 1.175] & 2.400 \\
+\midrule
+Single (\texttt{rsna}) & 0 & 0.855 / 0.840 & 0.245 / 0.141 & 1.083 [1.044, 1.123] & 2.296 \\
+ & 1 & 0.855 / 0.800 & 0.299 / 0.116 & 1.080 [1.046, 1.114] & 2.220 \\
+ & 2 & 0.855 / 0.850 & 0.232 / 0.141 & 1.107 [1.069, 1.144] & 2.356 \\
+\midrule
+No policy & --- & 0.940 / 0.225 & 0.307 / 0.169 & 1.088 [1.054, 1.122] & 2.064 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Wilson intervals for CV at $n=200$ have half-widths of 0.03 to 0.07 (\eg $[0.910, 0.973]$ for 0.950 and $[0.702, 0.818]$ for 0.765). The three single-classifier n$\to$p CVs coincide at 171 of 200, but the valid images and the counterfactuals differ between seeds.
+
+Paired in-lung LHR differences (bootstrap 95\% CI, paired $t$-test). Within a configuration, seeds do not differ detectably: ensemble $b=0$ minus $b=2$ $+0.025$ $[-0.007, +0.057]$, $p=0.14$, and $b=0$ minus $b=1$ $-0.025$, $p=0.23$. Across configurations, each of the nine ensemble-minus-single pairs is positive, from $+0.034$ ($b=2$ vs.\ $b=2$; $[-0.003, +0.072]$, $p=0.076$) to $+0.110$; the other eight have $p<0.01$. Averaging each image's lift over the three runs of each configuration gives $+0.075$ $[+0.050, +0.102]$ ($+0.063$ $[+0.037, +0.092]$ without the shared-adapter run). Against no policy, the ensemble runs gain $+0.077$, $+0.102$ and $+0.052$ ($[+0.014, +0.091]$, $p=0.008$), and the single-classifier runs $-0.005$, $-0.008$ and $+0.019$ (all $p\geq0.31$). Scored against other patients' boxes (Supp.~E7), the lesion-specific part of the lift is $+0.072$ $[+0.038, +0.105]$ for the $b=2$ ensemble run and $+0.057$ to $+0.081$ for the single-classifier runs.
+
+What survives seed variation: the ensemble's advantage in in-lung LHR and in p$\to$n transfer, which hold for every pair of runs; the ensemble policy's gain over no policy in in-lung LHR and p$\to$n CV; and the single-classifier policy's lack of one. In n$\to$p every run combines high CV with transfer near the default's (CV 0.855--0.950, transfer 0.23--0.33). What does not survive: an ensemble advantage in n$\to$p transfer (the ranges overlap, and the $b=1$ single-classifier run exceeds the default). p$\to$n CV depends on the seed as much as on the configuration; within the ensemble it spans 0.495--0.765, wider than the gap between the two configurations' means.
