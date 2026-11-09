@@ -115,6 +115,21 @@ BREAST_BACKBONES = ["densenet121", "efficientnet_b0", "resnet18"]
 BREAST_VALIDATOR_ARCHS = ["resnet18", "efficientnet_b0"]
 BREAST_VALIDATOR_FOLDS = 5
 
+# Which BreastAnatomySegmenter channel (src/breast_segmentation.py) bounds the
+# generator's edits when LOCK_BACKGROUND is on.
+#   "breast" -> the whole organ. Direct analogue of the chest domains' lung
+#               field, and the default.
+#   "dense"  -> fibroglandular tissue only. Strictly tighter; lesions live
+#               there, so it should cost little coverage while removing a lot
+#               of editable fat. An ablation, not an assumed improvement.
+BREAST_EDIT_REGION = "breast"
+
+# Subtract the pectoral-muscle triangle from the editable region on MLO views.
+# The detector is geometric and approximate (CBIS-DDSM ships no pectoral ground
+# truth), but it is only ever used to EXCLUDE area — a loose fit costs the
+# policy some editable breast, it can never license an edit outside the organ.
+MASK_EXCLUDE_PECTORAL = True
+
 # Root of the extracted CMMD (Chinese Mammography Database) Kaggle mirror
 # (nguynththanhho/cmmd-mammography). Read only by domains/cmmd_breast.py, which
 # is a VALIDATION-ONLY domain: nothing is ever generated on it. It is the one

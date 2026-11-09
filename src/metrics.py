@@ -1635,3 +1635,340 @@ def _save_results(results: dict, ckpt_dir: str) -> None:
     with open(path, "w") as f:
         json.dump(_to_serialisable(_strip_unreportable(results)), f, indent=2)
     print(f"\n[metrics] results saved to '{path}'")
+
+
+# ── Mammography (cbis_ddsm_breast) clinical metrics ─────────────────────────
+# Brought in verbatim from branch test-cancer (7a72672) when it was merged into
+# master. compute_all_metrics here does not call them (it computes CTR/SCP and
+# LHR); check_lesion_localization.py and future breast evaluations do.
+
+
+def _flag_if_degenerate(
+    arrays: list[np.ndarray], rel_threshold: float = 0.02
+) -> dict:
+    """
+    Detect a metric that has collapsed to a constant.
+
+    SCP taught this lesson the expensive way: its proxy saturated to a 0.21%
+    relative spread and it went on emitting paired t-tests with p-values, which
+    look exactly like clinical findings until someone checks the standard
+    deviation. A t-test on a constant is testing floating-point noise.
+
+    Returns {"degenerate": bool, "relative_spread": float} to merge into a
+    metric's result dict; _print_results refuses to print statistics when the
+    flag is set.
+
+    THE SPREAD IS POOLED ACROSS ALL FOUR GROUPS, not the max of the per-group
+    standard deviations. That distinction is not cosmetic. "Degenerate" means
+    the metric carries no information — it is the same number everywhere — and
+    only the pooled spread measures that. Taking the max of within-group stds
+    instead reports 0% for a metric that is tight inside each group but well
+    separated BETWEEN them, which is the signature of a metric working
+    perfectly, and would suppress exactly the results worth reporting. (Caught
+    by the synthetic end-to-end run, where LLR was flagged degenerate at "0.00%
+    spread" while reporting a mean delta of -0.081.)
+
+    Deliberately NOT retrofitted onto CTR/SCP. Those two feed the archived RSNA
+    numbers in checkpoints/eval_metrics.json and changing their result schema
+    would make old and new runs non-comparable for no gain. SCP has its own
+    inline check with the max-of-within-group form; that is harmless there
+    because the failure it caught was a genuinely global constant, flat both
+    within and between groups.
+    """
+    pooled = np.concatenate(arrays)
+    spread = float(np.nanstd(pooled))
+    scale  = float(abs(np.nanmean(pooled))) + 1e-8
+    rel    = spread / scale
+    return dict(degenerate=bool(rel < rel_threshold), relative_spread=float(rel))
+
+
+def _seg_channel(seg_net, *names: str) -> Optional[int]:
+    """
+    Index of the first of `names` present in seg_net.targets, or None.
+
+    Same by-name lookup run_full_evaluation already uses for the heart channel,
+    for the same reason: a hardcoded index silently measures the wrong tissue
+    if the segmenter's channel order ever changes.
+    """
+    targets = getattr(seg_net, "targets", None)
+    if not targets:
+        return None
+    for n in names:
+        if n in targets:
+            return targets.index(n)
+    return None
+
+
+def _breast_masks_batch(
+    x_list: list[torch.Tensor],
+    seg_net,
+    lesion_net,
+    device: str = config.DEVICE,
+    batch_size: int = 16,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Run both segmenters once over a list of images.
+
+    Returns (images, breast, dense, lesion) as float32 numpy arrays of shape
+    (N, H, W); `lesion` is all-zero when lesion_net is None.
+
+    Batched and shared across LLR/MSI/BDC on purpose. Computed per metric
+    instead, this would be nine segmenter passes over four groups of up to 200
+    images — the same waste compute_ctr_batch was written to avoid.
+    """
+    imgs, breasts, denses, lesions = [], [], [], []
+
+    b_idx = _seg_channel(seg_net, "Breast")
+    d_idx = _seg_channel(seg_net, "Dense Tissue", "Breast")
+
+    for i in range(0, len(x_list), batch_size):
+        chunk = torch.cat(x_list[i : i + batch_size]).to(device)      # (b,1,H,W)
+        with torch.no_grad():
+            # BreastAnatomySegmenter takes the xrv-scaled input, matching the
+            # PSPNet convention it stands in for.
+            seg = torch.sigmoid(seg_net(chunk * 2048.0 - 1024.0))
+            breast = seg[:, b_idx] if b_idx is not None else torch.ones_like(chunk[:, 0])
+            dense  = seg[:, d_idx] if d_idx is not None else breast
+
+            if lesion_net is not None:
+                # LesionSegmenter takes plain [0,1] image space, NOT xrv scaling.
+                les = torch.sigmoid(lesion_net(chunk))[:, 0]
+            else:
+                les = torch.zeros_like(breast)
+
+        # NOTE >= and not >. The segmenter's channels are sigmoid((u - thr)/tau),
+        # so a pixel sitting exactly ON the threshold scores exactly 0.5, and a
+        # strict > drops it. That is not a rounding curiosity: the dense-tissue
+        # threshold IS a quantile of the image's own values, so on any flat or
+        # coarsely quantised region a large share of pixels land precisely
+        # there and the mask comes back EMPTY — which surfaces as an all-NaN
+        # BDC rather than as an error. Convention here is the usual one: a
+        # pixel at the threshold belongs to the brighter class.
+        imgs.append(chunk[:, 0].cpu().numpy())
+        breasts.append((breast >= 0.5).float().cpu().numpy())
+        denses.append((dense >= 0.5).float().cpu().numpy())
+        lesions.append((les >= 0.5).float().cpu().numpy())
+
+    return (
+        np.concatenate(imgs), np.concatenate(breasts),
+        np.concatenate(denses), np.concatenate(lesions),
+    )
+
+
+def compute_llr_batch(
+    x_list: list[torch.Tensor],
+    seg_net,
+    lesion_net,
+    device: str = config.DEVICE,
+    batch_size: int = 16,
+    _masks=None,
+) -> list[float]:
+    """
+    LLR — Lesion Load Ratio = area(lesion) / area(breast). NaN where the breast
+    mask came out empty.
+
+    The structural analogue of CTR, which is likewise a ratio of two segmented
+    extents. Normalising by breast area is what makes it comparable across
+    images: breast size varies enormously between patients and between CC and
+    MLO views, so a raw lesion area would mostly measure who was imaged. Same
+    reason CTR divides cardiac by thoracic diameter rather than reporting the
+    heart's width.
+
+    Expected direction: benign->malignant should RAISE it, malignant->benign
+    lower it. Malignant lesions are larger and more infiltrative on average —
+    a real but modest effect, so read the paired t-test, not the raw means.
+
+    `_masks` lets run_full_evaluation share one segmentation pass across the
+    three metrics; leave it None for standalone use.
+    """
+    _, breast, _, lesion = (
+        _masks if _masks is not None
+        else _breast_masks_batch(x_list, seg_net, lesion_net, device, batch_size)
+    )
+    out = []
+    for b, l in zip(breast, lesion):
+        a = float(b.sum())
+        out.append(float(l.sum()) / a if a > 0 else float("nan"))
+    return out
+
+
+def compute_msi_batch(
+    x_list: list[torch.Tensor],
+    seg_net,
+    lesion_net,
+    device: str = config.DEVICE,
+    batch_size: int = 16,
+    _masks=None,
+) -> list[float]:
+    """
+    MSI — Margin Spiculation Index = perimeter^2 / (4*pi*area) of the largest
+    lesion component. NaN where no lesion was segmented.
+
+    1.0 for a perfect circle and larger for anything more convoluted, this is
+    normalised boundary complexity (the inverse of isoperimetric compactness).
+
+    WHY THIS IS THE RIGHT REPLACEMENT FOR SCP. Margin morphology is the single
+    most load-bearing malignancy sign in mammography: a circumscribed, smoothly
+    bounded mass reads benign, a spiculated or ill-defined one reads malignant.
+    CBIS-DDSM encodes exactly this in its `mass margins` and `mass shape`
+    columns (SPICULATED / ILL_DEFINED vs CIRCUMSCRIBED). So unlike SCP's
+    yolo-feature-norm proxy, MSI is measuring a quantity the dataset itself
+    treats as the diagnostic feature.
+
+    IT MUST BE CALIBRATED BEFORE IT IS REPORTED. Run check_lesion_localization.py
+    and confirm MSI separates SPICULATED from CIRCUMSCRIBED on REAL images. If
+    it cannot tell the two apart on ground truth, it cannot be evidence about
+    counterfactuals, and any p-value it produces is an artefact of the
+    segmenter rather than a finding. This is the check SCP never had, and the
+    reason SCP shipped a degenerate constant for several evaluation runs.
+
+    Expected direction: benign->malignant should RAISE it.
+    """
+    from skimage.measure import label as _label, regionprops
+
+    _, _, _, lesion = (
+        _masks if _masks is not None
+        else _breast_masks_batch(x_list, seg_net, lesion_net, device, batch_size)
+    )
+
+    out = []
+    for l in lesion:
+        m = l > 0.5
+        if not m.any():
+            out.append(float("nan"))
+            continue
+        lab = _label(m, connectivity=2)
+        props = regionprops(lab)
+        if not props:
+            out.append(float("nan"))
+            continue
+        # Largest component only. A segmenter firing on several regions would
+        # otherwise mix a compact lesion with speckle and report the average of
+        # two unrelated shapes.
+        p = max(props, key=lambda r: r.area)
+        area, per = float(p.area), float(p.perimeter)
+        # A handful of pixels has a perimeter dominated by its own staircase
+        # quantisation; the "shape" of a 20-pixel blob is not a measurement.
+        if area < 25.0 or per <= 0.0:
+            out.append(float("nan"))
+            continue
+        out.append((per * per) / (4.0 * math.pi * area))
+    return out
+
+
+def compute_bdc_batch(
+    x_list: list[torch.Tensor],
+    seg_net,
+    lesion_net,
+    device: str = config.DEVICE,
+    batch_size: int = 16,
+    _masks=None,
+) -> list[float]:
+    """
+    BDC — mean intensity of the fibroglandular (dense) tissue. NaN where the
+    dense mask is empty.
+
+    This one is a DIAGNOSTIC, not a success criterion, and it has no chest
+    analogue. Its job is to catch the specific failure this project already hit
+    once on RSNA: job 17648985 reported CV=0.975 while changing 73.6% of pixels
+    at MAE 0.036 — a diffuse, low-amplitude wash that moved the classifier
+    without editing any anatomy.
+
+    The mammography signature of that failure is a large BDC shift with a flat
+    LLR and an EditConcentration near its uniform baseline: the generator
+    globally brightened or darkened the breast, which a density-sensitive
+    classifier reads as a class change, instead of altering a lesion.
+
+    So do not read "BDC moved a lot" as success. Read it TOGETHER with LLR and
+    EditConcentration — see the interpretation note printed by _print_results.
+    """
+    imgs, _, dense, _ = (
+        _masks if _masks is not None
+        else _breast_masks_batch(x_list, seg_net, lesion_net, device, batch_size)
+    )
+    out = []
+    for img, d in zip(imgs, dense):
+        m = d > 0.5
+        out.append(float(img[m].mean()) if m.any() else float("nan"))
+    return out
+
+
+def _detect_markers(img: np.ndarray, breast: np.ndarray) -> bool:
+    """
+    True if a biopsy clip / skin marker is present.
+
+    Model-free by design. FOP's history in this file is three successive
+    attempts to borrow a detector — a YOLO feature norm, then a YOLO detection
+    head, then an xrv "Support Devices" head that turns out not to exist in any
+    released weight set — and it is still permanently N/A. Mammography markers
+    do not need a model: surgical clips and skin markers are metal, so they
+    saturate the detector while breast tissue does not, and they are small and
+    compact where dense tissue is large and diffuse.
+
+    Criteria, all three required:
+      * intensity in the top 0.5% of the frame AND near-saturated,
+      * component area between 4 and 400 px (a clip, not a dense region),
+      * high local contrast against the surrounding tissue.
+    """
+    from skimage.measure import label as _label, regionprops
+
+    if not breast.any():
+        return False
+    thr = max(float(np.quantile(img[breast > 0.5], 0.995)), 0.90)
+    cand = (img >= thr) & (breast > 0.5)
+    if not cand.any():
+        return False
+
+    lab = _label(cand, connectivity=2)
+    for p in regionprops(lab):
+        if not (4 <= p.area <= 400):
+            continue
+        r0, c0, r1, c1 = p.bbox
+        pad = 6
+        ring = img[max(0, r0 - pad): r1 + pad, max(0, c0 - pad): c1 + pad]
+        if ring.size == 0:
+            continue
+        if float(img[lab == p.label].mean()) - float(ring.mean()) > 0.15:
+            return True
+    return False
+
+
+def marker_preservation(
+    X_real: list[torch.Tensor],
+    X_cf:   list[torch.Tensor],
+    seg_net,
+    device: str = config.DEVICE,
+    batch_size: int = 16,
+) -> Optional[float]:
+    """
+    MOP(X, Xc) = fraction of images with a marker in the real image whose
+    marker SURVIVES in the counterfactual.
+
+    The mammography counterpart of FOP (Eq. 12) and the same test of the same
+    property: a counterfactual is supposed to change the pathology and leave
+    everything else alone. A biopsy clip is the cleanest possible probe for
+    that, because no amount of malignancy reasoning justifies deleting a piece
+    of metal from the image.
+
+    Returns None — reported as N/A rather than as a score — when no image in
+    the group carries a marker, since a ratio over an empty denominator is not
+    a zero.
+    """
+    assert len(X_real) == len(X_cf)
+    if not X_real:
+        return None
+
+    imgs_r, breast_r, _, _ = _breast_masks_batch(X_real, seg_net, None, device, batch_size)
+    imgs_c, breast_c, _, _ = _breast_masks_batch(X_cf,   seg_net, None, device, batch_size)
+
+    preserved = total = 0
+    for ir, br, ic, bc in zip(imgs_r, breast_r, imgs_c, breast_c):
+        if not _detect_markers(ir, br):
+            continue
+        total += 1
+        # Marker looked for in the COUNTERFACTUAL's own breast mask: an edit
+        # that shifts the breast boundary should not count as deleting a clip.
+        if _detect_markers(ic, bc):
+            preserved += 1
+
+    return (preserved / total) if total else None
