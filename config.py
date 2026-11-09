@@ -75,7 +75,7 @@ DATASET_DOMAIN = os.environ.get("PPO_DOMAIN", "rsna_pneumonia")
 
 # Root of an extracted NODE21 release (grand-challenge registration required,
 # so there is no auto-download). Only read by domains/node21_nodule.py.
-NODE21_ROOT = ""
+NODE21_ROOT = "/home2020/home/insa/arbaoui/Jobs/Ayoub/data/node21/extracted/cxr_images/proccessed_data"
 
 # ─────────────────────────────────────────────
 # Breast / mammography domain (cbis_ddsm_breast)
