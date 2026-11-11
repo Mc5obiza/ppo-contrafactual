@@ -1,0 +1,113 @@
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Setup}
+\label{sec:setup}
+
+We use the RSNA Pneumonia Detection Challenge dataset~\cite{rsna2018} (DICOM, min--max normalized, resized to $256\times256$, binary label collapsed from bounding-box annotations). In the default configuration the guidance classifier is the mean-probability ensemble of two TorchXRayVision DenseNet-121 models (\texttt{densenet121-res224-rsna}, \texttt{densenet121-res224-chex}); the single-classifier arm uses \texttt{rsna} alone; segmentation uses TorchXRayVision PSPNet for lung and heart channels; a YOLOv8n feature extractor supplies the foreign-object embedding. Each policy is trained for 800 episodes per direction; for the 2-model ensemble run the two directions took 8h40m (n$\to$p, on an A100) and 11h00m (p$\to$n, on an H100), both including LoRA fine-tuning (5.7\,h and 5.1\,h).
+
+\subsection{Main results}
+\label{sec:main-results}
+
+Table~\ref{tab:main-results} reports the default configuration (2-model guidance ensemble, no Grad-CAM mask, no sparsity reward). Within the lung, p$\to$n edits put 1.165$\times$ the box's area share of their mass on it (95\% CI $[1.123, 1.207]$): real, but weak lesion targeting. About half of it is generic. Scored against other patients' boxes, the same edits reach 1.089, which leaves an image-specific part of $+0.076$ ($[+0.037, +0.117]$, $p=3\times10^{-4}$). Over the generator's default schedule without a policy, run on the same images with the same guidance, groups, adapters and seeds, LHR rises from 1.088 (paired $+0.077$, $[+0.037, +0.120]$, $p=5\times10^{-4}$, $d=0.29$) and p$\to$n CV from 0.225 to 0.670 (90 images gain validity, 1 loses it; McNemar $p=7.4\times10^{-26}$). Under the whole-image null the LHR gap would read $+0.532$, seven times larger, mostly because the policy keeps more of its edit in the lung (66\% vs.\ 56\%). In n$\to$p the policy adds nothing measurable (CV 0.945 vs.\ 0.940, 4 vs.\ 3 discordant). The edits are diffuse: a quarter to a third of the difference mass lies in the top 5\% of pixels (uniform: 0.05), and about half the changed pixels are VAE round-trip error (Supp.~E6).
+
+\begin{table}[t]
+\centering
+\caption{Default configuration, $n=200$ per group, from one evaluation in which each direction uses its own generator adapter (\S\ref{sec:controls}). LHR (Eq.~\ref{eq:lhr}) is defined only for p$\to$n; the whole-image lift is context, not a test (\S\ref{sec:lhr}).}
+\label{tab:main-results}
+\small
+\begin{tabular}{@{}llcc@{}}
+\toprule
+Metric & & n$\to$p & p$\to$n \\
+\midrule
+CV & fraction valid, $\tau{=}0.8$ & 0.945 & 0.670 \\
+& mean & \multicolumn{2}{c}{0.808} \\
+LHR & in-lung lift (chance $=1$) & --- & 1.165 \\
+& \multicolumn{3}{l}{\footnotesize $t=7.73$, $p=1.6\times10^{-12}$, $n=148$} \\
+& whole image (lung-uniform: 3.21) & --- & 2.595 \\
+Transfer & mean over 3 validators & 0.281 & 0.276 \\
+EditConc. & top-5\% mass (uniform=0.05) & 0.254 & 0.314 \\
+& fraction of pixels changed & 0.647 & 0.634 \\
+FID & vs.\ real target class & 22.38 & 4.76 \\
+IP & MS-SSIM & 0.924 & 0.868 \\
+& HF-corr & 0.948 & 0.913 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{A fixed schedule matches the policy.} To ask whether the gain comes from per-image adaptation, we hold every control at the policy's mean action over its evaluation steps, with the same step budget and validity-based stopping and no training. On the same images this fixed schedule is indistinguishable from the policy in LHR (1.162; paired $+0.003$, $[-0.030, +0.040]$, $p=0.86$) and in p$\to$n CV (0.660 vs.\ 0.670, 14 vs.\ 16 discordant), and in n$\to$p it is valid on exactly the same 189 images. Its mean p$\to$n transfer is lower (0.244 vs.\ 0.276). A fixed schedule picked from a grid by the training reward, without RL (Supp.~E5), also matches the policy in LHR (1.177; $-0.012$, $[-0.047, +0.023]$) and p$\to$n CV (0.720 vs.\ 0.670, $p=0.12$), with lower transfer (0.211). Its whole-image LHR deficit ($-0.187$, significant) was a locality effect. What the policy contributed is an aggressive schedule, not per-image adaptation.
+
+\subsection{CV overstates what the edits achieve}
+\label{sec:cv-overstates}
+
+\begin{table}[t]
+\centering
+\caption{Held-out transfer ratio $\rho_v$ (Pneumonia outputs) with its anchors, on the default's 200 + 200 source images unless marked. Ceiling: real positive vs.\ negative test images. Attacks target the guidance ensemble only; both reach guidance CV $\geq 0.96$. $^*$Own classifier-selected groups.}
+\label{tab:transfer-ratio}
+\small
+\setlength{\tabcolsep}{3.2pt}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+& \multicolumn{2}{c}{nih} & \multicolumn{2}{c}{pc} & \multicolumn{2}{c}{mimic\_ch} \\
+& n$\to$p & p$\to$n & n$\to$p & p$\to$n & n$\to$p & p$\to$n \\
+\midrule
+Real pairs (ceiling) & \multicolumn{2}{c}{0.47} & \multicolumn{2}{c}{0.58} & \multicolumn{2}{c}{0.42} \\
+\textbf{Default policy} & \textbf{0.04} & \textbf{0.17} & \textbf{0.47} & \textbf{0.31} & \textbf{0.33} & \textbf{0.36} \\
+Single-classifier$^*$ & 0.08 & 0.10 & 0.41 & 0.22 & 0.20 & 0.11 \\
+Latent Shift (iter.) & 0.04 & 0.19 & 0.34 & 0.24 & 0.08 & 0.24 \\
+PGD $L_\infty$, 4/255 & 0.22 & 0.02 & 0.31 & 0.02 & 0.23 & 0.07 \\
+PGD $L_2$, norm-matched & 0.18 & 0.07 & 0.45 & 0.46 & 0.49 & 0.02 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:transfer-ratio} places the counterfactuals between their anchors. In p$\to$n they sit well above the floor: an $L_\infty$ attack that reaches guidance CV 0.96 transfers at 0.02--0.07, the policy at 0.17--0.36, about 60\% of the real-pair ceiling. In n$\to$p they do not. An $L_2$ attack with each counterfactual's own norm transfers as well or better on \texttt{pc} and \texttt{mimic\_ch}, a $4/255$ $L_\infty$ attack with a quarter of that norm reaches 0.22--0.31, and on \texttt{nih} the counterfactuals transfer less than every attack. Decision flips at the validators' own operating points agree: \texttt{pc}, \texttt{mimic\_ch} and \texttt{nih} flip 91\%, 69\% and 22\% of n$\to$p counterfactuals, and 97\%, 98\% and 36\% of norm-matched attacks. Transfer of 0.28 therefore does not mean that validators reject most edits. It means that the edits move held-out scores no more than direct optimization against the guidance models does. The norm-matched attack is large ($L_\infty$ 0.37) and may itself add opacity-like structure, so this is a statement about what transfer can certify, not proof that the edits are adversarial.
+
+This is the paper's central empirical claim. In n$\to$p the default policy reaches a CV of 0.945, yet its held-out transfer gives no evidence of class-relevant content beyond an attack's. Iterative Latent Shift~\cite{cohen2021gifsplanation}, a different generator (an autoencoder latent walk) under the same guidance, groups and stopping rule, shows the same pattern: CV 1.00 with mean n$\to$p transfer 0.15 (Supp.~E3). Nothing in the conventional metric suite surfaces this. Against single-classifier guidance, every ensemble-guided run across PPO seeds (\S\ref{sec:five-arms}) has lower p$\to$n CV (0.495--0.765 vs.\ 0.800--0.850) but higher in-lung LHR (1.14--1.19 vs.\ 1.08--1.11) and p$\to$n transfer (0.21--0.28 vs.\ 0.12--0.14); n$\to$p transfer does not separate them. The metric that fell is the one that shares a classifier with the generator.
+
+Fig.~\ref{fig:qualitative} shows what averages hide. In (a) the guidance score goes from 0.04 to 0.99 while \texttt{nih} barely moves and \texttt{pc} and \texttt{mimic\_ch} move less than half as far. In (c) the edit is valid but puts only half the box's area share of its in-lung mass on the lesion (lift 0.51), and \texttt{nih} moves toward pneumonia.
+
+\begin{table}[t]
+\centering
+\caption{Five trained arms. Bold marks the default. LHR is in-lung (whole-image in parentheses). Transfer is the mean over \{nih, pc, mimic\_ch\}; $^*$over \{nih, pc\} only (leak-free set). $n=200$ per group, except the 3-model arm's p$\to$n group ($n=32$, 27 annotated). Paired in-lung LHR tests: $^{\S}$single-classifier policy re-run on the default's images and seeds; $^{\ddagger}$against the default evaluated with the n$\to$p adapter for both directions, as those arms were; Grad-CAM against the per-direction evaluation.}
+\label{tab:five-arms}
+\footnotesize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{@{}lccl@{}}
+\toprule
+Arm & LHR & Transfer & LHR vs.\ default \\
+& & n$\to$p/p$\to$n & (paired) \\
+\midrule
+Single-classifier & 1.084 (2.29) & 0.230/0.145 & worse ($p{=}2{\times}10^{-4}$)$^{\S}$ \\
+\textbf{2-ens (default)} & \textbf{1.165 (2.60)} & \textbf{0.281/0.276} & --- \\
+3-model ensemble & 1.216 (2.49) & 0.350/0.276$^*$ & unresolved ($n{=}12$)$^{\ddagger}$ \\
+Sparsity reward & 1.167 (2.40) & 0.311/0.212 & n.s.\ ($p{=}0.085$)$^{\ddagger}$ \\
+Grad-CAM constraint & 1.140 (1.64) & 0.161/0.103 & n.s.\ ($p{=}0.37$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\linewidth]{figures/fig1_lhr_lift.png}
+\caption{In-lung LHR (p$\to$n, 95\% CI) of the arms in Table~\ref{tab:five-arms} and four reference runs. 1.0: lesion-blind in-lung edit. $^*$Own image groups.}
+\label{fig:lhr-lift}
+\end{figure}
+
+\subsection{Five trained arms}
+\label{sec:five-arms}
+
+Every arm in Table~\ref{tab:five-arms} is a policy trained for 800 episodes per direction and evaluated end to end, with the split and seeds of \S\ref{sec:controls}. LHR verdicts are paired tests on shared images, never differences of group means. Under the in-lung null only one ranking survives, ensemble over single-classifier guidance, and it also survives PPO seed variation. Every other ranking that the whole-image lift produces (sparsity worse, Grad-CAM much worse, trained over random actions) disappears once edits are compared within the lung (Fig.~\ref{fig:lhr-lift}).
+
+\paragraph{Ensemble vs.\ single-classifier guidance, and seed variation.} On the default's images and seeds with its own adapters, the single-classifier policy scores 1.083, no better than no policy (1.088); the ensemble's advantage, $+0.082$ ($[+0.042, +0.124]$), also holds on the 76 annotated sources the original groups share under matched adapters ($+0.074$, $p=0.006$). New PPO seeds around the fixed adapters, plus an earlier full retrain of the default (LoRA seed 1, one shared adapter), give three runs per configuration (Supp.~E10). Every ensemble run scores above every single-classifier run in in-lung LHR (8 of 9 pairs at $p<0.01$; seed-averaged $+0.075$, $[+0.050, +0.102]$) and above no policy; no single-classifier seed does. p$\to$n CV moves by up to 0.27 between ensemble seeds, so CV-based arm comparisons need more than one run per arm. Growing the ensemble to three members improves \texttt{pc} n$\to$p transfer from 0.465 to 0.623 with non-overlapping CIs, does not resolve on LHR ($n=12$), and lowers mean CV to 0.624.
+
+\paragraph{A trained policy does not beat a random one in the lung.} On its 183 annotated images, the single-classifier policy and a random-action policy with the same bounds score 1.084 and 1.081 (paired $+0.003$, $[-0.024, +0.031]$, $p=0.85$). Their whole-image gap ($+0.090$, $p=0.012$) is a locality effect.
+
+\subsection{Two localization mechanisms, as implemented}
+\label{sec:negative-results}
+
+Both results below are diagnostics of our implementations, not evidence against sparsity or attribution priors in general.
+
+\paragraph{The annealed sparsity reward is inert.} Edit concentration stays in the 0.21--0.31 band in every arm. The sparsity term was built to address this and had been disabled throughout, leaving its annealing ramp inert. We enabled it and retrained. In n$\to$p the validity safeguard (Supp.~R1) froze $\lambda_{\text{sparsity}}$ at 0 before its ramp began, so only p$\to$n trained with the term. There, concentration moved by less than 0.02, in-lung LHR did not change (paired $+0.026$, $[-0.003, +0.056]$, $p=0.085$), and p$\to$n transfer fell from 0.292 to 0.212 with non-overlapping CIs on two of three validators. Without a working spatial mask the term reduces to unweighted $L_1$, which shrinks all edit mass rather than off-target mass.
+
+\paragraph{The Grad-CAM constraint collapses validity.} Under the training-time Grad-CAM path, \texttt{chex}'s maps degenerate on 66 of 263 member-image observations (\texttt{rsna}'s on 1), at \emph{low} predicted probability, consistent with output saturation zeroing the gradient. A finer target layer removes the degeneracy (0\%/0.4\%) but leaves CAM--lesion lift at 1.196, barely above chance. A policy trained under that remedy collapses CV from 0.808 to 0.0175 (7 of 400 valid) and lowers transfer on all three validators. Its in-lung LHR is not distinguishable from the default's (paired $+0.025$, $[-0.031, +0.080]$, $p=0.37$). Its whole-image gap ($+0.960$, $d=1.07$, the largest whole-image effect we measure) reflects edits leaving the lung (41\% of edit mass in the lung vs.\ 66\%), not worse targeting within it.

@@ -1,0 +1,337 @@
+% =============================================================================
+% Supplementary sections moved out of the main paper: E1 (controls),
+% E2 (anatomical proxy metrics), E3 (baselines under the same protocol), E4 (lock-width sensitivity),
+% E5 (same-image runs: default, no policy, two fixed schedules, second seed), E6 (edit locality, FID/KID uncertainty),
+% E7 (LHR under alternative nulls), E8 (transfer-ratio calibration), E9 (exploratory mammography LHR),
+% E10 (PPO seed replicates).
+% =============================================================================
+
+\section*{E. Additional Details}
+\label{sec:suppl-details}
+\setcounter{table}{0}
+\renewcommand{\thetable}{E\arabic{table}}
+
+% -----------------------------------------------------------------------------
+\subsection*{E1. Controls the comparison requires}
+\label{sec:suppl-controls}
+
+A control-arm comparison is only as trustworthy as the plumbing beneath it, and three preconditions we had assumed did not hold during development. (i) A single dataset object was shared by LoRA fine-tuning, the PPO pool and the metrics scan, so evaluation images had been seen during fine-tuning. We replaced it with one deterministic, persisted, \emph{patient-level} split shared by every stage, computed once because generation runs as independent array processes that cannot recompute an RNG-based split consistently. It assigns 80\% of patients to training and 20\% to test (seed 0; one image per patient in RSNA, so 21{,}347 training and 5{,}337 test images) and is stored with a fingerprint of the dataset. In every reported arm, generator fine-tuning, PPO rollouts and the validity probe use only the training fold, and every evaluated image is in the test fold. (ii) Training was unseeded: two identical submissions produced two different policies, which is survivable for a headline number but not for a comparison in which arms must differ by treatment alone. Every reported run now uses split seed 0, LoRA seed 0 and PPO seeds 1 (n$\to$p) and 2 (p$\to$n); evaluation uses base seed 0, with per-image seed equal to the base plus the image's global index ($+10^6$ for p$\to$n). Seeding fixes the random streams but not floating-point nondeterminism, so repeated runs are not guaranteed to be bit-identical. (iii) The control arms had never been exercised. Wiring them up surfaced a routing bug under which every reduce silently fell back to the trained arm's shards, which would have made ``the policy contributes nothing'' an artefact of a missing flag, and a shared output directory under which each arm overwrote the previous one's metrics.
+
+A CPU-only invariant suite pins the LHR calibration, split disjointness and three further properties whose silent failure would yield a plausible-looking wrong number rather than a crash. Every training and evaluation run writes a manifest giving its code revision and configuration, and every evaluation shard carries a configuration stamp from which the transfer-ratio denominator is read (main paper Sec.~4.3). We report these because each was, at the time it was found, invisible in the outputs: all three would have produced a well-formed table.
+
+% -----------------------------------------------------------------------------
+\subsection*{E2. Anatomical proxy metrics}
+\label{sec:suppl-clinical}
+
+We report two anatomical proxies under the default configuration: the Cardio-Thoracic Ratio (CTR), the ratio of cardiac to thoracic width from the heart and lung segmentation masks, and a costophrenic-recess score (SCP) approximating pleural blunting, each tested with a paired $t$-test on the within-image delta (real minus counterfactual).
+
+CTR shifts by $+0.0127$ ($t=3.882$, $p=1.4\times10^{-4}$) in n$\to$p and by $+0.0047$ ($t=0.478$, $p=0.634$) in p$\to$n: a small shift, significant in n$\to$p only, with an absolute magnitude ($\leq 0.013$) far below the 0.5 at which a CTR is conventionally read as enlarged. This is consistent with the intended behaviour of the background lock, since the cardiac silhouette lies largely outside the lung mask that gates editing; we read it as a shift too small to interpret either way, not as a directional CTR effect.
+SCP's own computation flags itself as degenerate under this configuration (relative spread 0.19\% across the four image groups), so its delta and $t$-test are withheld rather than reported on what is, numerically, a near-constant signal. Since it is built on the feature norm of a COCO-pretrained detector rather than a dedicated recess detector, we do not consider it informative in its current form. Neither proxy supports a directional claim about pleural or cardiac status.
+
+% -----------------------------------------------------------------------------
+\subsection*{E3. Baselines under the same protocol}
+\label{sec:suppl-comparison}
+
+Published values are not comparable to ours: they are computed with other classifiers, feature extractors and evaluation groups, and none of ECED, FiRe or DocVCE reports a lesion-anchored metric or the held-out target shift. DiME, ACE and FastDiME guide a pixel-space diffusion model trained on the target dataset, FiRe a Pixel Mean Flow model, LDCE a class-conditional latent diffusion model, and DVCE-style methods an adversarially robust classifier. None of these exists for RSNA at our resolution and split, and training one per method was not feasible before submission. We therefore ran the two baselines we could run under an identical protocol: the same 400 test images, groups, guidance ensemble, CV criterion, validators and scoring code as the default policy (Table~\ref{tab:suppl-baselines}).
+
+\textbf{Latent Shift} (Cohen \etal, MIDL 2021; main-paper reference list) walks the latent of a pretrained autoencoder (TorchXRayVision ResNetAE \texttt{101-elastic}) along the guidance gradient. The original single-step version, a line search along one gradient direction up to $4\|z_0\|$, plateaus at a guidance shift of 0.3--0.65 and reaches CV 0.005/0.12. We therefore also ran an iterative version that re-computes the gradient at every step (step $0.02\|z_0\|$, at most 150 steps) and stops at the first step that satisfies main-paper Eq.~(4), mirroring the policy's stop-at-validity rule. Its hyperparameters were fixed before any result was seen and nothing is tuned on LHR or transfer. \textbf{CycleGAN} is an unconditional, unguided image-to-image translation trained between the radiologist-labelled classes of the training fold, applied with one deterministic forward pass per image.
+
+\begin{table*}[t]
+\centering
+\caption{Baselines on the default policy's 400 test images. Transfer: mean $\rho_v$ over three validators (ensemble denominator). LHR: in-lung lift [95\% CI], whole-image lift in parentheses; paired in-lung difference to the default on the 148 annotated images.}
+\label{tab:suppl-baselines}
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+& Default policy & Latent Shift (iter.) & Latent Shift & CycleGAN \\
+\midrule
+CV n$\to$p / p$\to$n & 0.945 / 0.670 & 1.000 / 0.995 & 0.005 / 0.120 & 0.000 / 0.000 \\
+Transfer n$\to$p / p$\to$n & 0.281 / 0.276 & 0.153 / 0.224 & --- & --- \\
+\texttt{nih} n$\to$p / p$\to$n & 0.044 / 0.165 & 0.039 / 0.187 & --- & --- \\
+Guidance shift n$\to$p / p$\to$n & 0.898 / 0.761 & 0.833 / 0.819 & 0.567 / 0.677 & 0.123 / 0.055 \\
+LHR (in lung) & 1.165 [1.12, 1.21] & 1.106 [1.08, 1.14] & 1.055 [1.01, 1.10] & 1.160 [1.12, 1.20] \\
+\quad (whole image) & (2.595) & (1.451) & (1.174) & (1.483) \\
+\quad default $-$ baseline & --- & $+0.059$, $p{=}0.004$ & $+0.110$, $p{=}1.5{\times}10^{-4}$ & $+0.005$, $p{=}0.84$ \\
+Edit mass in lung (p$\to$n) & 0.66 & 0.37 & 0.30 & 0.36 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+Three observations. First, iterative Latent Shift reproduces the high-CV, low-transfer pattern with an unrelated generator: CV 1.00 in n$\to$p with mean transfer 0.153, and \texttt{nih} 0.039, the same as the policy's 0.044. So the gap is not specific to diffusion or to the RL scheduler, though it may still be specific to gradient-guided editing with our guidance models. Second, its in-lung LHR is lower than the policy's, but only by 0.059; under the whole-image null the gap reads 1.144, because Latent Shift puts only 37\% of its edit mass in the lung. Third, CycleGAN barely moves the guidance ensemble (shift 0.12 and 0.06, CV 0), so its transfer ratio has a near-zero denominator and is not reported. Yet it matches the policy's in-lung LHR: an unguided translation between the labelled classes targets lesions within the lung as well as the guided policy does. Lesion targeting and classifier validity are separate properties, and a protocol needs both.
+
+The generator's own default schedule without a policy (the ``no policy'' row of Table~\ref{tab:suppl-fourarm}) shows the same validity--transfer pattern as the policy: n$\to$p CV 0.940 against a 3-validator mean transfer of 0.307 and \texttt{nih} 0.101.
+
+% -----------------------------------------------------------------------------
+\subsection*{E4. Lock-width sensitivity (exploratory)}
+\label{sec:suppl-lockwidth}
+
+The width of the background lock's editable band (main paper Sec.~3.2: dilation and Gaussian feathering of the lung mask, both in latent cells) was set once and not tuned. As an exploratory check we regenerated the first 50 images of each direction with the default policies under three settings: d0 (dilation 0, no feathering), d2 (dilation 2, feathering 1.0; the default setting, so a rerun) and d4 (dilation 4, feathering 2.0). LHR here is the whole-image lift, on the 47 annotated p$\to$n images. Table~\ref{tab:suppl-lockwidth} gives each setting's paired difference from the d2 rerun, with 95\% paired percentile-bootstrap CIs (10{,}000 resamples of the images, drawn jointly across settings; transfer as a ratio of means; CV also with an exact McNemar test). As the rerun-noise reference we use the difference between the d2 rerun and the earlier evaluation of the default on the same images, and count a difference as exceeding rerun noise when its CI lies entirely outside $\pm$ that reference. The reference itself has CIs excluding zero on several metrics, so a CI that excludes zero is not on its own evidence of a setting effect. Every contrast here is across GPU types, and for p$\to$n metrics that reference evaluation used the n$\to$p adapter for both directions, so its band also contains that change.
+
+Narrowing the lock (d0) raises edit concentration ($+0.028$ n$\to$p, $+0.035$ p$\to$n) and lowers the fraction of pixels changed ($-0.060$, $-0.065$); it also moves two n$\to$p validator ratios beyond noise, in opposite directions (\texttt{nih} $-0.059$, \texttt{pc} $+0.019$). Widening it (d4) lowers whole-image LHR lift by 0.130 (95\% CI $[0.038, 0.247]$), which a wider band that lets edit mass leave the lung would produce without any change in targeting (Supp.~E7; we did not recompute this exploratory check in-lung), and makes edits slightly more diffuse (concentration $-0.007$ and $-0.018$, fraction changed $+0.018$ and $+0.048$). The other differences, including CV and mean transfer in both directions, are within rerun noise; d0's p$\to$n CV drop of 0.140 (1 vs.\ 8 discordant images, $p=0.039$) has a CI that excludes zero but not the noise band. With 50 images and a single rerun pair as the noise reference, we read these as indications of sensitivity, not as a tuning result.
+
+\begin{table*}[t]
+\centering
+\caption{Lock-width sensitivity, first 50 images per direction (LHR: 47 annotated). d2 is the default setting, rerun. Differences are setting minus d2 rerun, with 95\% paired bootstrap CIs. Rerun noise is d2 rerun minus the earlier default evaluation on the same images. $^{\dagger}$CI entirely outside $\pm$ rerun noise. $^{\ddagger}$CI excludes zero but not the rerun-noise band.}
+\label{tab:suppl-lockwidth}
+\footnotesize
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Metric & d2 (rerun) & Rerun noise & d0 $-$ d2 & d4 $-$ d2 \\
+\midrule
+CV, n$\to$p & 0.960 & $0.000$ $[0.000, 0.000]$ & $-0.020$ $[-0.060, 0.000]$ & $0.000$ $[0.000, 0.000]$ \\
+CV, p$\to$n & 0.740 & $-0.060$ $[-0.140, 0.000]$ & $-0.140$ $[-0.260, -0.040]$$^{\ddagger}$ & $+0.040$ $[-0.040, +0.120]$ \\
+LHR, whole image (p$\to$n) & 2.489 & $-0.034$ $[-0.114, +0.043]$ & $+0.013$ $[-0.096, +0.124]$ & $-0.130$ $[-0.247, -0.038]$$^{\dagger}$ \\
+Edit conc., n$\to$p & 0.248 & $0.000$ $[-0.002, +0.001]$ & $+0.028$ $[+0.025, +0.032]$$^{\dagger}$ & $-0.007$ $[-0.010, -0.004]$$^{\dagger}$ \\
+Edit conc., p$\to$n & 0.317 & $-0.005$ $[-0.013, +0.002]$ & $+0.035$ $[+0.025, +0.043]$$^{\dagger}$ & $-0.018$ $[-0.025, -0.010]$$^{\dagger}$ \\
+Frac.\ changed, n$\to$p & 0.664 & $0.000$ $[0.000, +0.001]$ & $-0.060$ $[-0.072, -0.050]$$^{\dagger}$ & $+0.018$ $[+0.008, +0.025]$$^{\dagger}$ \\
+Frac.\ changed, p$\to$n & 0.629 & $+0.001$ $[-0.008, +0.009]$ & $-0.065$ $[-0.074, -0.056]$$^{\dagger}$ & $+0.048$ $[+0.037, +0.060]$$^{\dagger}$ \\
+Transfer mean, n$\to$p & 0.262 & $-0.005$ $[-0.015, +0.002]$ & $-0.016$ $[-0.032, -0.001]$$^{\ddagger}$ & $+0.004$ $[-0.007, +0.015]$ \\
+Transfer mean, p$\to$n & 0.251 & $-0.038$ $[-0.062, -0.014]$ & $-0.025$ $[-0.052, +0.003]$ & $+0.046$ $[+0.015, +0.077]$$^{\ddagger}$ \\
+\texttt{nih}, n$\to$p & 0.042 & $-0.012$ $[-0.040, +0.010]$ & $-0.059$ $[-0.101, -0.018]$$^{\dagger}$ & $+0.017$ $[-0.010, +0.047]$ \\
+\texttt{pc}, n$\to$p & 0.442 & $-0.002$ $[-0.007, +0.004]$ & $+0.019$ $[+0.006, +0.031]$$^{\dagger}$ & $-0.002$ $[-0.018, +0.012]$ \\
+\texttt{mimic\_ch}, n$\to$p & 0.304 & $-0.002$ $[-0.006, +0.002]$ & $-0.008$ $[-0.024, +0.007]$ & $-0.004$ $[-0.013, +0.006]$ \\
+\texttt{nih}, p$\to$n & 0.124 & $-0.060$ $[-0.105, -0.021]$ & $-0.038$ $[-0.082, +0.007]$ & $+0.073$ $[+0.018, +0.129]$$^{\ddagger}$ \\
+\texttt{pc}, p$\to$n & 0.320 & $-0.004$ $[-0.040, +0.030]$ & $-0.029$ $[-0.070, +0.010]$ & $+0.033$ $[+0.001, +0.068]$$^{\ddagger}$ \\
+\texttt{mimic\_ch}, p$\to$n & 0.307 & $-0.049$ $[-0.097, -0.006]$ & $-0.009$ $[-0.061, +0.045]$ & $+0.031$ $[-0.008, +0.070]$ \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+% -----------------------------------------------------------------------------
+\subsection*{E5. Same-image runs: default, no policy, fixed schedules, second seed}
+\label{sec:suppl-fourarm}
+
+Table~\ref{tab:suppl-fourarm} compares five runs on the same 400 test images with the same per-image seeds: the default policy, the generator's default schedule without a policy, a fixed schedule that holds every control at the policy's mean action over its evaluation steps (same step budget and validity-based stopping, no training), a tuned fixed schedule chosen without RL, and a second training seed of the default configuration (LoRA and PPO base seed 1). Each direction uses its own adapter, except the second seed, whose two directions share one; both of its directions were resumed from checkpoints after preemption (n$\to$p at update 15, p$\to$n at update 80) without saved random-number state. The fixed schedule's raw actions are, for n$\to$p, ($-9.114$, $-0.671$, $-2.007$, $2.446$, $3.041$, $-6.357$, $4.074$, $6.550$, $-1.090$) (strength 0.200, three passes, guidance bias 1.299), and for p$\to$n, ($1.705$, $1.700$, $0.432$, $0.486$, $-1.607$, $-0.260$, $-1.142$, $2.968$, $-0.608$), the means over 201 and 1{,}093 policy steps. The tuned fixed schedule is selected on training-fold images only, by the quantity PPO maximizes, the mean discounted episode reward. Candidates are 54 constant schedules on a coarse grid (strength $\{0.25, 0.45, 0.65\}$, classifier scale $\{0.50, 0.85, 1.15\}$, guidance bias $\{0.85, 1.05, 1.27\}$, two or three passes; every other control at the midpoint of its range) and a local grid around the policy's mean action (three levels each of strength, classifier and preservation scale, strength boost and, for n$\to$p, ramp start: 243 schedules for n$\to$p, 81 for p$\to$n). Each is scored on 12 training-fold images per direction, and the best of each grid on 36 more; the stop bonus that the coarse grid's neutral stop threshold forgoes is added back before ranking. Both selected schedules come from the coarse grid: strength 0.25, classifier scale 1.15, guidance bias 0.85 and two passes for n$\to$p, and strength 0.25, classifier scale 1.15, guidance bias 1.27 and three passes for p$\to$n.
+
+\begin{table*}[t]
+\centering
+\caption{Five runs on the same 400 test images and seeds. CV with Wilson 95\% CIs; LHR (in-lung, and whole-image for reference) with a $t$-interval (concentration and fraction changed have $t$-interval half-widths $\leq 0.01$); transfer per validator with a 10{,}000-resample bootstrap, the mean with a paired bootstrap over per-image deltas. $^{\dagger}$Second seed: shared adapter, resumed training.}
+\label{tab:suppl-fourarm}
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}llccccccccc@{}}
+\toprule
+Dir. & Run & CV & LHR in lung & LHR whole image & \texttt{nih} & \texttt{pc} & \texttt{mimic\_ch} & Transfer mean & Edit conc. & Frac.\ changed \\
+\midrule
+n$\to$p & default policy & 0.945 [0.904, 0.969] & --- & --- & 0.044 [0.005, 0.082] & 0.465 [0.436, 0.494] & 0.333 [0.302, 0.364] & 0.281 [0.259, 0.303] & 0.254 & 0.647 \\
+& no policy & 0.940 [0.898, 0.965] & --- & --- & 0.101 [0.059, 0.142] & 0.474 [0.444, 0.503] & 0.345 [0.314, 0.376] & 0.307 [0.284, 0.329] & 0.268 & 0.641 \\
+& fixed schedule & 0.945 [0.904, 0.969] & --- & --- & 0.044 [0.004, 0.083] & 0.469 [0.439, 0.499] & 0.334 [0.302, 0.365] & 0.282 [0.260, 0.304] & 0.254 & 0.647 \\
+& tuned fixed schedule & 0.940 [0.898, 0.965] & --- & --- & 0.039 [0.002, 0.077] & 0.466 [0.437, 0.494] & 0.326 [0.294, 0.358] & 0.277 [0.256, 0.299] & 0.252 & 0.637 \\
+& second seed$^{\dagger}$ & 0.915 [0.868, 0.946] & --- & --- & 0.204 [0.161, 0.246] & 0.458 [0.428, 0.488] & 0.334 [0.304, 0.365] & 0.332 [0.310, 0.355] & 0.279 & 0.675 \\
+\midrule
+p$\to$n & default policy & 0.670 [0.602, 0.731] & 1.165 [1.123, 1.207] & 2.595 [2.450, 2.741] & 0.165 [0.138, 0.193] & 0.306 [0.278, 0.335] & 0.357 [0.317, 0.397] & 0.276 [0.254, 0.298] & 0.314 & 0.634 \\
+& no policy & 0.225 [0.173, 0.288] & 1.088 [1.054, 1.122] & 2.064 [1.961, 2.166] & 0.113 [0.083, 0.143] & 0.245 [0.218, 0.275] & 0.149 [0.099, 0.197] & 0.169 [0.146, 0.192] & 0.278 & 0.599 \\
+& fixed schedule & 0.660 [0.592, 0.722] & 1.162 [1.118, 1.205] & 2.525 [2.385, 2.664] & 0.151 [0.124, 0.179] & 0.261 [0.236, 0.288] & 0.319 [0.278, 0.357] & 0.244 [0.224, 0.264] & 0.312 & 0.631 \\
+& tuned fixed schedule & 0.720 [0.654, 0.778] & 1.177 [1.143, 1.210] & 2.408 [2.303, 2.514] & 0.180 [0.151, 0.210] & 0.205 [0.180, 0.230] & 0.249 [0.208, 0.290] & 0.211 [0.190, 0.232] & 0.305 & 0.637 \\
+& second seed$^{\dagger}$ & 0.495 [0.426, 0.564] & 1.190 [1.151, 1.229] & 2.479 [2.350, 2.608] & 0.154 [0.126, 0.182] & 0.218 [0.192, 0.246] & 0.252 [0.208, 0.295] & 0.208 [0.187, 0.230] & 0.298 & 0.620 \\
+\bottomrule
+\end{tabular}}
+\end{table*}
+
+Against the default policy (paired, in-lung LHR on the 148 annotated p$\to$n images with whole-image differences in parentheses, CV with exact McNemar tests): the fixed schedule differs by $-0.003$ in LHR ($[-0.040, +0.030]$, $p=0.86$; whole image $-0.071$, $p=0.12$), $0.000$ in n$\to$p CV (0 discordant) and $-0.010$ in p$\to$n CV (14 vs.\ 16 discordant, $p=0.86$); the second seed by $+0.025$ ($[-0.017, +0.065]$, $p=0.23$; whole image $-0.117$, $p=0.039$), $-0.030$ (0 vs.\ 6, $p=0.031$) and $-0.175$ (7 vs.\ 42, $p=3.6\times10^{-7}$); no policy by $-0.077$ ($[-0.120, -0.037]$, $p=5\times10^{-4}$; whole image $-0.532$), $-0.005$ (3 vs.\ 4, $p=1.0$) and $-0.445$ (1 vs.\ 90, $p=7.4\times10^{-26}$). Relative to no policy, the fixed schedule recovers 96\% ($[54, 159]\%$) of the policy's in-lung LHR gain and 98\% ($[86, 111]\%$) of its p$\to$n CV gain (paired bootstrap over images, 10{,}000 resamples); in n$\to$p the policy has no gain to recover. The tuned fixed schedule differs from the default policy by $+0.012$ in LHR ($[-0.023, +0.047]$, $p=0.51$; whole image $-0.187$, $p=1.0\times10^{-4}$), $-0.005$ in n$\to$p CV (1 vs.\ 2 discordant, $p=1.0$) and $+0.050$ in p$\to$n CV (22 vs.\ 12, $p=0.12$); from the mean-action schedule by $+0.015$ in LHR ($[-0.023, +0.053]$, $p=0.45$) and $+0.060$ in p$\to$n CV (21 vs.\ 9, $p=0.043$); and from no policy by $+0.088$ in LHR ($[+0.051, +0.127]$, $p=1.1\times10^{-5}$). Its mean p$\to$n transfer is below that of the policy and of the mean-action schedule (paired differences $-0.065$ $[-0.085, -0.045]$ and $-0.032$ $[-0.052, -0.013]$); in n$\to$p the three schedules differ by at most 0.005. A search over fixed schedules by the training reward thus matches the policy's validity and in-lung lesion targeting but not its transfer, which the reward does not measure. Its whole-image LHR deficit reflects less edit mass in the lung (61\% vs.\ 66\%), not worse targeting within it.
+
+\subsection*{E6. Edit locality and FID uncertainty}
+\label{sec:suppl-locality}
+
+Table~\ref{tab:suppl-locality} is computed offline from the saved counterfactuals of the first three runs of Table~\ref{tab:suppl-fourarm} (no regeneration). With $\delta = |x_c - x|$ on the $256^2$ grid: the share of $\sum \delta$ inside the editable region ($m > 0.5$, where $m$ is the background lock's soft mask of main-paper Sec.~3.2, recomputed from the source image and upsampled bilinearly) and inside the undilated lung mask ($S > 0.5$), each beside its area fraction, which is what a spatially uniform edit would score; the fraction of pixels with $\delta > 0.01$, the same fraction measured against the VAE round trip $D(E(x))$ (posterior mean), and the fraction the round trip alone changes; and the share of $|x_c - D(E(x))|$ outside $m > 0.5$. FID uses the main paper's features, with a 95\% interval from 500 bootstrap resamples of both sets; KID uses the same features (cubic polynomial kernel, unbiased, 100 subsets of 100). The recomputed FIDs match the evaluation's to within 0.01.
+
+\begin{table*}[t]
+\centering
+\caption{Edit locality and distribution metrics, $n=200$ per direction and run. ``in $m$'' and ``in lung'': share of $\sum|x_c - x|$ inside the editable region and the lung mask, with the area fraction (uniform-edit null) in parentheses. ``changed'': fraction of pixels with $|\cdot| > 0.01$ against $x$, against $D(E(x))$, and for $D(E(x))$ itself. ``out of $m$'': share of $\sum |x_c - D(E(x))|$ outside the editable region. Locality values have 95\% $t$-interval half-widths $\leq 0.017$. KID $\times 10^3$, mean $\pm$ s.d.\ over subsets.}
+\label{tab:suppl-locality}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llcccccccc}
+\toprule
+Dir. & Run & in $m$ (null) & in lung (null) & changed vs.\ $x$ & changed vs.\ $D(E(x))$ & $D(E(x))$ floor & out of $m$ vs.\ $D(E(x))$ & FID [95\% CI] & KID$\times10^3$ \\
+\midrule
+n$\to$p & default policy & 0.835 (0.590) & 0.653 (0.339) & 0.647 & 0.436 & 0.499 & 0.036 & 22.39 [20.43, 24.56] & 69.3 $\pm$ 3.6 \\
+& no policy & 0.845 (0.590) & 0.675 (0.339) & 0.641 & 0.429 & 0.499 & 0.031 & 15.92 [14.33, 17.78] & 48.4 $\pm$ 3.1 \\
+& fixed schedule & 0.836 (0.590) & 0.655 (0.339) & 0.647 & 0.434 & 0.499 & 0.034 & 22.51 [20.78, 24.49] & 70.0 $\pm$ 3.2 \\
+\midrule
+p$\to$n & default policy & 0.808 (0.495) & 0.663 (0.268) & 0.634 & 0.406 & 0.474 & 0.054 & 4.76 [3.86, 5.87] & 12.5 $\pm$ 1.4 \\
+& no policy & 0.734 (0.495) & 0.558 (0.268) & 0.599 & 0.359 & 0.474 & 0.068 & 2.69 [2.31, 3.24] & 5.1 $\pm$ 0.5 \\
+& fixed schedule & 0.798 (0.495) & 0.647 (0.268) & 0.631 & 0.402 & 0.474 & 0.058 & 4.40 [3.61, 5.27] & 11.6 $\pm$ 1.4 \\
+\bottomrule
+\end{tabular}}
+\end{table*}
+
+Three observations. (i) The lock works as intended at the level it acts on: relative to the VAE round trip, only 3--7\% of the change lies outside the editable region. Most of the difference outside it, and about half of all pixels changed by more than 0.01, is VAE reconstruction error that any latent-space editor with this autoencoder incurs, so the main paper's ``fraction of pixels changed'' overstates the generative edit; against $D(E(x))$ it is 0.41--0.44 for the default policy. (ii) The edits are lung-localized but diffuse within the lung: about 82\% of the mass sits in a region covering 49--59\% of the image, while edit concentration stays at 0.25--0.31. In p$\to$n the policy places more of the change in the lung than the no-policy schedule (0.663 vs.\ 0.558, null 0.268), consistent with its LHR gain, and the fixed schedule is close to the policy (0.647). (iii) FID and KID favor the no-policy schedule in both directions, with non-overlapping bootstrap intervals, while the policy and the fixed schedule are indistinguishable. Since the feature extractor also guides generation (main-paper Sec.~4.1), we read this only as evidence that the stronger schedule moves counterfactuals further in the guidance classifier's feature space, not as a realism ranking.
+
+
+% -----------------------------------------------------------------------------
+\subsection*{E7. Lesion Hit Rate under alternative nulls}
+\label{sec:suppl-lhr-nulls}
+
+Main-paper Eq.~(5) restricts both the edit mass and the area null to the lung mask $L$ (lung probability $> 0.5$, the segmenter that drives the lock). Table~\ref{tab:suppl-lhr-nulls} reports it next to the alternatives, recomputed offline from the saved counterfactuals of every run. The soft-lung variant weights by lung probability instead of thresholding it (1.240 for the default). The editable-region variant uses the lock's own soft mask $m$, which extends about 16\,px beyond the lung. ``vs.\ $D(E(x))$'' measures the edit as $|x_c - D(E(x))|$, removing the VAE round trip. ``Other boxes'' scores each edit against every other annotated image's box (mean over the other 147) and estimates the lift explained by where lesions typically lie. Three lesion-blind references calibrate the whole-image null: a uniform wash over the image scores 1.00, over the editable region 1.90 [1.85, 1.95], and over the lung 3.21 [3.07, 3.34]. The VAE round trip alone, $|D(E(x)) - x|$, scores 1.06 on the whole image and 0.98 [0.97, 1.00] in the lung, so autoencoder error carries no lesion signal.
+
+\begin{table*}[t]
+\centering
+\caption{LHR (p$\to$n) under alternative nulls, mean over annotated images (in-lung with 95\% $t$-interval). In-lung share: fraction of $\sum|x_c - x|$ inside $L$. $^*$Own classifier-selected groups (single-classifier and random: 183 annotated; 3-model: 27). All other rows use the default's 148 annotated images.}
+\label{tab:suppl-lhr-nulls}
+\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Run & Whole image & \textbf{In lung} & Editable region $m$ & In lung, vs.\ $D(E(x))$ & In lung, other boxes & In-lung share \\
+\midrule
+Default policy & 2.595 & \textbf{1.165} [1.123, 1.207] & 1.660 & 1.163 & 1.089 & 0.661 \\
+No policy & 2.064 & 1.088 [1.054, 1.122] & 1.447 & 1.082 & 1.043 & 0.556 \\
+Fixed schedule (policy mean) & 2.525 & 1.162 [1.118, 1.205] & 1.634 & 1.161 & 1.071 & 0.643 \\
+Tuned fixed schedule & 2.408 & 1.177 [1.143, 1.210] & 1.612 & 1.179 & 1.080 & 0.613 \\
+Second seed & 2.479 & 1.190 [1.151, 1.229] & 1.644 & 1.191 & 1.094 & 0.617 \\
+Single-classifier, default's images & 2.296 & 1.083 [1.044, 1.122] & 1.502 & 1.087 & 1.023 & 0.625 \\
+Single-classifier$^*$ & 2.293 & 1.084 [1.048, 1.120] & 1.507 & 1.086 & 1.020 & 0.643 \\
+Random actions$^*$ & 2.204 & 1.081 [1.044, 1.119] & 1.483 & 1.085 & 1.021 & 0.618 \\
+3-model ensemble$^*$ & 2.492 & 1.216 [1.125, 1.307] & 1.626 & 1.233 & 1.017 & 0.633 \\
+Sparsity reward & 2.398 & 1.167 [1.131, 1.204] & 1.605 & 1.170 & 1.075 & 0.610 \\
+Grad-CAM constraint & 1.636 & 1.140 [1.089, 1.191] & 1.368 & 1.280 & 1.078 & 0.408 \\
+Latent Shift (iterative) & 1.451 & 1.106 [1.077, 1.135] & 1.257 & 1.103 & 1.043 & 0.367 \\
+CycleGAN & 1.483 & 1.160 [1.117, 1.203] & 1.339 & 1.068 & 1.096 & 0.359 \\
+\midrule
+Uniform wash over $L$ & 3.206 & 1 & --- & --- & --- & 1 \\
+VAE round trip only & 1.058 & 0.982 [0.968, 0.995] & --- & --- & --- & --- \\
+\bottomrule
+\end{tabular}}
+\end{table*}
+
+Paired in-lung differences between runs (148 images unless noted; bootstrap 95\% CI, paired $t$-test): default minus no policy $+0.077$ $[+0.037, +0.120]$, $p=5\times10^{-4}$ (whole image $+0.532$); minus fixed schedule $+0.003$, $p=0.86$; minus tuned fixed schedule $-0.012$, $p=0.51$ (whole image $+0.187$, $p=1.0\times10^{-4}$); minus second seed $-0.025$, $p=0.23$; minus single-classifier on the same images $+0.082$ $[+0.042, +0.124]$, $p=2\times10^{-4}$; minus Grad-CAM $+0.025$ $[-0.031, +0.080]$, $p=0.37$ (whole image $+0.960$); minus Latent Shift (iterative) $+0.059$ $[+0.020, +0.099]$, $p=0.004$; minus CycleGAN $+0.005$, $p=0.84$. Under matched adapters (default evaluated with the n$\to$p adapter for both directions): minus sparsity $+0.026$ $[-0.003, +0.056]$, $p=0.085$; minus single-classifier on the 76 shared images $+0.074$ $[+0.022, +0.125]$, $p=0.006$. Single-classifier minus random actions $+0.003$ $[-0.024, +0.031]$, $p=0.85$ (whole image $+0.090$, $p=0.012$). The own-box minus other-boxes difference for the default is $+0.076$ $[+0.037, +0.117]$, $p=3\times10^{-4}$, the lesion-specific part of its in-lung lift.
+
+% -----------------------------------------------------------------------------
+\subsection*{E8. Calibrating the transfer ratio}
+\label{sec:suppl-transfer-calib}
+
+\paragraph{Validators on real images.} Table~\ref{tab:suppl-heads} scores every validator output on the 5{,}337-image test fold against RSNA's labels. The real-pair ceiling is $\rho_v$ computed between populations: the validator's mean score on positives minus negatives, over the same difference for the guidance ensemble (AUROC 0.872), with a bootstrap over images resampled within each class. The Youden threshold maximizes sensitivity plus specificity on the same fold; it defines each validator's decision for the flip rates below. RSNA's positive class is ``Lung Opacity'' and NIH's Pneumonia label is rare, so we also score the Consolidation, Infiltration and Lung Opacity outputs where a validator has them.
+
+\begin{table}[t]
+\centering
+\caption{Validator outputs on the test fold: AUROC, real-pair ceiling $\rho$ [95\% CI], and $\rho_v$ of the default policy's counterfactuals (n$\to$p / p$\to$n).}
+\label{tab:suppl-heads}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}llccc@{}}
+\toprule
+Validator & Output & AUROC & Ceiling & Default $\rho_v$ \\
+\midrule
+\texttt{nih} & Pneumonia & 0.766 & 0.47 [0.44, 0.49] & 0.04 / 0.17 \\
+& Consolidation & 0.802 & 0.34 [0.33, 0.36] & 0.16 / 0.09 \\
+& Infiltration & 0.740 & 0.26 [0.24, 0.28] & 0.10 / 0.09 \\
+\texttt{pc} & Pneumonia & 0.783 & 0.58 [0.56, 0.61] & 0.47 / 0.31 \\
+& Consolidation & 0.798 & 0.61 [0.59, 0.63] & 0.49 / 0.25 \\
+& Infiltration & 0.804 & 0.77 [0.74, 0.79] & 0.51 / 0.38 \\
+\texttt{mimic\_ch} & Pneumonia & 0.728 & 0.42 [0.40, 0.45] & 0.33 / 0.36 \\
+& Consolidation & 0.720 & 0.45 [0.43, 0.48] & 0.37 / 0.35 \\
+& Lung Opacity & 0.770 & 0.63 [0.60, 0.65] & 0.38 / 0.41 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The semantically closest outputs do not change the picture. \texttt{mimic\_ch}'s Lung Opacity output is its best (AUROC 0.770) and its $\rho_v$ is higher by 0.05, in proportion to its higher ceiling. \texttt{nih}'s Consolidation output transfers more than its Pneumonia output in n$\to$p (0.16 vs.\ 0.04), but still well below its ceiling.
+
+\paragraph{Attack floor.} On the default's 200 + 200 source images we attack the guidance ensemble alone, in pixel space $[0,1]$ at $256^2$, with the loss $-\log f$ toward positive or $-\log(1 - f)$ toward negative: FGSM at $\epsilon \in \{1, 2, 4, 8\}/255$, PGD with 10 steps of $\epsilon/4$ at $\epsilon \in \{2, 4, 8\}/255$ (no random start), and $L_2$ PGD with 10 steps whose per-image budget is that image's $\|x_c - x\|_2$ (mean 12.4 n$\to$p, 17.6 p$\to$n; clipping to $[0,1]$ leaves 9.1 and 13.4). The adversarial images are scored by exactly the code that scores the counterfactuals.
+
+\begin{table*}[t]
+\centering
+\caption{Transfer ratio and decision flips of attacks on the guidance ensemble, against the default policy's counterfactuals on the same source images. Guidance CV at $\tau=0.8$ is the fraction reaching $f \geq 0.8$ (n$\to$p) or $f \leq 0.2$ (p$\to$n). Flips: share of sources on the source side of a validator's Youden threshold that end on the target side. Pneumonia outputs.}
+\label{tab:suppl-attacks}
+\footnotesize
+\begin{tabular}{@{}llccccccccc@{}}
+\toprule
+& & & & & \multicolumn{3}{c}{$\rho_v$} & \multicolumn{3}{c}{Youden flips} \\
+Dir. & Perturbation & Guidance $\Delta$ & CV$_{0.8}$ & $\|\cdot\|_2$ & \texttt{nih} & \texttt{pc} & \texttt{mimic\_ch} & \texttt{nih} & \texttt{pc} & \texttt{mimic\_ch} \\
+\midrule
+n$\to$p & \textbf{default counterfactual} & 0.898 & 1.00 & 12.4 & 0.04 & 0.47 & 0.33 & 0.22 & 0.91 & 0.69 \\
+& FGSM 4/255 & 0.646 & 0.39 & 4.0 & 0.31 & 0.42 & 0.30 & 0.42 & 0.34 & 0.32 \\
+& FGSM 8/255 & 0.752 & 0.69 & 7.9 & 0.40 & 0.48 & 0.45 & 0.80 & 0.69 & 0.86 \\
+& PGD $L_\infty$ 2/255 & 0.769 & 0.78 & 1.8 & 0.13 & 0.16 & 0.11 & 0.16 & 0.10 & 0.16 \\
+& PGD $L_\infty$ 4/255 & 0.908 & 1.00 & 3.4 & 0.22 & 0.31 & 0.23 & 0.46 & 0.34 & 0.37 \\
+& PGD $L_\infty$ 8/255 & 0.914 & 1.00 & 6.1 & 0.27 & 0.42 & 0.37 & 0.58 & 0.79 & 0.92 \\
+& PGD $L_2$, norm-matched & 0.914 & 1.00 & 9.1 & 0.18 & 0.45 & 0.49 & 0.36 & 0.97 & 0.98 \\
+\midrule
+p$\to$n & \textbf{default counterfactual} & 0.761 & 0.84 & 17.6 & 0.17 & 0.31 & 0.36 & 0.48 & 0.91 & 0.80 \\
+& FGSM 8/255 & 0.231 & 0.00 & 7.9 & 0.01 & 0.24 & 0.40 & 0.07 & 0.27 & 0.31 \\
+& PGD $L_\infty$ 2/255 & 0.643 & 0.47 & 1.7 & 0.01 & 0.02 & 0.03 & 0.04 & 0.03 & 0.04 \\
+& PGD $L_\infty$ 4/255 & 0.821 & 0.96 & 3.2 & 0.02 & 0.02 & 0.07 & 0.07 & 0.07 & 0.16 \\
+& PGD $L_\infty$ 8/255 & 0.837 & 0.99 & 5.7 & 0.04 & 0.04 & 0.18 & 0.17 & 0.16 & 0.47 \\
+& PGD $L_2$, norm-matched & 0.836 & 0.99 & 13.4 & 0.07 & 0.46 & 0.02 & 0.35 & 0.99 & 0.23 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+The two directions differ. Removing evidence of opacity transfers poorly when done adversarially: every PGD $L_\infty$ attack stays at or below 0.04 on \texttt{nih} and \texttt{pc} and 0.18 on \texttt{mimic\_ch}, while the counterfactuals reach 0.17--0.36. (FGSM barely moves the guidance ensemble in this direction, so its ratios have small denominators.) Adding it transfers readily: attacks with a quarter of the counterfactual's norm already reach 0.22--0.31, and the norm-matched attack matches or exceeds the counterfactual on \texttt{pc} and \texttt{mimic\_ch}. These DenseNet-121s share architecture and much of their training distribution, so shared adversarial directions are expected. The norm-matched $L_2$ attack concentrates its budget into large local changes ($L_\infty$ 0.37 n$\to$p, 0.55 p$\to$n) and may itself synthesize opacity-like structure. It is therefore an upper bound on what an attack can reach at that norm, not a pure-perturbation floor.
+
+Decision flips complement the ratio. At their own operating points, \texttt{pc} and \texttt{mimic\_ch} flip 91\% and 69\% of n$\to$p and 91\% and 80\% of p$\to$n counterfactuals, far more than a ratio near 0.3 suggests: the ratio averages score shifts, while a flip only needs enough shift to cross the threshold. Prevalence-matched thresholds (the top 22.4\% of test images called positive) sit higher and give the same ordering. In p$\to$n the counterfactuals flip 79\%, 100\% and 89\% against 17\%, 29\% and 48\% for PGD $L_\infty$ 4/255. In n$\to$p they flip 6\%, 54\% and 33\%, against 9\%, 12\% and 14\% for that attack and 9\%, 53\% and 89\% for the norm-matched one (\texttt{nih}, \texttt{pc}, \texttt{mimic\_ch}).
+
+% -----------------------------------------------------------------------------
+\subsection*{E9. Exploratory: lesion targeting on mammograms}
+\label{sec:suppl-breast}
+
+An earlier port of PPO-CF to full-field mammograms of CBIS-DDSM (Lee \etal, Sci.\ Data 2017) offers what RSNA cannot: an anchor for the n$\to$p direction. CBIS-DDSM contains no normal mammograms, so the classes are benign and malignant, and every source image in either direction carries radiologist ROI masks. The run is not part of the main results, for three reasons established by an audit of its saved counterfactuals. (i) Its guidance classifier, a DenseNet-121 we trained on CBIS-DDSM, had 336 of the 400 evaluation images (304 of 362 patients) in its training set, so its CV of 1.00 in both directions says little. (ii) No held-out validator we could build reaches AUROC 0.65 on real images: out-of-fold AUROC is 0.62--0.64 for ResNet-18 and EfficientNet-B0 validators trained on the 234 patients disjoint from the guidance model's training set, and for validators trained on CMMD, a separate mammography corpus. The transfer ratio is therefore uninterpretable and not reported. (iii) The generator and policy were trained before the split and seeding controls of main-paper Sec.~4.4, and no no-policy run exists on these images.
+
+We therefore report only LHR, which needs neither a validator nor a clean classifier, recomputed offline from the saved counterfactuals (200 per direction). The image indices were recovered by replaying the group scan, and every source image was re-checked to be pixel-identical to the dataset image at that index. The lesion mask is the union of the image's ROI masks, resized exactly like the image. The organ mask $B$ is the breast channel of the analytic segmenter (Otsu threshold and largest connected component) that gated the background lock in this run. LHR is main-paper Eq.~(5) with $B$ in place of the lung mask. Of 200 sources, 191 (benign$\to$malignant) and 196 (malignant$\to$benign) are kept: 12 ROI masks do not match their mammogram's size and one image has none.
+
+\begin{table}[h]
+\centering
+\caption{LHR on CBIS-DDSM counterfactuals (exploratory; see text for why). Mean over images with 95\% $t$-interval; paired differences with a 10{,}000-resample bootstrap CI.}
+\label{tab:suppl-breast}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcc@{}}
+\toprule
+& benign$\to$malignant & malignant$\to$benign \\
+& ($n=191$) & ($n=196$) \\
+\midrule
+In breast (Eq.~5 with $B$) & \textbf{1.547} [1.420, 1.674] & \textbf{1.892} [1.747, 2.038] \\
+In breast, vs.\ $D(E(x))$ & 1.539 & 1.857 \\
+In breast, other images' ROIs & 1.134 & 1.133 \\
+VAE round trip only, in breast & 1.249 [1.196, 1.302] & 1.276 [1.236, 1.315] \\
+Whole image & 4.053 & 4.373 \\
+Uniform wash over $B$, whole image & 3.010 & 2.734 \\
+Edit mass inside $B$ & 0.88 & 0.86 \\
+\midrule
+Own minus other ROIs & $+0.413$ [$+0.294$, $+0.547$] & $+0.760$ [$+0.615$, $+0.913$] \\
+Edit minus VAE round trip & $+0.298$ [$+0.177$, $+0.425$] & $+0.617$ [$+0.483$, $+0.756$] \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Both directions put more edit mass on the lesion than a lesion-blind edit inside the breast, more strongly than on RSNA (1.55 and 1.89 against 1.16), and here the edits beat an in-organ wash even under the whole-image null. Unlike on RSNA, the VAE round trip is itself lesion-directed (1.25 and 1.28), plausibly because masses and calcifications are the high-contrast detail the autoencoder reconstructs worst. Measuring the edit against $D(E(x))$ nevertheless leaves LHR almost unchanged, and the edits exceed the round trip by 0.30 and 0.62. Most of the lift is image-specific: other images' ROIs score 1.13. The benign$\to$malignant direction, which has no RSNA analogue, targets the lesion as well. We do not read this as evidence that the policy or the lock produces the targeting, since no no-policy run exists. Nor is it evidence of class-relevant content, since the validators are uninformative and the guidance classifier is contaminated. It shows that the in-organ LHR and its nulls transfer to a second modality, where they also give an answer in both directions.
+
+% -----------------------------------------------------------------------------
+\subsection*{E10. PPO seed replicates}
+\label{sec:suppl-seeds}
+
+To give the ensemble-versus-single-classifier comparison a run-to-run check, we retrained the PPO policies of both configurations with new seeds while keeping every other component fixed: each direction loads the LoRA adapter trained for it in that configuration's original run (checked by hash), so only the PPO seed changes. With the base seed $b$, the n$\to$p and p$\to$n policies use seeds $b+1$ and $b+2$; the original runs have $b=0$, the replicates $b=1$ and $b=2$ for the single classifier and $b=2$ for the ensemble. Each policy is trained for 800 episodes per direction. The three p$\to$n replicate runs were preempted once and resumed from their last checkpoint (at updates 70, 75 and 20 of 100) without saved random-number state; the n$\to$p runs were not interrupted. With the earlier second training seed of the default (Supp.~E5; $b=1$ for LoRA and PPO, one retrained adapter shared by both directions, both directions resumed), this gives three ensemble and three single-classifier runs. All are evaluated on the default's 400 test images with the same per-image seeds, so every comparison below is paired. CV is computed with each run's own guidance classifier (the ensemble, or \texttt{rsna} alone), on the default's classifier-selected groups.
+
+\begin{table}[h]
+\centering
+\caption{PPO seed replicates on the default's 400 test images. CV with Wilson 95\% CI; transfer is the mean $\rho_v$ over the three validators; in-lung LHR with $t$-interval on the 148 annotated images. $^{\dagger}$LoRA also retrained (seed 1), one adapter for both directions; resumed training (Supp.~E5).}
+\label{tab:suppl-seeds}
+\scriptsize
+\setlength{\tabcolsep}{2.2pt}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+Guidance & $b$ & CV n$\to$p / p$\to$n & Transfer n$\to$p / p$\to$n & LHR in lung & Whole \\
+\midrule
+Ensemble & 0 & 0.945 / 0.670 & 0.281 / 0.276 & 1.165 [1.123, 1.207] & 2.595 \\
+ & 1$^{\dagger}$ & 0.915 / 0.495 & 0.332 / 0.208 & 1.190 [1.151, 1.229] & 2.479 \\
+ & 2 & 0.950 / 0.765 & 0.269 / 0.229 & 1.140 [1.106, 1.175] & 2.400 \\
+\midrule
+Single (\texttt{rsna}) & 0 & 0.855 / 0.840 & 0.245 / 0.141 & 1.083 [1.044, 1.123] & 2.296 \\
+ & 1 & 0.855 / 0.800 & 0.299 / 0.116 & 1.080 [1.046, 1.114] & 2.220 \\
+ & 2 & 0.855 / 0.850 & 0.232 / 0.141 & 1.107 [1.069, 1.144] & 2.356 \\
+\midrule
+No policy & --- & 0.940 / 0.225 & 0.307 / 0.169 & 1.088 [1.054, 1.122] & 2.064 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Wilson intervals for CV at $n=200$ have half-widths of 0.03 to 0.07 (\eg $[0.910, 0.973]$ for 0.950 and $[0.702, 0.818]$ for 0.765). The three single-classifier n$\to$p CVs coincide at 171 of 200, but the valid images and the counterfactuals differ between seeds.
+
+Paired in-lung LHR differences (bootstrap 95\% CI, paired $t$-test). Within a configuration, seeds do not differ detectably: ensemble $b=0$ minus $b=2$ $+0.025$ $[-0.007, +0.057]$, $p=0.14$, and $b=0$ minus $b=1$ $-0.025$, $p=0.23$. Across configurations, each of the nine ensemble-minus-single pairs is positive, from $+0.034$ ($b=2$ vs.\ $b=2$; $[-0.003, +0.072]$, $p=0.076$) to $+0.110$; the other eight have $p<0.01$. Averaging each image's lift over the three runs of each configuration gives $+0.075$ $[+0.050, +0.102]$ ($+0.063$ $[+0.037, +0.092]$ without the shared-adapter run). Against no policy, the ensemble runs gain $+0.077$, $+0.102$ and $+0.052$ ($[+0.014, +0.091]$, $p=0.008$), and the single-classifier runs $-0.005$, $-0.008$ and $+0.019$ (all $p\geq0.31$). Scored against other patients' boxes (Supp.~E7), the lesion-specific part of the lift is $+0.072$ $[+0.038, +0.105]$ for the $b=2$ ensemble run and $+0.057$ to $+0.081$ for the single-classifier runs.
+
+What survives seed variation: the ensemble's advantage in in-lung LHR and in p$\to$n transfer, which hold for every pair of runs; the ensemble policy's gain over no policy in in-lung LHR and p$\to$n CV; and the single-classifier policy's lack of one. In n$\to$p every run combines high CV with transfer near the default's (CV 0.855--0.950, transfer 0.23--0.33). What does not survive: an ensemble advantage in n$\to$p transfer (the ranges overlap, and the $b=1$ single-classifier run exceeds the default). p$\to$n CV depends on the seed as much as on the configuration; within the ensemble it spans 0.495--0.765, wider than the gap between the two configurations' means.

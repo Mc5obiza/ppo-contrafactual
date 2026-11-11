@@ -1,0 +1,22 @@
+\section{Introduction}
+\label{sec:intro}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig2_examples.pdf}
+\caption{Rule-chosen valid edits of the default policy at (a) the median held-out shift (n$\to$p), (b) the median and (c) the lowest in-lung LHR (p$\to$n). Blue: lung mask; yellow: opacity boxes; $|x_c - x|$ scaled per image. Scores: guidance ensemble; held-out \texttt{nih}/\texttt{pc}/\texttt{mimic\_ch}.}
+\label{fig:qualitative}
+\end{figure*}
+
+Classifiers deployed on chest radiographs are typically audited with attribution maps, which indicate where evidence is concentrated but not what change would alter the prediction. Visual counterfactual explanations close this gap: given a query image $x$ with prediction $f(x)$ and a target class $c$, a generator produces $x_c$ that (i) is scored at $c$ by the classifier, (ii) remains a realistic radiograph, and (iii) differs from $x$ only in a minimal, class-relevant region, preserving anatomy, foreign objects and patient identity.
+
+The standard success criterion, Counterfactual Validity (CV), is almost always computed with the same classifier whose gradients guided generation. It therefore cannot distinguish a class-relevant edit from an adversarial perturbation tuned to one model. This paper measures how much that matters for one system. We pair CV with two companion measurements, one anchored to human annotation (a Lesion Hit Rate against radiologist-drawn opacity boxes) and one to model independence (a held-out transfer ratio computed with classifiers that never guided generation), and apply them to a diffusion counterfactual generator we built. The concern is not hypothetical there: our system reaches 94.5\% CV in the normal-to-pneumonia (n$\to$p; reverse p$\to$n) direction while the held-out classifiers reproduce on average 28\% of the guidance shift (Fig.~\ref{fig:qualitative}a), no more than a norm-matched attack on the guidance models. An iterative Latent Shift~\cite{cohen2021gifsplanation} baseline run under the same protocol shows the same pattern. Two systems do not establish how common this is, and we claim only that nothing in the conventional metric suite would have surfaced it for either. Both companion metrics need their own nulls: scored against the whole image, a lesion-blind edit that merely stays in the lung would beat every method we test (\S\ref{sec:lhr}).
+
+The generator, PPO-CF, is the test case. It frames per-step guidance control as a sequential decision problem: a PPO agent sets the sampling schedule (strength, guidance scales, pass count, stopping) of a frozen, LoRA-adapted latent diffusion model, on the hypothesis that one hand-tuned schedule fits a heterogeneous test population poorly; FiRe~\cite{zeng2026fire} instead hand-designs adaptive guidance and early stopping (\S\ref{sec:related}). The agent never touches the diffusion weights. The evaluation also tests that hypothesis, and refutes it. A fixed schedule set to the policy's mean action matches the policy in lesion targeting and CV (\S\ref{sec:main-results}), so the protocol, not the controller, is the contribution we stand behind.
+
+\paragraph{Contributions.}
+\begin{enumerate}
+    \item An evaluation protocol that pairs CV with an in-lung lesion hit rate, calibrated against lung-uniform, mismatched-box and autoencoder nulls, and a direction-specific held-out transfer ratio, bracketed by a matched attack floor and a real-image ceiling, together with the split-, seeding- and routing-level controls an arm comparison needs in order to mean anything (\S\ref{sec:evaluation}).
+    \item PPO-CF, a PPO-scheduled sampling controller around a frozen, LoRA-adapted Stable Diffusion generator with a soft, segmentation-gated background lock (\S\ref{sec:method}), used as the case study.
+    \item Findings (\S\ref{sec:experiments}): high CV with n$\to$p transfer at the attack floor, for our system and for Latent Shift; weak but real lesion targeting, matched by a fixed schedule; a whole-image null that inflates lesion targeting about sevenfold and creates arm rankings that vanish within the lung; and two localization mechanisms that, as implemented, do not help.
+\end{enumerate}
