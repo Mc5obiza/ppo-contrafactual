@@ -1,6 +1,8 @@
 \section{Method}
 \label{sec:method}
 
+PPO-CF is the case study to which the protocol of \S\ref{sec:evaluation} is applied. We describe it only as far as the evaluation needs; Supp.~R collects every setting needed to reproduce it.
+
 \subsection{Problem formulation}
 \label{sec:problem-formulation}
 
@@ -9,12 +11,12 @@ Given a frozen binary classifier $f: \mathcal{X} \to [0,1]$ and a target class $
 \min_{x_c}\ \Big(\underbrace{\mathrm{BCE}(f(x_c), c)}_{\text{classification}},\ \underbrace{d(x, x_c)}_{\text{preservation}}\Big),
 \label{eq:objective}
 \end{equation}
-which we do not combine with a single fixed weight. The trade-off is set during sampling by the ratio of the classifier- to preservation-guidance scales, which the policy chooses per pass (\S\ref{sec:generator-lock}, \S\ref{sec:ppo-sampling}), and during policy training by the reward weights (Supp.~Table~R1). Here $d$ is a masked distance penalizing change inside the segmented lung field and change to a frozen object-detector embedding (a foreign-object proxy), and leaving change outside the lung field free, subject to the soft background lock below, which largely removes that freedom away from the lung field.
+which we do not combine with a single fixed weight: the trade-off is set by the guidance scales the policy chooses per pass (\S\ref{sec:ppo-sampling}). Here $d$ is a lung-masked distance plus a foreign-object term, and the background lock below confines editing to the lung field (details in Supp.~R7).
 
 \subsection{Latent generator and background lock}
 \label{sec:generator-lock}
 
-Images are encoded to a $4\times32\times32$ latent by a frozen SD1.5 VAE. A lightweight MLP maps $(c, \text{pooled latent})$ to a single cross-attention conditioning token, replacing SD1.5's text conditioning with a scalar class signal. Rank-8 LoRA adapters are inserted into the UNet's attention projections and trained on the standard $\epsilon$-prediction objective on the RSNA training fold (\S\ref{sec:controls}), adapting the natural-image prior toward radiography without touching the VAE or the bulk of the UNet.
+Images are encoded to a $4\times32\times32$ latent by a frozen SD1.5 VAE. The UNet is conditioned on the target class and adapted to radiographs by rank-8 LoRA adapters trained on the RSNA training fold (\S\ref{sec:controls}; conditioning and LoRA details in Supp.~R7).
 
 \paragraph{Guided DDIM sampling.} Generation runs a partial, SDEdit-style forward-then-reverse DDIM trajectory whose length is a strength fraction of $T_{\text{diff}} = 50$ steps. At each step the UNet's noise prediction gives both the predicted clean latent $\hat{z}_0$ and the DDIM update $z_{t-1}$. Two guidance gradients are taken with respect to $\hat{z}_0$, through the VAE decoder $D$, and added to $z_{t-1}$:
 \begin{equation}
@@ -56,11 +58,9 @@ $a_8$ & guidance ramp-up start fraction & $[0.1, 0.5]$ \\
 \end{tabular}
 \end{table}
 
-\paragraph{Observation and architecture.} The observation is a flat vector of $8{,}192 + 65{,}536 + 3 = 73{,}731$ entries: the VAE latents of the original and current images (two $4 \times 32 \times 32$ latents, 8{,}192 entries; drawn from the VAE posterior rather than taken at its mean, with the current-image latent re-drawn at every step, so the observation is stochastic even for a fixed image), the soft lung-segmentation mask of the current image at the $256 \times 256$ image resolution (65{,}536 entries, i.e.\ 88.9\% of the vector), and three scalars: the step fraction $t/T$, the current distance $d_t = |f(x_t) - c|$ and the target $c$. The agent is a policy network with a shared trunk and policy, value and three auxiliary heads (feasibility, progress, stop); the trunk consumes the full flattened observation, and the policy head outputs nine Gaussian means with a state-independent, per-dimension learnable log-std. It is trained with the clipped PPO objective and GAE (hyperparameters in Supp.~Table~R3); episodes end when $d_t < \epsilon_{\text{stop}} = 0.08$ or after $T = 25$ steps.
-
-\paragraph{Reward.} The per-step reward is a weighted sum of: progress $d_t - d_{t+1}$; two distance penalties, $-d_{t+1}$ and $-d_{t+1}^2$; an $L_1$ fidelity penalty against the original image; a lung-mask-weighted $L_1$ preservation penalty plus a KL term between the foreign-object detector's softmaxed features on the original and current images; a constant per-step cost; a validity bonus when $d_{t+1} < \epsilon_{\text{stop}}$ (which also ends the episode); and a stop bonus when, in addition, $\tau_t > 0.5$. The sparsity arm adds an annealed $L_1$ term. The whole n$\to$p reward is multiplied by 2.25. Weights and the implemented form of each term are listed in Supp.~Table~R1; Supp.~R collects every setting needed to reproduce the method.
+\paragraph{Observation and reward.} The agent observes the original and current images' VAE latents, the current image's lung mask, the step fraction, the distance $d_t = |f(x_t) - c|$ to the target, and $c$. The per-step reward pays progress toward the target decision and a validity bonus, and penalizes change to the image inside and outside the lung. Episodes end when $d_t < \epsilon_{\text{stop}} = 0.08$ or after $T = 25$ steps. Observation vector, architecture and reward terms are in Supp.~R7, their settings in Supp.~R1 and R3.
 
 \subsection{Directional policies}
 \label{sec:directional-policies}
 
-The environment is built around a fixed target, so one policy is trained for n$\to$p ($c=1$) and another for p$\to$n ($c=0$). Each direction fine-tunes its own LoRA adapter from the same data, seed and recipe, and the resulting weights differ (Supp.~R4). The default and Grad-CAM arms are evaluated with each direction's own adapter. Through a loading default, the single-classifier, 3-model and sparsity arms used the n$\to$p adapter for both directions, so where they are compared with the default we use the default evaluated under that same protocol (Table~\ref{tab:five-arms}); its p$\to$n LHR is then 0.028 higher (95\% CI $[-0.000, +0.058]$; Supp.~R4).
+One policy is trained per target, n$\to$p ($c=1$) and p$\to$n ($c=0$), each with its own LoRA adapter fine-tuned from the same data, seed and recipe; the resulting weights differ (Supp.~R4). The default and Grad-CAM arms are evaluated with each direction's own adapter. Through a loading default, the single-classifier, 3-model and sparsity arms used the n$\to$p adapter for both directions, so where they are compared with the default we use the default evaluated under that same protocol (Table~\ref{tab:five-arms}); its p$\to$n LHR is then 0.028 higher (95\% CI $[-0.000, +0.058]$; Supp.~R4).
