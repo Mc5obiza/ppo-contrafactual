@@ -7,7 +7,7 @@
  },
  "arms": {
   "J4": {
-   "shard_dir": "/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards",
+   "shard_dir": "~/verification/out/J4_perdir/shards",
    "n_annotated": 148,
    "x_maxdiff_vs_cache": 0.0,
    "lift_img": {
@@ -252,7 +252,7 @@
    }
   },
   "J15b_ls_iter": {
-   "shard_dir": "/home2020/home/insa/arbaoui/verification/out/J15b_latent_shift_iter/shards",
+   "shard_dir": "~/verification/out/J15b_latent_shift_iter/shards",
    "n_annotated": 148,
    "x_maxdiff_vs_cache": 0.0,
    "lift_img": {
@@ -497,7 +497,7 @@
    }
   },
   "J15_latent_shift": {
-   "shard_dir": "/home2020/home/insa/arbaoui/verification/out/J15_latent_shift/shards",
+   "shard_dir": "~/verification/out/J15_latent_shift/shards",
    "n_annotated": 148,
    "x_maxdiff_vs_cache": 0.0,
    "lift_img": {

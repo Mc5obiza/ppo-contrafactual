@@ -3,8 +3,8 @@ J4_gen 18497956 2026-10-28T21:53:14+01:00 sbatch --export=ALL,VIEW=committed,PN_
 J4_reduce 18497957 2026-10-28T21:53:14+01:00 sbatch --dependency=afterok:18497956 --export=ALL,VIEW=committed,PN_VIEW=pn_lora,ARM=trained,TAG=J4_perdir,ADAPTER_EXPECT_NP_SHA=658cdd7956a858c16a6b13c136ec01e4a61668b738826c74b51cdbf5ddc86f99,ADAPTER_EXPECT_PN_SHA=6ae442301a803162fd66d020521c36d8aa800138acb209e27f20ec59766c9651 05_eval_reduce.sbatch
 J1 18497958 2026-10-28T21:53:14+01:00 sbatch 01_paired_lhr.sbatch
 J2 18497959 2026-10-28T21:53:14+01:00 sbatch 02_transfer_bootstrap.sbatch
-J1_on_J4 18497960 2026-10-28T21:53:14+01:00 sbatch --dependency=afterok:18497956 --export=ALL,S2=/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards,OUTNAME=paired_lhr_J4 01_paired_lhr.sbatch
-J2_on_J4 18497961 2026-10-28T21:53:14+01:00 sbatch --dependency=afterok:18497956 --export=ALL,ENS2=/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards,ENS2_TAG=ens2_J4_perdir,ONLY_ENS2=1,OUTNAME=transfer_J4 02_transfer_bootstrap.sbatch
+J1_on_J4 18497960 2026-10-28T21:53:14+01:00 sbatch --dependency=afterok:18497956 --export=ALL,S2=~/verification/out/J4_perdir/shards,OUTNAME=paired_lhr_J4 01_paired_lhr.sbatch
+J2_on_J4 18497961 2026-10-28T21:53:14+01:00 sbatch --dependency=afterok:18497956 --export=ALL,ENS2=~/verification/out/J4_perdir/shards,ENS2_TAG=ens2_J4_perdir,ONLY_ENS2=1,OUTNAME=transfer_J4 02_transfer_bootstrap.sbatch
 J3 18497962 2026-10-28T21:53:14+01:00 sbatch 03_gradcam_diag.sbatch
 J5_gen 18497963 2026-10-28T21:53:14+01:00 sbatch --export=ALL,VIEW=committed,PN_VIEW=pn_lora,ARM=none,TAG=J5_none_perdir,ADAPTER_EXPECT_NP_SHA=658cdd7956a858c16a6b13c136ec01e4a61668b738826c74b51cdbf5ddc86f99,ADAPTER_EXPECT_PN_SHA=6ae442301a803162fd66d020521c36d8aa800138acb209e27f20ec59766c9651 04_eval_generate.sbatch
 J5_reduce 18497964 2026-10-28T21:53:14+01:00 sbatch --dependency=afterok:18497963 --export=ALL,VIEW=committed,PN_VIEW=pn_lora,ARM=none,TAG=J5_none_perdir,ADAPTER_EXPECT_NP_SHA=658cdd7956a858c16a6b13c136ec01e4a61668b738826c74b51cdbf5ddc86f99,ADAPTER_EXPECT_PN_SHA=6ae442301a803162fd66d020521c36d8aa800138acb209e27f20ec59766c9651 05_eval_reduce.sbatch

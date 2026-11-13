@@ -1,5 +1,5 @@
 #!/bin/bash
-# APPROVED 2026-10-28 (identity: Melki Ayoub, per command). Creates git refs in ~/Jobs/Ayoub/ppo-contrafactual/.git
+# APPROVED 2026-10-28 (identity passed per command). Creates git refs in $PPO_CF_REPO/.git
 # and a bundle in ~/verification/. Refuses to run without --approved.
 #
 # What it writes into the repo's .git (nothing else in the repo is touched):
@@ -21,7 +21,7 @@
 set -euo pipefail
 [ "${1:-}" = "--approved" ] || { echo "not approved; nothing done"; exit 1; }
 
-REPO="$HOME/Jobs/Ayoub/ppo-contrafactual"
+REPO="${PPO_CF_REPO:?set PPO_CF_REPO to the ppo-contrafactual checkout}"
 V="$HOME/verification"
 BR=refs/heads/evidence-2026-10-28
 cd "$REPO"
@@ -30,7 +30,7 @@ git tag -l 'evidence/*' | grep -q . && { echo "evidence/* tags exist; stop"; exi
 mkdir -p "$V/git"
 # Identity passed per command with -c (approved 2026-10-28); git config is
 # not modified. Every object-creating command below goes through g().
-g () { git -c user.name="Melki Ayoub" -c user.email="melkiayoub724@gmail.com" "$@"; }
+g () { git -c user.name="Anonymous" -c user.email="anonymous@example.com" "$@"; }
 export GIT_INDEX_FILE="$V/git/evidence.index"
 rm -f "$GIT_INDEX_FILE"
 

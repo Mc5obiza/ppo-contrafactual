@@ -1,6 +1,6 @@
 """Per-arm n_to_p vs p_to_n generator adapter difference (CPU). LoRA tensors of unet_finetuned.pt and all of cond_proj.pt."""
 import torch, os, hashlib
-R = os.path.expanduser('~/Jobs/Ayoub/ppo-contrafactual')
+R = os.environ['PPO_CF_REPO']
 arms = [('2-ens committed (default)', 'checkpoints'), ('single-classifier', 'checkpoints/archive_pre_ensemble_default_20260812'),
         ('3-model ensemble', 'checkpoints_ens3'), ('sparsity reward', 'checkpoints_sparsity'), ('Grad-CAM constraint', 'checkpoints_gradcam_fix')]
 sd = lambda p: (lambda o: o.get('state_dict', o) if isinstance(o, dict) else o)(torch.load(p, map_location='cpu', weights_only=False))

@@ -11,8 +11,8 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=96G
 #SBATCH --time=16:00:00
-#SBATCH --output=/home2020/home/insa/arbaoui/verification/logs/%x-%j.out
-#SBATCH --error=/home2020/home/insa/arbaoui/verification/logs/%x-%j.err
+#SBATCH --output=logs/%x-%j.out
+#SBATCH --error=logs/%x-%j.err
 set -euo pipefail
 OUT="$HOME/verification/out/${TAG:-J20_transfer_calibration}"; mkdir -p "$OUT"
 cd "$HOME/verification/code/49e6050"

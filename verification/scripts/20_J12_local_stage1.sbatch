@@ -10,8 +10,8 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
-#SBATCH --output=/home2020/home/insa/arbaoui/verification/logs/%x-%A_%a.out
-#SBATCH --error=/home2020/home/insa/arbaoui/verification/logs/%x-%A_%a.err
+#SBATCH --output=logs/%x-%A_%a.out
+#SBATCH --error=logs/%x-%A_%a.err
 set -euo pipefail
 OUT="$HOME/verification/out/J12_local"; mkdir -p "$OUT/select"
 cd "$HOME/verification/code/49e6050"

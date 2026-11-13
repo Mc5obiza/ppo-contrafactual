@@ -1,6 +1,6 @@
 [check] loading dataset to find known-positive images ...
-[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
-[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+[ingestion] using cached dataset at: ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
   Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
 [check] found 6 positive images to check (same images will be reused across all classifier modes)
 
@@ -533,8 +533,8 @@
 ======================================================================
 [check] MODE = ensemble diagnostic (target_layer=features.denseblock3)
 ======================================================================
-[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
-[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+[ingestion] using cached dataset at: ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
   Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
 [models] loaded ENSEMBLE classifier as f(·), head='Pneumonia': [rsna, chex] (2 members, mean probability)
 [models]   NOTE: f(·) is an ensemble — CV, far-pool sizes and the Xn/Xp group split are NOT comparable to single-classifier runs.

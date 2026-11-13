@@ -9,8 +9,8 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH --time=06:00:00
-#SBATCH --output=/home2020/home/insa/arbaoui/verification/logs/%x-%j.out
-#SBATCH --error=/home2020/home/insa/arbaoui/verification/logs/%x-%j.err
+#SBATCH --output=logs/%x-%j.out
+#SBATCH --error=logs/%x-%j.err
 set -euo pipefail
 TAG="${TAG:-J19_lhr_nulls}"
 OUT="$HOME/verification/out/$TAG"; mkdir -p "$OUT"
@@ -19,7 +19,7 @@ module load python/3.12.8
 source venv/bin/activate
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 YOLO_OFFLINE=1 PYTHONPATH="$PWD:$HOME/verification/scripts"
 export OMP_NUM_THREADS=16 MKL_NUM_THREADS=16 CUDA_VISIBLE_DEVICES=
-V="$HOME/verification/out"; C="$HOME/Jobs/Ayoub/ppo-contrafactual"
+V="$HOME/verification/out"; C="${PPO_CF_REPO:?set PPO_CF_REPO to the ppo-contrafactual checkout}"
 DEFAULT_ARMS="$V/J4_perdir/shards:J4 $V/J5_none_perdir/shards:J5_none $V/J5c_fixed_schedule_corrected/shards:J5c_fixed
  $V/J12_grid_fixed_schedule/shards:J12_fixed_tuned $V/J9_seed1/shards:J9_seed1 $V/J15_latent_shift/shards:J15_latent_shift
  $V/J10_cyclegan/shards:J10_cyclegan $C/checkpoints/eval_shards_ens_default:evalA_ens_default

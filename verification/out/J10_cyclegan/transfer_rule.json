@@ -6,7 +6,7 @@
     "densenet121-res224-mimic_ch"
   ],
   "arms": {
-    "/home2020/home/insa/arbaoui/verification/out/J10_cyclegan/shards": {
+    "~/verification/out/J10_cyclegan/shards": {
       "n_per_group": [
         200,
         200
@@ -228,7 +228,7 @@
         }
       }
     },
-    "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default": {
+    "<repo>/checkpoints/eval_shards_ens_default": {
       "n_per_group": [
         200,
         200

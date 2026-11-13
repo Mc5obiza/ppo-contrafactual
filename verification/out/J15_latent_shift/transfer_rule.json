@@ -6,7 +6,7 @@
     "densenet121-res224-mimic_ch"
   ],
   "arms": {
-    "/home2020/home/insa/arbaoui/verification/out/J15_latent_shift/shards": {
+    "~/verification/out/J15_latent_shift/shards": {
       "n_per_group": [
         200,
         200
@@ -228,7 +228,7 @@
         }
       }
     },
-    "/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards": {
+    "~/verification/out/J4_perdir/shards": {
       "n_per_group": [
         200,
         200

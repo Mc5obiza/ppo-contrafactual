@@ -26,10 +26,10 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
 #SBATCH --time=01:30:00
-#SBATCH --output=/home2020/home/insa/arbaoui/verification/logs/%x-%j.out
-#SBATCH --error=/home2020/home/insa/arbaoui/verification/logs/%x-%j.err
+#SBATCH --output=logs/%x-%j.out
+#SBATCH --error=logs/%x-%j.err
 set -euo pipefail
-R="$HOME/Jobs/Ayoub/ppo-contrafactual"
+R="${PPO_CF_REPO:?set PPO_CF_REPO to the ppo-contrafactual checkout}"
 TAG="${TAG:-J10_cyclegan}"
 OUT="$HOME/verification/out/$TAG"; mkdir -p "$OUT"
 COMMITTED="$R/checkpoints/eval_shards_ens_default"

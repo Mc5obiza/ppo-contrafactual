@@ -13,7 +13,7 @@ import sys
 
 import numpy as np
 
-R = os.path.expanduser("~/Jobs/Ayoub/ppo-contrafactual")
+R = os.environ['PPO_CF_REPO']
 COMMITTED_SHARDS = f"{R}/checkpoints/eval_shards_ens_default"
 COMMITTED_METRICS = f"{R}/checkpoints_ens_default/eval_metrics.json"
 

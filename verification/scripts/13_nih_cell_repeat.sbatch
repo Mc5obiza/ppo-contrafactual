@@ -10,10 +10,10 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
 #SBATCH --time=00:45:00
-#SBATCH --output=/home2020/home/insa/arbaoui/verification/logs/%x-%j.out
-#SBATCH --error=/home2020/home/insa/arbaoui/verification/logs/%x-%j.err
+#SBATCH --output=logs/%x-%j.out
+#SBATCH --error=logs/%x-%j.err
 set -euo pipefail
-R="$HOME/Jobs/Ayoub/ppo-contrafactual"
+R="${PPO_CF_REPO:?set PPO_CF_REPO to the ppo-contrafactual checkout}"
 OUT="$HOME/verification/out/J13_nih_cell"; mkdir -p "$OUT"
 cd "$HOME/verification/code/HEAD"
 module load python/3.12.8; module load cuda/cuda-12.1

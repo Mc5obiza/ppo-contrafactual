@@ -12,7 +12,7 @@
  ],
  "arms": {
   "J4": {
-   "dir": "/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards",
+   "dir": "~/verification/out/J4_perdir/shards",
    "n": [
     200,
     200
@@ -1323,7 +1323,7 @@
    "idx_match_first_arm": true
   },
   "J10_cyclegan": {
-   "dir": "/home2020/home/insa/arbaoui/verification/out/J10_cyclegan/shards",
+   "dir": "~/verification/out/J10_cyclegan/shards",
    "n": [
     200,
     200
@@ -2634,7 +2634,7 @@
    "idx_match_first_arm": true
   },
   "J15_smoke": {
-   "dir": "/home2020/home/insa/arbaoui/verification/out/J15_latent_shift_smoke/shards",
+   "dir": "~/verification/out/J15_latent_shift_smoke/shards",
    "n": [
     8,
     8

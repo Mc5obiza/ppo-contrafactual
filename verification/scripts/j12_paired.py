@@ -1,13 +1,13 @@
 """J12 paired comparisons (CPU): per-image guidance-ensemble and validator deltas via arm_transfer's own
 loaders/builders; CV = s*delta_guidance >= 0.8 (crossing redundant on X_n/X_p); exact McNemar; paired
 bootstrap (10,000, seed 0) of mean-over-validators transfer ratio, images resampled jointly."""
-import json, sys
+import json, os, sys
 import numpy as np
 from scipy.stats import binomtest
 import config; config.DEVICE = "cpu"
 import arm_transfer as at, domains
 
-V = "/home2020/home/insa/arbaoui/verification/out"
+V = os.path.expanduser("~/verification/out")
 ARMS = {"J12": f"{V}/J12_grid_fixed_schedule/shards", "J4": f"{V}/J4_perdir/shards",
         "J5c": f"{V}/J5c_fixed_schedule_corrected/shards", "J5": f"{V}/J5_none_perdir/shards"}
 GUID = ["densenet121-res224-rsna", "densenet121-res224-chex"]

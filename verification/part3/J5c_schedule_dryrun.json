@@ -52,13 +52,13 @@
   "n_images": 200
  },
  "source": [
-  "/home2020/home/insa/arbaoui/verification/out/actions/actions_shard_000.json",
-  "/home2020/home/insa/arbaoui/verification/out/actions/actions_shard_001.json",
-  "/home2020/home/insa/arbaoui/verification/out/actions/actions_shard_002.json",
-  "/home2020/home/insa/arbaoui/verification/out/actions/actions_shard_003.json",
-  "/home2020/home/insa/arbaoui/verification/out/actions/actions_shard_004.json",
-  "/home2020/home/insa/arbaoui/verification/out/actions/actions_shard_005.json",
-  "/home2020/home/insa/arbaoui/verification/out/actions/actions_shard_006.json",
-  "/home2020/home/insa/arbaoui/verification/out/actions/actions_shard_007.json"
+  "~/verification/out/actions/actions_shard_000.json",
+  "~/verification/out/actions/actions_shard_001.json",
+  "~/verification/out/actions/actions_shard_002.json",
+  "~/verification/out/actions/actions_shard_003.json",
+  "~/verification/out/actions/actions_shard_004.json",
+  "~/verification/out/actions/actions_shard_005.json",
+  "~/verification/out/actions/actions_shard_006.json",
+  "~/verification/out/actions/actions_shard_007.json"
  ]
 }

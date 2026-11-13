@@ -7,7 +7,7 @@
  },
  "arms": {
   "J4": {
-   "shard_dir": "/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards",
+   "shard_dir": "~/verification/out/J4_perdir/shards",
    "n_annotated": 148,
    "x_maxdiff_vs_cache": 0.0,
    "lift_img": {
@@ -252,7 +252,7 @@
    }
   },
   "J5_none": {
-   "shard_dir": "/home2020/home/insa/arbaoui/verification/out/J5_none_perdir/shards",
+   "shard_dir": "~/verification/out/J5_none_perdir/shards",
    "n_annotated": 148,
    "x_maxdiff_vs_cache": 0.0,
    "lift_img": {
@@ -497,7 +497,7 @@
    }
   },
   "J5c_fixed": {
-   "shard_dir": "/home2020/home/insa/arbaoui/verification/out/J5c_fixed_schedule_corrected/shards",
+   "shard_dir": "~/verification/out/J5c_fixed_schedule_corrected/shards",
    "n_annotated": 148,
    "x_maxdiff_vs_cache": 0.0,
    "lift_img": {
@@ -742,7 +742,7 @@
    }
   },
   "J12_fixed_tuned": {
-   "shard_dir": "/home2020/home/insa/arbaoui/verification/out/J12_grid_fixed_schedule/shards",
+   "shard_dir": "~/verification/out/J12_grid_fixed_schedule/shards",
    "n_annotated": 148,
    "x_maxdiff_vs_cache": 0.0,
    "lift_img": {
@@ -987,7 +987,7 @@
    }
   },
   "J9_seed1": {
-   "shard_dir": "/home2020/home/insa/arbaoui/verification/out/J9_seed1/shards",
+   "shard_dir": "~/verification/out/J9_seed1/shards",
    "n_annotated": 148,
    "x_maxdiff_vs_cache": 0.0,
    "lift_img": {
@@ -1232,7 +1232,7 @@
    }
   },
   "J15_latent_shift": {
-   "shard_dir": "/home2020/home/insa/arbaoui/verification/out/J15_latent_shift/shards",
+   "shard_dir": "~/verification/out/J15_latent_shift/shards",
    "n_annotated": 148,
    "x_maxdiff_vs_cache": 0.0,
    "lift_img": {
@@ -1477,7 +1477,7 @@
    }
   },
   "J10_cyclegan": {
-   "shard_dir": "/home2020/home/insa/arbaoui/verification/out/J10_cyclegan/shards",
+   "shard_dir": "~/verification/out/J10_cyclegan/shards",
    "n_annotated": 148,
    "x_maxdiff_vs_cache": 0.0,
    "lift_img": {
@@ -1722,7 +1722,7 @@
    }
   },
   "evalA_ens_default": {
-   "shard_dir": "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default",
+   "shard_dir": "<repo>/checkpoints/eval_shards_ens_default",
    "n_annotated": 148,
    "x_maxdiff_vs_cache": 0.0,
    "lift_img": {
@@ -1967,7 +1967,7 @@
    }
   },
   "v1_single": {
-   "shard_dir": "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards",
+   "shard_dir": "<repo>/checkpoints/eval_shards",
    "n_annotated": 183,
    "x_maxdiff_vs_cache": 0.0,
    "lift_img": {
@@ -2212,7 +2212,7 @@
    }
   },
   "v1_random": {
-   "shard_dir": "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_random",
+   "shard_dir": "<repo>/checkpoints/eval_shards_random",
    "n_annotated": 183,
    "x_maxdiff_vs_cache": 0.0,
    "lift_img": {
@@ -2457,7 +2457,7 @@
    }
   },
   "ens3": {
-   "shard_dir": "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_ens3/eval_shards",
+   "shard_dir": "<repo>/checkpoints_ens3/eval_shards",
    "n_annotated": 27,
    "x_maxdiff_vs_cache": 0.0,
    "lift_img": {
@@ -2702,7 +2702,7 @@
    }
   },
   "sparsity": {
-   "shard_dir": "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_sparsity/eval_shards",
+   "shard_dir": "<repo>/checkpoints_sparsity/eval_shards",
    "n_annotated": 148,
    "x_maxdiff_vs_cache": 0.0,
    "lift_img": {
@@ -2947,7 +2947,7 @@
    }
   },
   "gradcam": {
-   "shard_dir": "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_gradcam_fix/eval_shards",
+   "shard_dir": "<repo>/checkpoints_gradcam_fix/eval_shards",
    "n_annotated": 148,
    "x_maxdiff_vs_cache": 0.0,
    "lift_img": {

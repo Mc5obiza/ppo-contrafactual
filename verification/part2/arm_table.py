@@ -2,7 +2,7 @@
 import json, os, statistics as st, math
 from scipy import stats
 import numpy as np
-H = os.path.expanduser('~/verification'); R = os.path.expanduser('~/Jobs/Ayoub/ppo-contrafactual')
+H = os.path.expanduser('~/verification'); R = os.environ['PPO_CF_REPO']
 P = json.load(open(H + '/part2/per_image_lhr_arms.json'))
 arms = {'committed (old, n->p adapter for p->n)': (R + '/checkpoints_ens_default', R + '/checkpoints/eval_shards_ens_default', None),
         'J4 policy, matched p->n adapter': (H + '/out/J4_perdir', H + '/out/J4_perdir/shards', H + '/out/J4_perdir/transfer.json'),

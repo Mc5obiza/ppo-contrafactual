@@ -1,6 +1,6 @@
 """Build 50-image single-shard dirs (= shards 0+1, the J8 images) for committed and J4, J8 layout."""
 import torch, os, copy
-H = os.path.expanduser('~/verification'); R = os.path.expanduser('~/Jobs/Ayoub/ppo-contrafactual')
+H = os.path.expanduser('~/verification'); R = os.environ['PPO_CF_REPO']
 L = lambda p: torch.load(p, map_location='cpu', weights_only=False)
 ref = L(H + '/out/J8_mask_d2_f1.0/shards/cf_shard_000.pt')
 for tag, d in [('committed_first50', R + '/checkpoints/eval_shards_ens_default'), ('J4_first50', H + '/out/J4_perdir/shards')]:

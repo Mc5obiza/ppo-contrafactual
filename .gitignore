@@ -64,3 +64,6 @@ PPO-CF_CVPR_Paper/*.out
 PPO-CF_CVPR_Paper/*.brf
 PPO-CF_CVPR_Paper/main.pdf
 PPO-CF_CVPR_Paper/supplementary.pdf
+
+# Internship report: names the author, school and supervisor; kept local only (double-blind review)
+internship-report/

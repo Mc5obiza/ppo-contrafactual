@@ -1,227 +1,227 @@
-=== /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default  vs  /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards
+=== <repo>/checkpoints/eval_shards_ens_default  vs  <repo>/checkpoints/eval_shards
 
-PAIRED ARM TEST — /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default vs /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards  (LHR lift, p→n)
+PAIRED ARM TEST — <repo>/checkpoints/eval_shards_ens_default vs <repo>/checkpoints/eval_shards  (LHR lift, p→n)
 ==============================================================
-[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
-[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+[ingestion] using cached dataset at: ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
   Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
-/home2020/home/insa/arbaoui/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+~/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   blobs[int(m.group(1))] = torch.load(p, map_location="cpu")
 paired images            : 76
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default: 2.5368  (sd 0.9146)
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards: 2.2517  (sd 0.7555)
+mean lift <repo>/checkpoints/eval_shards_ens_default: 2.5368  (sd 0.9146)
+mean lift <repo>/checkpoints/eval_shards: 2.2517  (sd 0.7555)
 paired difference       : +0.2851   95% CI [+0.1550, +0.4184]
 paired t-test           : t=4.206  p=7.128e-05
 Wilcoxon signed-rank    : W=616.0  p=1.159e-05
 Cohen's d (paired)      : +0.482
-/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default better on       : 59 / 76 images
+<repo>/checkpoints/eval_shards_ens_default better on       : 59 / 76 images
 
 READING
   The difference is statistically detectable (p=7.13e-05), but read the
   effect size before calling it meaningful: a lift gap of +0.285
   against a between-image sd of 0.915.
 
-=== /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default  vs  /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_sparsity/eval_shards
+=== <repo>/checkpoints/eval_shards_ens_default  vs  <repo>/checkpoints_sparsity/eval_shards
 
-PAIRED ARM TEST — /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default vs /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_sparsity/eval_shards  (LHR lift, p→n)
+PAIRED ARM TEST — <repo>/checkpoints/eval_shards_ens_default vs <repo>/checkpoints_sparsity/eval_shards  (LHR lift, p→n)
 ==============================================================
-[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
-[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+[ingestion] using cached dataset at: ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
   Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
-/home2020/home/insa/arbaoui/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+~/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   blobs[int(m.group(1))] = torch.load(p, map_location="cpu")
 paired images            : 148
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default: 2.6727  (sd 0.9194)
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_sparsity/eval_shards: 2.3977  (sd 0.7342)
+mean lift <repo>/checkpoints/eval_shards_ens_default: 2.6727  (sd 0.9194)
+mean lift <repo>/checkpoints_sparsity/eval_shards: 2.3977  (sd 0.7342)
 paired difference       : +0.2750   95% CI [+0.1884, +0.3630]
 paired t-test           : t=6.229  p=4.675e-09
 Wilcoxon signed-rank    : W=2533.0  p=1.167e-08
 Cohen's d (paired)      : +0.512
-/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default better on       : 104 / 148 images
+<repo>/checkpoints/eval_shards_ens_default better on       : 104 / 148 images
 
 READING
   The difference is statistically detectable (p=4.68e-09), but read the
   effect size before calling it meaningful: a lift gap of +0.275
   against a between-image sd of 0.919.
 
-=== /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default  vs  /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_gradcam_fix/eval_shards
+=== <repo>/checkpoints/eval_shards_ens_default  vs  <repo>/checkpoints_gradcam_fix/eval_shards
 
-PAIRED ARM TEST — /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default vs /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_gradcam_fix/eval_shards  (LHR lift, p→n)
+PAIRED ARM TEST — <repo>/checkpoints/eval_shards_ens_default vs <repo>/checkpoints_gradcam_fix/eval_shards  (LHR lift, p→n)
 ==============================================================
-[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
-[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+[ingestion] using cached dataset at: ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
   Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
-/home2020/home/insa/arbaoui/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+~/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   blobs[int(m.group(1))] = torch.load(p, map_location="cpu")
 paired images            : 148
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default: 2.6727  (sd 0.9194)
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_gradcam_fix/eval_shards: 1.6356  (sd 0.6429)
+mean lift <repo>/checkpoints/eval_shards_ens_default: 2.6727  (sd 0.9194)
+mean lift <repo>/checkpoints_gradcam_fix/eval_shards: 1.6356  (sd 0.6429)
 paired difference       : +1.0370   95% CI [+0.9003, +1.1776]
 paired t-test           : t=14.660  p=1.474e-30
 Wilcoxon signed-rank    : W=414.0  p=1.657e-22
 Cohen's d (paired)      : +1.205
-/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default better on       : 141 / 148 images
+<repo>/checkpoints/eval_shards_ens_default better on       : 141 / 148 images
 
 READING
   The difference is statistically detectable (p=1.47e-30), but read the
   effect size before calling it meaningful: a lift gap of +1.037
   against a between-image sd of 0.919.
 
-=== /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_ens3/eval_shards  vs  /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default
+=== <repo>/checkpoints_ens3/eval_shards  vs  <repo>/checkpoints/eval_shards_ens_default
 
-PAIRED ARM TEST — /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_ens3/eval_shards vs /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default  (LHR lift, p→n)
+PAIRED ARM TEST — <repo>/checkpoints_ens3/eval_shards vs <repo>/checkpoints/eval_shards_ens_default  (LHR lift, p→n)
 ==============================================================
-[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
-[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+[ingestion] using cached dataset at: ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
   Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
-/home2020/home/insa/arbaoui/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+~/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   blobs[int(m.group(1))] = torch.load(p, map_location="cpu")
 paired images            : 12
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_ens3/eval_shards: 2.4402  (sd 0.8778)
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default: 2.5410  (sd 0.9538)
+mean lift <repo>/checkpoints_ens3/eval_shards: 2.4402  (sd 0.8778)
+mean lift <repo>/checkpoints/eval_shards_ens_default: 2.5410  (sd 0.9538)
 paired difference       : -0.1008   95% CI [-0.4821, +0.2978]
 paired t-test           : t=-0.484  p=0.6376
 Wilcoxon signed-rank    : W=30.0  p=0.5186
 Cohen's d (paired)      : -0.140
-/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_ens3/eval_shards better on       : 4 / 12 images
+<repo>/checkpoints_ens3/eval_shards better on       : 4 / 12 images
 
 READING
   No detectable difference (p=0.638). With 12 paired images the
   95% CI on the gap is [-0.4821, +0.2978] — the data are consistent with
   the trained policy editing no closer to the lesion than an untrained one.
 
-=== /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm1  vs  /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm0
+=== <repo>/checkpoints/eval_shards_none_cm1  vs  <repo>/checkpoints/eval_shards_none_cm0
 
-PAIRED ARM TEST — /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm1 vs /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm0  (LHR lift, p→n)
+PAIRED ARM TEST — <repo>/checkpoints/eval_shards_none_cm1 vs <repo>/checkpoints/eval_shards_none_cm0  (LHR lift, p→n)
 ==============================================================
-[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
-[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+[ingestion] using cached dataset at: ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
   Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
-/home2020/home/insa/arbaoui/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+~/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   blobs[int(m.group(1))] = torch.load(p, map_location="cpu")
 paired images            : 200
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm1: 2.1265  (sd 0.8257)
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm0: 2.0571  (sd 0.7967)
+mean lift <repo>/checkpoints/eval_shards_none_cm1: 2.1265  (sd 0.8257)
+mean lift <repo>/checkpoints/eval_shards_none_cm0: 2.0571  (sd 0.7967)
 paired difference       : +0.0694   95% CI [+0.0250, +0.1122]
 paired t-test           : t=3.121  p=0.002072
 Wilcoxon signed-rank    : W=5780.0  p=1.887e-07
 Cohen's d (paired)      : +0.221
-/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm1 better on       : 141 / 200 images
+<repo>/checkpoints/eval_shards_none_cm1 better on       : 141 / 200 images
 
 READING
   The difference is statistically detectable (p=0.00207), but read the
   effect size before calling it meaningful: a lift gap of +0.069
   against a between-image sd of 0.826.
 
-=== /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm1s1  vs  /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm0s1
+=== <repo>/checkpoints/eval_shards_none_cm1s1  vs  <repo>/checkpoints/eval_shards_none_cm0s1
 
-PAIRED ARM TEST — /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm1s1 vs /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm0s1  (LHR lift, p→n)
+PAIRED ARM TEST — <repo>/checkpoints/eval_shards_none_cm1s1 vs <repo>/checkpoints/eval_shards_none_cm0s1  (LHR lift, p→n)
 ==============================================================
-[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
-[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+[ingestion] using cached dataset at: ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
   Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
-/home2020/home/insa/arbaoui/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+~/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   blobs[int(m.group(1))] = torch.load(p, map_location="cpu")
 paired images            : 200
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm1s1: 2.0984  (sd 0.7058)
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm0s1: 2.0291  (sd 0.6745)
+mean lift <repo>/checkpoints/eval_shards_none_cm1s1: 2.0984  (sd 0.7058)
+mean lift <repo>/checkpoints/eval_shards_none_cm0s1: 2.0291  (sd 0.6745)
 paired difference       : +0.0693   95% CI [+0.0262, +0.1123]
 paired t-test           : t=3.156  p=0.001849
 Wilcoxon signed-rank    : W=6697.0  p=4.291e-05
 Cohen's d (paired)      : +0.223
-/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm1s1 better on       : 130 / 200 images
+<repo>/checkpoints/eval_shards_none_cm1s1 better on       : 130 / 200 images
 
 READING
   The difference is statistically detectable (p=0.00185), but read the
   effect size before calling it meaningful: a lift gap of +0.069
   against a between-image sd of 0.706.
 
-=== /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm1s2  vs  /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm0s2
+=== <repo>/checkpoints/eval_shards_none_cm1s2  vs  <repo>/checkpoints/eval_shards_none_cm0s2
 
-PAIRED ARM TEST — /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm1s2 vs /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm0s2  (LHR lift, p→n)
+PAIRED ARM TEST — <repo>/checkpoints/eval_shards_none_cm1s2 vs <repo>/checkpoints/eval_shards_none_cm0s2  (LHR lift, p→n)
 ==============================================================
-[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
-[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+[ingestion] using cached dataset at: ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
   Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
-/home2020/home/insa/arbaoui/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+~/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   blobs[int(m.group(1))] = torch.load(p, map_location="cpu")
 paired images            : 200
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm1s2: 2.1229  (sd 0.7949)
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm0s2: 2.0654  (sd 0.7709)
+mean lift <repo>/checkpoints/eval_shards_none_cm1s2: 2.1229  (sd 0.7949)
+mean lift <repo>/checkpoints/eval_shards_none_cm0s2: 2.0654  (sd 0.7709)
 paired difference       : +0.0575   95% CI [+0.0048, +0.1118]
 paired t-test           : t=2.134  p=0.03407
 Wilcoxon signed-rank    : W=7470.0  p=0.001644
 Cohen's d (paired)      : +0.151
-/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none_cm1s2 better on       : 117 / 200 images
+<repo>/checkpoints/eval_shards_none_cm1s2 better on       : 117 / 200 images
 
 READING
   The difference is statistically detectable (p=0.0341), but read the
   effect size before calling it meaningful: a lift gap of +0.057
   against a between-image sd of 0.795.
 
-=== /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards  vs  /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_random
+=== <repo>/checkpoints/eval_shards  vs  <repo>/checkpoints/eval_shards_random
 
-PAIRED ARM TEST — /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards vs /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_random  (LHR lift, p→n)
+PAIRED ARM TEST — <repo>/checkpoints/eval_shards vs <repo>/checkpoints/eval_shards_random  (LHR lift, p→n)
 ==============================================================
-[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
-[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+[ingestion] using cached dataset at: ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
   Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
-/home2020/home/insa/arbaoui/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+~/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   blobs[int(m.group(1))] = torch.load(p, map_location="cpu")
 paired images            : 183
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards: 2.2934  (sd 0.7795)
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_random: 2.2039  (sd 0.7717)
+mean lift <repo>/checkpoints/eval_shards: 2.2934  (sd 0.7795)
+mean lift <repo>/checkpoints/eval_shards_random: 2.2039  (sd 0.7717)
 paired difference       : +0.0895   95% CI [+0.0211, +0.1596]
 paired t-test           : t=2.551  p=0.01157
 Wilcoxon signed-rank    : W=6667.0  p=0.01468
 Cohen's d (paired)      : +0.189
-/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards better on       : 105 / 183 images
+<repo>/checkpoints/eval_shards better on       : 105 / 183 images
 
 READING
   The difference is statistically detectable (p=0.0116), but read the
   effect size before calling it meaningful: a lift gap of +0.090
   against a between-image sd of 0.779.
 
-=== /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards  vs  /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none
+=== <repo>/checkpoints/eval_shards  vs  <repo>/checkpoints/eval_shards_none
 
-PAIRED ARM TEST — /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards vs /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none  (LHR lift, p→n)
+PAIRED ARM TEST — <repo>/checkpoints/eval_shards vs <repo>/checkpoints/eval_shards_none  (LHR lift, p→n)
 ==============================================================
-[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
-[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+[ingestion] using cached dataset at: ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
   Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
-/home2020/home/insa/arbaoui/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+~/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   blobs[int(m.group(1))] = torch.load(p, map_location="cpu")
 paired images            : 183
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards: 2.2934  (sd 0.7795)
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none: 2.0458  (sd 0.5934)
+mean lift <repo>/checkpoints/eval_shards: 2.2934  (sd 0.7795)
+mean lift <repo>/checkpoints/eval_shards_none: 2.0458  (sd 0.5934)
 paired difference       : +0.2476   95% CI [+0.1656, +0.3301]
 paired t-test           : t=5.829  p=2.489e-08
 Wilcoxon signed-rank    : W=4212.0  p=4.588e-09
 Cohen's d (paired)      : +0.431
-/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards better on       : 129 / 183 images
+<repo>/checkpoints/eval_shards better on       : 129 / 183 images
 
 READING
   The difference is statistically detectable (p=2.49e-08), but read the
   effect size before calling it meaningful: a lift gap of +0.248
   against a between-image sd of 0.779.
 
-=== /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default  vs  /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none
+=== <repo>/checkpoints/eval_shards_ens_default  vs  <repo>/checkpoints/eval_shards_none
 
-PAIRED ARM TEST — /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default vs /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none  (LHR lift, p→n)
+PAIRED ARM TEST — <repo>/checkpoints/eval_shards_ens_default vs <repo>/checkpoints/eval_shards_none  (LHR lift, p→n)
 ==============================================================
-[ingestion] using cached dataset at: /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
-[RSNACXRDataset] 26684 patients loaded from /home2020/home/insa/arbaoui/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
+[ingestion] using cached dataset at: ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge
+[RSNACXRDataset] 26684 patients loaded from ~/.cache/kagglehub/competitions/rsna-pneumonia-detection-challenge/stage_2_train_images
   Pneumonia (Target=1): 6012  |  No pneumonia (Target=0): 20672
-/home2020/home/insa/arbaoui/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+~/verification/code/49e6050/paired_arm_test.py:66: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   blobs[int(m.group(1))] = torch.load(p, map_location="cpu")
 paired images            : 76
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default: 2.5368  (sd 0.9146)
-mean lift /home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_none: 2.0209  (sd 0.6594)
+mean lift <repo>/checkpoints/eval_shards_ens_default: 2.5368  (sd 0.9146)
+mean lift <repo>/checkpoints/eval_shards_none: 2.0209  (sd 0.6594)
 paired difference       : +0.5160   95% CI [+0.3800, +0.6622]
 paired t-test           : t=7.049  p=7.522e-10
 Wilcoxon signed-rank    : W=248.0  p=3.165e-10
 Cohen's d (paired)      : +0.809
-/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default better on       : 66 / 76 images
+<repo>/checkpoints/eval_shards_ens_default better on       : 66 / 76 images
 
 READING
   The difference is statistically detectable (p=7.52e-10), but read the

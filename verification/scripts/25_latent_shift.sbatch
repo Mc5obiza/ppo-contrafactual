@@ -27,8 +27,8 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
 #SBATCH --time=01:30:00
-#SBATCH --output=/home2020/home/insa/arbaoui/verification/logs/%x-%j.out
-#SBATCH --error=/home2020/home/insa/arbaoui/verification/logs/%x-%j.err
+#SBATCH --output=logs/%x-%j.out
+#SBATCH --error=logs/%x-%j.err
 set -euo pipefail
 TAG="${TAG:-J15_latent_shift}"
 LIMIT="${LIMIT:-0}"

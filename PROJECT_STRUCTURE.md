@@ -54,7 +54,7 @@ A research pipeline that generates **medical counterfactual chest X-rays** (e.g.
 - **`PPO-CF_CVPR_Paper/`** — LaTeX source of the CVPR 2027 paper and supplement (the working copy).
 - **`CVPR2027_submission/`** — the built, anonymous upload: paper and supplement PDFs, the OpenReview abstract, and an Overleaf-ready copy of the sources.
 - **`verification/`** — copy of the audit workspace behind every number in the paper: memos, job list, wrapper scripts and their text results (see its README).
-- **`internship-report/`** — LaTeX source of the internship report.
+- **`internship-report/`** — LaTeX source of the internship report (local only, not tracked: it names the author).
 - **`checkpoints*/`** — result files of the older training/eval runs (`eval_metrics.json`, diff plots, run manifests, guidance diagnostics). The weights next to them are not tracked.
 - **`checkpoint/`** — local classifier weights (`config.CLASSIFIER_CKPT`); not tracked.
 - **`outputs/`** — diagnostic images written by `check_classifier_localization.py` and `pick_best_counterfactual.py`; not tracked.

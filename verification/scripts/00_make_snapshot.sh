@@ -16,7 +16,7 @@
 #                     (n_to_p/ deliberately has no unet so the loader falls
 #                     through to p_to_n/ — see pipeline.load_generator_weights)
 set -euo pipefail
-REPO="$HOME/Jobs/Ayoub/ppo-contrafactual"
+REPO="${PPO_CF_REPO:?set PPO_CF_REPO to the ppo-contrafactual checkout}"
 V="$HOME/verification"
 mkdir -p "$V/code" "$V/views" "$V/out" "$V/logs"
 

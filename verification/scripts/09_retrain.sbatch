@@ -32,11 +32,11 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=96G
 #SBATCH --time=24:00:00
-#SBATCH --output=/home2020/home/insa/arbaoui/verification/logs/%x-%A_%a.out
-#SBATCH --error=/home2020/home/insa/arbaoui/verification/logs/%x-%A_%a.err
+#SBATCH --output=logs/%x-%A_%a.out
+#SBATCH --error=logs/%x-%A_%a.err
 set -euo pipefail
 : "${SEED:?set SEED}" "${GUIDANCE:?set GUIDANCE (ens|single)}"
-R="$HOME/Jobs/Ayoub/ppo-contrafactual"
+R="${PPO_CF_REPO:?set PPO_CF_REPO to the ppo-contrafactual checkout}"
 V="$HOME/verification"
 NAME="retrain_${GUIDANCE}_seed${SEED}"
 CODE="$V/code/49e6050_${NAME}"

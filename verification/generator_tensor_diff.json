@@ -1,5 +1,5 @@
 {
- "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints": {
+ "<repo>/checkpoints": {
   "unet_finetuned.pt": {
    "keys_only_in_np": [],
    "keys_only_in_pn": [],
@@ -61,7 +61,7 @@
    ]
   }
  },
- "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/archive_pre_ensemble_default_20260812": {
+ "<repo>/checkpoints/archive_pre_ensemble_default_20260812": {
   "unet_finetuned.pt": {
    "keys_only_in_np": [],
    "keys_only_in_pn": [],
@@ -123,7 +123,7 @@
    ]
   }
  },
- "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_ens3": {
+ "<repo>/checkpoints_ens3": {
   "unet_finetuned.pt": {
    "keys_only_in_np": [],
    "keys_only_in_pn": [],
@@ -185,7 +185,7 @@
    ]
   }
  },
- "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_sparsity": {
+ "<repo>/checkpoints_sparsity": {
   "unet_finetuned.pt": {
    "keys_only_in_np": [],
    "keys_only_in_pn": [],
@@ -247,7 +247,7 @@
    ]
   }
  },
- "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_gradcam_fix": {
+ "<repo>/checkpoints_gradcam_fix": {
   "unet_finetuned.pt": {
    "keys_only_in_np": [],
    "keys_only_in_pn": [],

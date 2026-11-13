@@ -75,7 +75,9 @@ DATASET_DOMAIN = os.environ.get("PPO_DOMAIN", "rsna_pneumonia")
 
 # Root of an extracted NODE21 release (grand-challenge registration required,
 # so there is no auto-download). Only read by domains/node21_nodule.py.
-NODE21_ROOT = "/home2020/home/insa/arbaoui/Jobs/Ayoub/data/node21/extracted/cxr_images/proccessed_data"
+NODE21_ROOT = os.environ.get("NODE21_ROOT", os.path.normpath(os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), os.pardir,
+    "data", "node21", "extracted", "cxr_images", "proccessed_data")))
 
 # ─────────────────────────────────────────────
 # Breast / mammography domain (cbis_ddsm_breast)
@@ -86,8 +88,8 @@ NODE21_ROOT = "/home2020/home/insa/arbaoui/Jobs/Ayoub/data/node21/extracted/cxr_
 #     <root>/csv/{dicom_info,mass_case_description_train_set,...}.csv
 #     <root>/jpeg/<SeriesUID>/<n>.jpg
 CBIS_DDSM_ROOT = (
-    "/home2020/home/insa/arbaoui/.cache/kagglehub/datasets/awsaf49/"
-    "cbis-ddsm-breast-cancer-image-dataset/versions/1"
+    os.path.expanduser("~/.cache/kagglehub/datasets/awsaf49/")
+    + "cbis-ddsm-breast-cancer-image-dataset/versions/1"
 )
 
 # Where train_breast_classifier.py and train_breast_validator.py write, and
@@ -137,8 +139,8 @@ MASK_EXCLUDE_PECTORAL = True
 # curation with CBIS-DDSM, which is what makes a validator trained on it
 # independent in the sense the chest domain's nih/pc/mimic_ch validators are.
 CMMD_ROOT = (
-    "/home2020/home/insa/arbaoui/.cache/kagglehub/datasets/nguynththanhho/"
-    "cmmd-mammography/versions/1"
+    os.path.expanduser("~/.cache/kagglehub/datasets/nguynththanhho/")
+    + "cmmd-mammography/versions/1"
 )
 
 # ─────────────────────────────────────────────

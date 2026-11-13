@@ -26,7 +26,6 @@
 #SBATCH --output=logs/%x-%A_%a.out
 #SBATCH --error=logs/%x-%A_%a.err
 #SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=melkiayoub724@gmail.com
 #
 # Runs the TRAINING half of the PPO counterfactual pipeline (main.py):
 # Steps 1-5 (ingestion -> pretrained models -> generator -> LoRA fine-tuning

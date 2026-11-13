@@ -17,7 +17,7 @@
 #   * pdfinfo Author/Title/Subject/Keywords empty on both PDFs
 #   * no identifying string in either PDF's text or in the copied sources
 set -euo pipefail
-P="$HOME/Jobs/Ayoub/ppo-contrafactual/PPO-CF_CVPR_Paper"
+P="${PPO_CF_REPO:?set PPO_CF_REPO to the ppo-contrafactual checkout}/PPO-CF_CVPR_Paper"
 T="$P"
 SHA=$(git -C "$P" rev-parse --short HEAD)$(git -C "$P" diff --quiet -- . || echo "-dirty")
 OUT="$HOME/verification/review/submission_$SHA"
@@ -61,7 +61,11 @@ ok = c is not None and c <= 8 and l is not None and r is not None and l <= r
 if not ok:
     print("FAIL: page budget / section order"); sys.exit(1)
 EOF
-PAT='Arbaoui|Ayoub|Melki|Ben Yahia|Slimane|Sadok|INSA|ESI-SBA|esi-sba|Strasbourg|Sidi Bel|hpc-n|hpc-glogin|/home2020|arbaoui@|verification/|github\.com/[A-Za-z0-9_-]+/ppo'
+# Identifying strings live outside the repo (one regex alternative per line), so
+# the repo itself never names the authors.
+PAT_FILE="${ANON_PATTERNS_FILE:-$HOME/verification/anon_patterns.txt}"
+[ -s "$PAT_FILE" ] || { echo "FAIL: pattern file $PAT_FILE missing"; exit 1; }
+PAT=$(grep -v -E '^\s*(#|$)' "$PAT_FILE" | paste -sd'|')
 for f in "$OUT/main.txt" "$OUT/supplementary.txt"; do
     if grep -n -i -E "$PAT" "$f"; then echo "FAIL: identifying string in $(basename "$f")"; fail=1; fi
 done

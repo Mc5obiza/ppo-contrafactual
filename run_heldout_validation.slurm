@@ -11,7 +11,6 @@
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 #SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=melkiayoub724@gmail.com
 #
 # Runs heldout_validation.py: re-scores the PPO counterfactuals with
 # classifiers that were NEVER in the guidance loop, to separate real disease

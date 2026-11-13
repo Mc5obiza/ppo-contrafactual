@@ -1,5 +1,5 @@
 {
- "/home2020/home/insa/arbaoui/verification/out/J15b_latent_shift_iter_smoke/shards": {
+ "~/verification/out/J15b_latent_shift_iter_smoke/shards": {
   "7": 1.3423504127624506,
   "12": 1.8038208460399707,
   "249": 1.5101209522159427,
@@ -9,7 +9,7 @@
   "347": 1.2581664317887635,
   "388": 1.329666272277832
  },
- "/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards": {
+ "~/verification/out/J4_perdir/shards": {
   "7": 2.2256839930337864,
   "12": 3.5328460834392654,
   "249": 2.5216968919206977,

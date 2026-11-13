@@ -7,13 +7,13 @@ import config
 from src.xrv_classifier import build_ensemble_classifier
 from src.metrics import score_batch
 from scipy.stats import binomtest
-H = os.path.expanduser('~/verification/out')
-arms = {'committed': '/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints_ens_default', 'J4': H + '/J4_perdir'}
+H = os.path.expanduser('~/verification/out'); R = os.environ['PPO_CF_REPO']
+arms = {'committed': R + '/checkpoints_ens_default', 'J4': H + '/J4_perdir'}
 clf = build_ensemble_classifier(device='cpu', weights_list=['densenet121-res224-rsna', 'densenet121-res224-chex'])
 L = lambda p: torch.load(p, map_location='cpu', weights_only=False)
 V = {}; res = {}
 for a, d in arms.items():
-    sh = [L(f'{d}/shards' if a!='committed' else f'/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default/cf_shard_{s:03d}.pt') if a=='committed' else L(f'{d}/shards/cf_shard_{s:03d}.pt') for s in range(8)]
+    sh = [L(f'{d}/shards' if a!='committed' else f'{R}/checkpoints/eval_shards_ens_default/cf_shard_{s:03d}.pt') if a=='committed' else L(f'{d}/shards/cf_shard_{s:03d}.pt') for s in range(8)]
     cat = lambda k: [t.unsqueeze(0) for r in sh for t in r[k]]
     f = {k: score_batch(cat(k), clf, 'cpu') for k in ['xn', 'xp', 'xc_np', 'xc_pn']}
     v_np = ((f['xc_np'] - f['xn']) >= 0.8); v_pn = ((f['xp'] - f['xc_pn']) >= 0.8)

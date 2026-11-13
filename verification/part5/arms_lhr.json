@@ -1,5 +1,5 @@
 {
- "/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards": {
+ "~/verification/out/J4_perdir/shards": {
   "7": 2.2256839930337864,
   "12": 3.5328460834392654,
   "249": 2.5216968919206977,
@@ -149,7 +149,7 @@
   "12506": 3.010133350124322,
   "12540": 1.8759774658219814
  },
- "/home2020/home/insa/arbaoui/verification/out/J5_none_perdir/shards": {
+ "~/verification/out/J5_none_perdir/shards": {
   "7": 1.6906527744322823,
   "12": 3.3990504879308245,
   "249": 1.8077402959633098,
@@ -299,7 +299,7 @@
   "12506": 2.2631162976792822,
   "12540": 1.3996499473284316
  },
- "/home2020/home/insa/arbaoui/verification/out/J5c_fixed_schedule_corrected/shards": {
+ "~/verification/out/J5c_fixed_schedule_corrected/shards": {
   "7": 1.8135851287598461,
   "12": 3.9479239958660868,
   "249": 2.497655089910679,
@@ -449,7 +449,7 @@
   "12506": 2.528639835765459,
   "12540": 1.5712227539512007
  },
- "/home2020/home/insa/arbaoui/verification/out/J9_seed1/shards": {
+ "~/verification/out/J9_seed1/shards": {
   "7": 2.698058574552682,
   "12": 4.2439614885355335,
   "249": 2.5589660226892956,

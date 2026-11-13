@@ -5,7 +5,7 @@ evidence on the cluster (run logs, run manifests, shard stamps, metrics JSONs,
 checkpoint key/shape listings, code at the commit each run was stamped with).
 Nothing was submitted, trained, generated or evaluated. Checkpoints were opened on
 CPU only to list keys/shapes. Paths below are relative to the repo
-`~/Jobs/Ayoub/ppo-contrafactual/` unless absolute.
+`<repo>/` unless absolute.
 
 **Status of Step 3 (paper edits): HELD, no .tex/.bib file was changed.** You asked
 to see the committed-run identification (Step 1) and the Section D values before

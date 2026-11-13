@@ -1,5 +1,5 @@
 {
- "/home2020/home/insa/arbaoui/verification/out/J21_seedrep_ens_seed2_common/shards": {
+ "~/verification/out/J21_seedrep_ens_seed2_common/shards": {
   "7": 2.140507958257327,
   "12": 3.5784272626487335,
   "249": 2.7701851092041148,
@@ -149,7 +149,7 @@
   "12506": 2.6195577612108756,
   "12540": 2.02953664576767
  },
- "/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards": {
+ "~/verification/out/J4_perdir/shards": {
   "7": 2.2256839930337864,
   "12": 3.5328460834392654,
   "249": 2.5216968919206977,
@@ -299,7 +299,7 @@
   "12506": 3.010133350124322,
   "12540": 1.8759774658219814
  },
- "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards": {
+ "<repo>/checkpoints/eval_shards": {
   "7": 2.039231883079089,
   "12": 3.563289066452336,
   "53": 2.0645669333772023,

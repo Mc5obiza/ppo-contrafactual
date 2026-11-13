@@ -11,7 +11,6 @@
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 #SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=melkiayoub724@gmail.com
 #
 # ┌──────────────────────────────────────────────────────────────────────────┐
 # │ SUPERSEDED — do not submit this at n_eval=200. It CANNOT finish.         │

@@ -16,10 +16,10 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH --time=02:00:00
-#SBATCH --output=/home2020/home/insa/arbaoui/verification/logs/%x-%j.out
-#SBATCH --error=/home2020/home/insa/arbaoui/verification/logs/%x-%j.err
+#SBATCH --output=logs/%x-%j.out
+#SBATCH --error=logs/%x-%j.err
 set -euo pipefail
-R="$HOME/Jobs/Ayoub/ppo-contrafactual"
+R="${PPO_CF_REPO:?set PPO_CF_REPO to the ppo-contrafactual checkout}"
 OUT="$HOME/verification/out/${OUTNAME:-paired_lhr}"; mkdir -p "$OUT"
 cd "$HOME/verification/code/49e6050"
 module load python/3.12.8

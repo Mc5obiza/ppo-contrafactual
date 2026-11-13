@@ -8,11 +8,11 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH --time=04:00:00
-#SBATCH --output=/home2020/home/insa/arbaoui/verification/logs/%x-%j.out
-#SBATCH --error=/home2020/home/insa/arbaoui/verification/logs/%x-%j.err
+#SBATCH --output=logs/%x-%j.out
+#SBATCH --error=logs/%x-%j.err
 set -euo pipefail
 OUT="$HOME/verification/out/J22_breast_lhr"; mkdir -p "$OUT"
-cd "$HOME/Jobs/Ayoub/ppo-contrafactual"
+cd "${PPO_CF_REPO:?set PPO_CF_REPO to the ppo-contrafactual checkout}"
 module load python/3.12.8
 source venv/bin/activate
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=16 MKL_NUM_THREADS=16

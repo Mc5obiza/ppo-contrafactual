@@ -26,8 +26,8 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=03:00:00
-#SBATCH --output=/home2020/home/insa/arbaoui/verification/logs/%x-%A_%a.out
-#SBATCH --error=/home2020/home/insa/arbaoui/verification/logs/%x-%A_%a.err
+#SBATCH --output=logs/%x-%A_%a.out
+#SBATCH --error=logs/%x-%A_%a.err
 set -euo pipefail
 : "${VIEW:?set VIEW}" "${PN_VIEW:?set PN_VIEW}" "${TAG:?set TAG}"
 : "${ADAPTER_EXPECT_NP_SHA:?}" "${ADAPTER_EXPECT_PN_SHA:?}"

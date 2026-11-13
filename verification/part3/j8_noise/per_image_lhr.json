@@ -1,5 +1,5 @@
 {
- "/home2020/home/insa/arbaoui/verification/out/J8_mask_d0_f0.0/shards": {
+ "~/verification/out/J8_mask_d0_f0.0/shards": {
   "7": 2.4617791656673127,
   "12": 4.34902236430583,
   "249": 2.7294842118569362,
@@ -48,7 +48,7 @@
   "2266": 3.6411590343260163,
   "2290": 4.565211509191598
  },
- "/home2020/home/insa/arbaoui/verification/out/J8_mask_d2_f1.0/shards": {
+ "~/verification/out/J8_mask_d2_f1.0/shards": {
   "7": 2.3187068546440504,
   "12": 4.571587822249059,
   "249": 2.4851576620154274,
@@ -97,7 +97,7 @@
   "2266": 3.635422693571492,
   "2290": 4.116088692670189
  },
- "/home2020/home/insa/arbaoui/verification/out/J8_mask_d4_f2.0/shards": {
+ "~/verification/out/J8_mask_d4_f2.0/shards": {
   "7": 2.340518763509005,
   "12": 4.579187835411969,
   "249": 2.5951576261609777,
@@ -146,7 +146,7 @@
   "2266": 3.353338477728742,
   "2290": 3.3960038753474446
  },
- "/home2020/home/insa/arbaoui/verification/part3/j8_noise/committed_first50": {
+ "~/verification/part3/j8_noise/committed_first50": {
   "7": 2.4527683173373047,
   "12": 4.604839758460853,
   "249": 2.510514815673595,
@@ -195,7 +195,7 @@
   "2266": 3.515137489473234,
   "2290": 4.008223821573314
  },
- "/home2020/home/insa/arbaoui/verification/part3/j8_noise/J4_first50": {
+ "~/verification/part3/j8_noise/J4_first50": {
   "7": 2.2256839930337864,
   "12": 3.5328460834392654,
   "249": 2.5216968919206977,

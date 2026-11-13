@@ -16,8 +16,8 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=03:00:00
-#SBATCH --output=/home2020/home/insa/arbaoui/verification/logs/%x-%A_%a.out
-#SBATCH --error=/home2020/home/insa/arbaoui/verification/logs/%x-%A_%a.err
+#SBATCH --output=logs/%x-%A_%a.out
+#SBATCH --error=logs/%x-%A_%a.err
 set -euo pipefail
 TAG=J5c_fixed_schedule_corrected
 OUT="$HOME/verification/out/$TAG"; mkdir -p "$OUT/shards"

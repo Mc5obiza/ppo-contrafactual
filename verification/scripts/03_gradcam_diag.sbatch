@@ -21,8 +21,8 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
 #SBATCH --time=02:00:00
-#SBATCH --output=/home2020/home/insa/arbaoui/verification/logs/%x-%j.out
-#SBATCH --error=/home2020/home/insa/arbaoui/verification/logs/%x-%j.err
+#SBATCH --output=logs/%x-%j.out
+#SBATCH --error=logs/%x-%j.err
 set -euo pipefail
 OUT="$HOME/verification/out/gradcam"; mkdir -p "$OUT"
 cd "$HOME/verification/code/HEAD"     # writes outputs/gradcam_check/ inside the snapshot

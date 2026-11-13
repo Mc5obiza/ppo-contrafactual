@@ -11,7 +11,6 @@
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 #SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=melkiayoub724@gmail.com
 #
 # STAGE 2 of 2 — compute metrics from the shards run_eval_cf.slurm produced.
 # Writes checkpoints/eval_metrics.json and the two counterfactual diff plots.

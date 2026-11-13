@@ -11,7 +11,6 @@
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 #SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=melkiayoub724@gmail.com
 #
 # Smoke test of the TRAINING pipeline at tiny scale (smoke_test.py):
 # ingestion -> LoRA fine-tuning -> PPO both directions -> checkpoints.

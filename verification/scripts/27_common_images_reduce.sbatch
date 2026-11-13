@@ -13,11 +13,11 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=01:30:00
-#SBATCH --output=/home2020/home/insa/arbaoui/verification/logs/%x-%j.out
-#SBATCH --error=/home2020/home/insa/arbaoui/verification/logs/%x-%j.err
+#SBATCH --output=logs/%x-%j.out
+#SBATCH --error=logs/%x-%j.err
 set -euo pipefail
 : "${VIEW:?set VIEW}" "${PN_VIEW:?set PN_VIEW}" "${TAG:?set TAG}"
-V="$HOME/verification"; R="$HOME/Jobs/Ayoub/ppo-contrafactual"
+V="$HOME/verification"; R="${PPO_CF_REPO:?set PPO_CF_REPO to the ppo-contrafactual checkout}"
 CODE="${CODE:-$V/code/49e6050_single}"
 OUT="$V/out/$TAG"
 J4="$V/out/J4_perdir/shards"

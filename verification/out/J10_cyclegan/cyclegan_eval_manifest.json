@@ -1,6 +1,6 @@
 {
-  "code": "/home2020/home/insa/arbaoui/verification/code/49e6050",
-  "committed_shards": "/home2020/home/insa/arbaoui/Jobs/Ayoub/ppo-contrafactual/checkpoints/eval_shards_ens_default",
+  "code": "~/verification/code/49e6050",
+  "committed_shards": "<repo>/checkpoints/eval_shards_ens_default",
   "n": {
     "xn": 200,
     "xp": 200,
@@ -13,7 +13,7 @@
     "xp_not_above_0.8": 0
   },
   "cyclegan": {
-    "src": "/home2020/home/insa/arbaoui/verification/code/HEAD/src/cyclegan.py",
+    "src": "~/verification/code/HEAD/src/cyclegan.py",
     "src_sha256": "266922a71cd29ea7549b4e2602d94db867583799e9c8573058c28a2ea1de3c95",
     "G_AtoB_sha256": "1553dd72f38063d204a294368c22e8fcda7674a4a61ba5826166440764177662",
     "G_BtoA_sha256": "b06e6e767eaf192fac6baba22813d1503057207b7f5150cde82bcb61e9b19018",

@@ -29,7 +29,7 @@ Per image, d = |x_c - x|:
   shuf_breast   in-breast lift against every OTHER image's ROI (same direction), mean over j
 
     python breast_lhr.py OUT_DIR
-Run from the repository root (~/Jobs/Ayoub/ppo-contrafactual) with
+Run from the repository root ($PPO_CF_REPO) with
 PYTHONPATH=$PWD:$HOME/verification/scripts.
 """
 import glob
@@ -51,7 +51,7 @@ from domains import cbis_ddsm_breast as cb
 import breast_segmentation_testcancer as bseg
 
 torch.set_grad_enabled(False)
-REPO = os.path.expanduser("~/Jobs/Ayoub/ppo-contrafactual")
+REPO = os.environ['PPO_CF_REPO']
 SHARDS = f"{REPO}/checkpoints/cbis_ddsm_breast/eval_shards"
 INDEX = f"{REPO}/checkpoints/cbis_ddsm_breast/eval_group_index.json"
 RNG = np.random.default_rng(0)

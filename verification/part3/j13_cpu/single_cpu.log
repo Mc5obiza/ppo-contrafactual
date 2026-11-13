@@ -22,4 +22,4 @@ eval_shards
     95% CI  n→p [0.166, 0.226]   p→n [0.083, 0.141]  (10000 resamples)
   MEAN                                          0.230      0.146
 
-wrote /home2020/home/insa/arbaoui/verification/part3/j13_cpu/single_cpu.json
+wrote ~/verification/part3/j13_cpu/single_cpu.json

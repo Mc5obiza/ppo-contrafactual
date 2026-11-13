@@ -12,7 +12,6 @@
 #SBATCH --output=logs/%x-%A_%a.out
 #SBATCH --error=logs/%x-%A_%a.err
 #SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=melkiayoub724@gmail.com
 #
 # STAGE 1 of 2 — generate counterfactuals. Each array task produces one shard
 # of the Xn/Xp counterfactual set and writes checkpoints/eval_shards/

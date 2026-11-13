@@ -1,6 +1,6 @@
 {
-  "code": "/home2020/home/insa/arbaoui/verification/code/49e6050",
-  "committed_shards": "/home2020/home/insa/arbaoui/verification/out/J4_perdir/shards",
+  "code": "~/verification/code/49e6050",
+  "committed_shards": "~/verification/out/J4_perdir/shards",
   "lambda_grid": [
     0.02,
     0.04,
@@ -167,7 +167,7 @@
   },
   "autoencoder": {
     "weights": "101-elastic",
-    "file": "/home2020/home/insa/arbaoui/.torchxrayvision/models_data/nihpcrsnamimic_ch-resnet101-2-ae-test2-elastic-e250.pt",
+    "file": "~/.torchxrayvision/models_data/nihpcrsnamimic_ch-resnet101-2-ae-test2-elastic-e250.pt",
     "sha256": "877ded430383a2bbce756737b316d76de42defed3079eebf2cce305f7be34df9",
     "metadata": {
       "description": "This model was trained on the datasets: nih pc rsna mimic_ch chex datasets.",
