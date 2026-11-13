@@ -3,7 +3,7 @@
 % E2 (anatomical proxy metrics), E3 (baselines under the same protocol), E4 (lock-width sensitivity),
 % E5 (same-image runs: default, no policy, two fixed schedules, second seed), E6 (edit locality, FID/KID uncertainty),
 % E7 (LHR under alternative nulls), E8 (transfer-ratio calibration), E9 (exploratory mammography LHR),
-% E10 (PPO seed replicates).
+% E10 (PPO seed replicates), E11 (paired tests moved from the main text).
 % =============================================================================
 
 \section*{E. Additional Details}
@@ -335,3 +335,36 @@ Wilson intervals for CV at $n=200$ have half-widths of 0.03 to 0.07 (\eg $[0.910
 Paired in-lung LHR differences (bootstrap 95\% CI, paired $t$-test). Within a configuration, seeds do not differ detectably: ensemble $b=0$ minus $b=2$ $+0.025$ $[-0.007, +0.057]$, $p=0.14$, and $b=0$ minus $b=1$ $-0.025$, $p=0.23$. Across configurations, each of the nine ensemble-minus-single pairs is positive, from $+0.034$ ($b=2$ vs.\ $b=2$; $[-0.003, +0.072]$, $p=0.076$) to $+0.110$; the other eight have $p<0.01$. Averaging each image's lift over the three runs of each configuration gives $+0.075$ $[+0.050, +0.102]$ ($+0.063$ $[+0.037, +0.092]$ without the shared-adapter run). Against no policy, the ensemble runs gain $+0.077$, $+0.102$ and $+0.052$ ($[+0.014, +0.091]$, $p=0.008$), and the single-classifier runs $-0.005$, $-0.008$ and $+0.019$ (all $p\geq0.31$). Scored against other patients' boxes (Supp.~E7), the lesion-specific part of the lift is $+0.072$ $[+0.038, +0.105]$ for the $b=2$ ensemble run and $+0.057$ to $+0.081$ for the single-classifier runs.
 
 What survives seed variation: the ensemble's advantage in in-lung LHR and in p$\to$n transfer, which hold for every pair of runs; the ensemble policy's gain over no policy in in-lung LHR and p$\to$n CV; and the single-classifier policy's lack of one. In n$\to$p every run combines high CV with transfer near the default's (CV 0.855--0.950, transfer 0.23--0.33). What does not survive: an ensemble advantage in n$\to$p transfer (the ranges overlap, and the $b=1$ single-classifier run exceeds the default). p$\to$n CV depends on the seed as much as on the configuration; within the ensemble it spans 0.495--0.765, wider than the gap between the two configurations' means.
+
+% -----------------------------------------------------------------------------
+\subsection*{E11. Paired tests cited in the main text}
+\label{sec:suppl-paired-tests}
+
+To keep the running text of main-paper Sec.~5 readable, the test statistics of its paired comparisons were moved here; the effects and intervals stay in the main text. Values are unchanged. LHR differences use the paired tests of Sec.~R6; CV comparisons use exact McNemar tests on discordant images (Supp.~E5).
+
+\begin{table*}[t]
+\centering
+\caption{Paired-test statistics removed from the running text of main-paper Sec.~5. ``Effect'' is as stated there; ``Test'' is what was removed.}
+\label{tab:suppl-paired-tests}
+\footnotesize
+\begin{tabular}{@{}l p{0.37\textwidth} p{0.25\textwidth} p{0.28\textwidth}@{}}
+\toprule
+Sec. & Comparison (metric) & Effect & Test \\
+\midrule
+5.3 & Own boxes $-$ other patients' boxes (in-lung LHR) & $+0.076$ $[+0.037, +0.117]$ & $p=3\times10^{-4}$ \\
+5.4 & Policy $-$ no policy (in-lung LHR) & $+0.077$ $[+0.037, +0.120]$ & $p=5\times10^{-4}$, $d=0.29$ \\
+5.4 & Policy vs.\ no policy (p$\to$n CV) & 0.670 vs.\ 0.225 & 90 images gain validity, 1 loses it; McNemar $p=7.4\times10^{-26}$ \\
+5.4 & Policy vs.\ no policy (n$\to$p CV) & 0.945 vs.\ 0.940 & 4 vs.\ 3 discordant \\
+5.4 & Policy $-$ fixed schedule (in-lung LHR) & $+0.003$ $[-0.030, +0.040]$ & $p=0.86$ \\
+5.4 & Fixed schedule vs.\ policy (p$\to$n CV) & 0.660 vs.\ 0.670 & 14 vs.\ 16 discordant \\
+5.4 & Tuned fixed schedule vs.\ policy (p$\to$n CV) & 0.720 vs.\ 0.670 & $p=0.12$ \\
+5.4 & Single-classifier $-$ random actions (in-lung LHR) & $+0.003$ $[-0.024, +0.031]$ & $p=0.85$ \\
+5.4 & Single-classifier $-$ random actions (whole-image LHR) & $+0.090$ & $p=0.012$ \\
+5.5 & Ensemble $-$ single, 76 shared sources, matched adapters (in-lung LHR) & $+0.074$ & $p=0.006$ \\
+5.5 & Ensemble $-$ single, nine seed pairs (in-lung LHR) & all positive; seed-averaged $+0.075$ $[+0.050, +0.102]$ & 8 of 9 pairs at $p<0.01$ \\
+5.6 & Default (matched adapters) vs.\ sparsity (in-lung LHR) & $+0.026$ $[-0.003, +0.056]$ & $p=0.085$ \\
+5.6 & Default vs.\ Grad-CAM (in-lung LHR) & $+0.025$ $[-0.031, +0.080]$ & $p=0.37$ \\
+5.6 & Default vs.\ Grad-CAM (whole-image LHR) & $+0.960$ & $d=1.07$ \\
+\bottomrule
+\end{tabular}
+\end{table*}
