@@ -40,7 +40,9 @@ INK, INK2, MUTED, GRID = "#0b0b0b", "#52514e", "#8a8984", "#e4e3df"
 COL = {"arm": "#2a78d6", "ref": "#6f6e69"}
 
 plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 8})
-fig, ax = plt.subplots(figsize=(5.2, 2.55), dpi=300)
+# Drawn near its printed size (0.95 column width, ~3.1 in) so fonts print at ~7-8 pt.
+fig, ax = plt.subplots(figsize=(3.7, 1.9), dpi=300)
+VAL = ax.get_yaxis_transform()  # x in axes fraction (values right of the plot), y in data
 ys, gap = [], 0
 for i, (_, _, _, g) in enumerate(ROWS):
     if i and g != ROWS[i - 1][3]:
@@ -49,16 +51,17 @@ for i, (_, _, _, g) in enumerate(ROWS):
 for y, (name, src, tag, g) in zip(ys, ROWS):
     s = src[tag]["lift_lung"]
     lo, hi = s["ci95"]
-    ax.plot([lo, hi], [y, y], color=COL[g], linewidth=2.0, solid_capstyle="round", zorder=2)
-    ax.plot(s["mean"], y, "o", markersize=6.5, color=COL[g], markeredgecolor="white",
+    ax.plot([lo, hi], [y, y], color=COL[g], linewidth=2.4, solid_capstyle="round", zorder=2)
+    ax.plot(s["mean"], y, "o", markersize=7.5, color=COL[g], markeredgecolor="white",
             markeredgewidth=1.2, zorder=3)
-    ax.text(1.385, y, f"{s['mean']:.3f}", va="center", ha="right", color=INK, fontsize=7.5,
+    ax.text(1.02, y, f"{s['mean']:.3f}", va="center", ha="left", color=INK, fontsize=7.5, transform=VAL,
             fontweight="bold" if "default" in name else "normal")
-    ax.text(1.395, y, f"n={s['n']}", va="center", ha="left", color=MUTED, fontsize=6.5)
+    ax.text(1.40, y, f"n={s['n']}", va="center", ha="left", color=MUTED, fontsize=7, transform=VAL)
+    print(f"{name:32s} {s['mean']:.3f} [{lo:.3f}, {hi:.3f}] n={s['n']}")
 ax.axvline(1.0, color=MUTED, linestyle=(0, (4, 3)), linewidth=1.0, zorder=1)
 ax.text(1.0, ys[0] + 0.75, "chance (lesion-blind, in lung)", ha="left", va="center",
-        color=INK2, fontsize=6.5, bbox=dict(facecolor="white", edgecolor="none", pad=0.8))
-ax.tick_params(axis="both", colors=INK2, length=0, labelsize=7.5)
+        color=INK2, fontsize=7, bbox=dict(facecolor="white", edgecolor="none", pad=0.8))
+ax.tick_params(axis="both", colors=INK2, length=0, labelsize=8)
 ax.set_yticks(ys)
 ax.set_yticklabels([r[0] for r in ROWS], color=INK)
 for t, r in zip(ax.get_yticklabels(), ROWS):
@@ -66,16 +69,23 @@ for t, r in zip(ax.get_yticklabels(), ROWS):
         t.set_fontweight("bold")
     if r[3] == "ref":
         t.set_color(INK2)
-ax.set_xlim(0.97, 1.45)
+ax.set_xlim(0.97, 1.33)
 ax.set_xticks([1.0, 1.1, 1.2, 1.3])
 ax.set_ylim(ys[-1] - 0.6, ys[0] + 1.2)
-ax.set_xlabel("In-lung Lesion Hit Rate lift, p→n (95% CI)", color=INK2, fontsize=7.5)
+ax.set_xlabel("In-lung Lesion Hit Rate lift, p→n (95% CI)", color=INK2, fontsize=8)
 ax.xaxis.grid(True, color=GRID, linewidth=0.6, zorder=0)
 ax.set_axisbelow(True)
 for s in ("top", "right", "left"):
     ax.spines[s].set_visible(False)
 ax.spines["bottom"].set_color(GRID)
-fig.tight_layout(pad=0.3)
+# Margins from the measured tick-label width: room for row labels on the left,
+# the value and n columns on the right (axes-fraction x 1.02-1.8).
+fig.canvas.draw()
+lab_w = max(t.get_window_extent().width for t in ax.get_yticklabels()) / fig.dpi
+W = fig.get_size_inches()[0]
+left = (lab_w + 0.08) / W
+ax_w = (W - lab_w - 0.08 - 0.86) / W
+fig.subplots_adjust(left=left, right=left + ax_w, top=0.93, bottom=0.21)
 out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fig1_lhr_lift.png")
 fig.savefig(out, dpi=300, facecolor="white")
 print("wrote", out)
