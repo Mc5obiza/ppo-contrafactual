@@ -15,7 +15,7 @@ Supplement: 13 pages.
 That kit has no paper ID: the header shows "CVPR" only.
 
 Checks run on these exact PDFs:
-- no author names, affiliations, e-mails, local paths or code links (the only URL is the RSNA dataset citation);
+- no author names, affiliations, e-mails or local paths; the only URLs are the RSNA dataset citation and the anonymized code repository (anonymous.4open.science, end of Sec. 1);
 - empty PDF Title/Author metadata;
 - no undefined references or citations, and no `??`;
 - no overfull boxes, even with `\hfuzz=\vfuzz=0pt`;
