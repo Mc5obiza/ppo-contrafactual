@@ -51,15 +51,19 @@ A research pipeline that generates **medical counterfactual chest X-rays** (e.g.
 
 ## Other directories/files
 
-- **`checkpoint/` / `checkpoints/`** — saved model weights (classifier checkpoint, PPO policies, LoRA weights).
-- **`outputs/gradcam_check/`** — Grad-CAM diagnostic PNGs.
-- **`logs/`** — SLURM job stdout/stderr logs.
-- **`report/report.tex`** — LaTeX writeup of the project/results.
+- **`PPO-CF_CVPR_Paper/`** — LaTeX source of the CVPR 2027 paper and supplement (the working copy).
+- **`CVPR2027_submission/`** — the built, anonymous upload: paper and supplement PDFs, the OpenReview abstract, and an Overleaf-ready copy of the sources.
+- **`verification/`** — copy of the audit workspace behind every number in the paper: memos, job list, wrapper scripts and their text results (see its README).
+- **`internship-report/`** — LaTeX source of the internship report.
+- **`checkpoints*/`** — result files of the older training/eval runs (`eval_metrics.json`, diff plots, run manifests, guidance diagnostics). The weights next to them are not tracked.
+- **`checkpoint/`** — local classifier weights (`config.CLASSIFIER_CKPT`); not tracked.
+- **`outputs/`** — diagnostic images written by `check_classifier_localization.py` and `pick_best_counterfactual.py`; not tracked.
+- **`logs/`** — run manifests (`*.manifest`); the SLURM stdout/stderr logs themselves are not tracked.
 - **Recommended order for a fresh run** — `sbatch run_benchmark.slurm` (size `N_EPISODES` against the 24h cap) → `python test_invariants.py` + `sbatch run_smoke_test.slurm` → `sbatch run_ppo.slurm` → `sbatch run_eval_cf.slurm` then `run_eval_reduce.slurm` → `sbatch run_heldout_validation.slurm`. The control arms run the same eval pair with `EVAL_ARM=none` / `EVAL_ARM=random`.
 - **`*.slurm`** — SLURM batch scripts to submit each corresponding Python entry point to the cluster (`run_ppo.slurm`, `run_eval_cf.slurm`, `run_eval_reduce.slurm`, `run_smoke_test.slurm`, `run_smoke_test_eval.slurm`, `run_classifier.slurm`, `run_heldout_validation.slurm`). Evaluation is two jobs: `sbatch run_eval_cf.slurm` (8-task array, generates counterfactual shards) then `sbatch --dependency=afterok:<jobid> run_eval_reduce.slurm` (computes the metrics). `run_eval_ppo.slurm` is the superseded single-job version, kept only for small local smoke tests.
 - **`setup_env.sh`** — environment setup script.
 - **`requirements.txt` / `requirements.lock.txt`** — Python dependencies (loose vs. pinned).
-- **`yolov8n.pt`** — pretrained YOLOv8 nano weights used as an object-detector feature extractor.
+- **`yolov8n.pt`** — pretrained YOLOv8 nano weights used as an object-detector feature extractor (downloaded locally; not tracked).
 - **`venv/`**, **`__pycache__/`**, **`.git/`**, **`.gitignore`**, **`.claude/`** — environment/tooling, not project logic.
 
 ## Overall flow

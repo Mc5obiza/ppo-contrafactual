@@ -10,7 +10,7 @@ __pycache__/
 .env.*
 *.key
 *.pem
-.claude/settings.local.json
+.claude/
 wandb/
 tensorboard/
 runs/
@@ -46,10 +46,6 @@ tree.txt
 *.tmp
 
 # LaTeX build byproducts
-report/*.aux
-report/*.log
-report/*.out
-report/*.toc
 internship-report/*.pdf
 internship-report/main.aux
 internship-report/main.log
@@ -60,5 +56,11 @@ internship-report/main.lot
 internship-report/chapters/*.aux
 internship-report/frontmatter/*.aux
 internship-report/backmatter/*.aux
-CVPR_2026_Submission_Template/*.aux
-CVPR_2026_Submission_Template/*.log
+PPO-CF_CVPR_Paper/*.aux
+PPO-CF_CVPR_Paper/*.log
+PPO-CF_CVPR_Paper/*.bbl
+PPO-CF_CVPR_Paper/*.blg
+PPO-CF_CVPR_Paper/*.out
+PPO-CF_CVPR_Paper/*.brf
+PPO-CF_CVPR_Paper/main.pdf
+PPO-CF_CVPR_Paper/supplementary.pdf

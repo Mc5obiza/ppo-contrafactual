@@ -14,7 +14,7 @@
 # Trains the Vanilla CycleGAN baseline (train_cyclegan_baseline.py) — see that
 # script's docstring for what this is and why it exists (a measured,
 # same-protocol replacement for the literature-reported CycleGAN row in
-# report/report.tex's / report/paper_cvpr.tex's baseline-comparison table).
+# internship report's baseline-comparison table).
 #
 # BUDGET: benchmarked at ~110ms/image (V100, batch_size=4, 256x256, 9-resblock
 # ResnetGenerator + 70x70 PatchGAN) -> ~40 epochs (one epoch = one full pass

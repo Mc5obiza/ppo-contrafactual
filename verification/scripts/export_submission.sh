@@ -7,7 +7,7 @@
 # Copies ONLY what the build needs (an allow-list, not a deny-list): main.tex,
 # supplementary.tex, preamble.tex, cvpr.sty, ieeenat_fullname.bst, main.bib, sec/*.tex
 # and the figure files the sources actually \includegraphics. silence.sty and
-# cleveref.sty come from the 2026 template (TeX Live 2018 here lacks them).
+# cleveref.sty are copied from the paper folder (TeX Live 2018 here lacks them).
 # Never copied: .git, refs/, the issues PDF, ABSTRACT_B_DRAFT.tex, unused figures,
 # figures/make_fig1_lhr_lift.py.
 #
@@ -18,7 +18,7 @@
 #   * no identifying string in either PDF's text or in the copied sources
 set -euo pipefail
 P="$HOME/Jobs/Ayoub/ppo-contrafactual/PPO-CF_CVPR_Paper"
-T="$HOME/Jobs/Ayoub/ppo-contrafactual/CVPR_2026_Submission_Template"
+T="$P"
 SHA=$(git -C "$P" rev-parse --short HEAD)$(git -C "$P" diff --quiet -- . || echo "-dirty")
 OUT="$HOME/verification/review/submission_$SHA"
 rm -rf "$OUT"; mkdir -p "$OUT/src/sec" "$OUT/src/figures"

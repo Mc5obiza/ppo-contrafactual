@@ -1,3 +1,0 @@
-Loading python/3.12.8
-  Loading requirement: gcc/gcc-12 openmpi/openmpi-4.1.gcc12
-slurmstepd: error: *** JOB 18498461 ON hpc-n934 CANCELLED AT 2026-10-29T11:07:58 DUE TO PREEMPTION ***

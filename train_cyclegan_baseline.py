@@ -2,7 +2,7 @@
 train_cyclegan_baseline.py
 ===========================
 Trains the Vanilla CycleGAN baseline referenced in the baseline-comparison
-table (report/report.tex, report/paper_cvpr.tex) as a MEASURED arm instead of
+table (internship-report/chapters/conclusion.tex) as a MEASURED arm instead of
 a literature-reported number.
 
 WHAT THIS IS

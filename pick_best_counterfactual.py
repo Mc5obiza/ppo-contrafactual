@@ -5,8 +5,7 @@ Scores every image in the committed-default arm's eval shards
 (checkpoints/eval_shards_ens_default/) with the SAME 2-model ensemble that
 guided them, ranks by decisive score movement + a visual-quality proxy
 (low residual noise outside a clean flip), and saves the top candidates
-per direction as Original-vs-Counterfactual panels (matching the existing
-social_media/linkedin_before_after_*.png style) for manual review.
+per direction as Original-vs-Counterfactual panels for manual review.
 
 Run via srun (needs the xrv ensemble classifier + GPU/CPU):
     module load python/3.12.8 && source venv/bin/activate
