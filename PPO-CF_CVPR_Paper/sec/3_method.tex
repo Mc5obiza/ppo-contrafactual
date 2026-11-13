@@ -63,4 +63,4 @@ $a_8$ & guidance ramp-up start fraction & $[0.1, 0.5]$ \\
 \subsection{Directional policies}
 \label{sec:directional-policies}
 
-One policy is trained per target, n$\to$p ($c=1$) and p$\to$n ($c=0$), each with its own LoRA adapter fine-tuned from the same data, seed and recipe; the resulting weights differ (Supp.~R4). The default and Grad-CAM arms are evaluated with each direction's own adapter. Through a loading default, the single-classifier, 3-model and sparsity arms used the n$\to$p adapter for both directions, so where they are compared with the default we use the default evaluated under that same protocol (Table~\ref{tab:five-arms}); its p$\to$n LHR is then 0.028 higher (95\% CI $[-0.000, +0.058]$; Supp.~R4).
+One policy is trained per target, n$\to$p ($c=1$) and p$\to$n ($c=0$), each with its own LoRA adapter fine-tuned from the same data, seed and recipe; the resulting weights differ (Supp.~R4). The default and Grad-CAM arms are evaluated with each direction's own adapter. Three other arms were evaluated with the n$\to$p adapter for both directions (\S\ref{sec:caveats}).
