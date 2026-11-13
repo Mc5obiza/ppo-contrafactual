@@ -1,6 +1,14 @@
 \section{Experiments}
 \label{sec:experiments}
 
+\paragraph{Summary of findings.}
+\begin{itemize}\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}
+    \item \emph{CV overstates n$\to$p edits:} CV 0.945, but mean held-out transfer 0.28, no more than a norm-matched attack on the guidance models (\S\ref{sec:cv-overstates}).
+    \item \emph{Lesion targeting is real but weak:} in-lung LHR 1.165 (95\% CI $[1.123, 1.207]$), about half of it explained by where lesions typically lie (\S\ref{sec:lesion-targeting}).
+    \item \emph{The controller adds a schedule, not adaptation:} a fixed schedule at the policy's mean action matches it in LHR (1.162 vs.\ 1.165) and CV (\S\ref{sec:controller}).
+    \item \emph{One arm ranking survives the in-lung null:} ensemble over single-classifier guidance, $+0.082$ in-lung LHR (\S\ref{sec:five-arms}); neither localization mechanism helps (\S\ref{sec:negative-results}).
+\end{itemize}
+
 \subsection{Setup}
 \label{sec:setup}
 
